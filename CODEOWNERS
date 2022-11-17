@@ -1,0 +1,4 @@
+* @squads/merchant
+.dockerignore @squads/devops
+Dockerfile @squads/devops
+CODEOWNERS @squads/devops
