@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
 
 from cosmos.accounts.enums import AccountHolderRewardApiStatuses, AccountHolderRewardStatuses, AccountHolderStatuses
-from cosmos.db.models.accounts import AccountHolderPendingReward
+from cosmos.db.models import AccountHolderPendingReward
 
 from .utils import utc_datetime, utc_datetime_from_timestamp
 

@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 def api(
     mod_name: str,
     port: int = typer.Option(..., "--port", "-p", help="Port to bind to"),
+    dev: bool = typer.Option(False, "--reload", "-R", help="Reload (dev mode)"),
 ) -> None:  # pragma: no cover
     mod = f"cosmos.{mod_name}.api.app"
     try:
         importlib.import_module(mod)
-        uvicorn.run(f"{mod}:app", port=port, reload=False)
+        uvicorn.run(f"{mod}:app", port=port, reload=dev)
     except Exception as exc:
-        print(f"No {mod_name} app found")
+        logger.exception(f"Could not start {mod_name} service", exc_info=exc)
         raise typer.Abort() from exc
 
 

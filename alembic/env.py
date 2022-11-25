@@ -6,15 +6,13 @@ from alembic import context
 from cosmos.core.config import settings
 from cosmos.db.base import Base
 
-logger = logging.getLogger(__name__)
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-# fileConfig(config.config_file_name)
+logging.config.fileConfig(config.config_file_name)
 
 
 # add your model's MetaData object here

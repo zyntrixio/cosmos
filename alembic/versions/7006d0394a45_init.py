@@ -1,10 +1,12 @@
 """init
 
-Revision ID: df0feab6b6fc
+Revision ID: 7006d0394a45
 Revises: 
-Create Date: 2022-11-17 10:49:26.893851
+Create Date: 2022-11-24 22:30:50.231868
 
 """
+from collections import namedtuple
+
 import sqlalchemy as sa
 
 from sqlalchemy.dialects import postgresql
@@ -12,10 +14,85 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "df0feab6b6fc"
+revision = "7006d0394a45"
 down_revision = None
 branch_labels = None
 depends_on = None
+
+STRING = "STRING"
+INTEGER = "INTEGER"
+
+QUEUE_NAME = "cosmos:default"
+
+TaskTypeKeyData = namedtuple("TaskTypeKeyData", ["name", "type"])
+TaskTypeData = namedtuple("TaskTypeData", ["name", "path", "error_handler_path", "keys"])
+task_type_data = [
+    TaskTypeData(
+        name="account-holder-activation",
+        path="polaris.tasks.account_holder.account_holder_activation",
+        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
+        keys=[
+            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
+            TaskTypeKeyData(name="welcome_email_retry_task_id", type=INTEGER),
+            TaskTypeKeyData(name="callback_retry_task_id", type=INTEGER),
+        ],
+    ),
+    TaskTypeData(
+        name="send-welcome-email",
+        path="polaris.tasks.account_holder.send_welcome_email",
+        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
+        keys=[
+            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
+        ],
+    ),
+    TaskTypeData(
+        name="enrolment-callback",
+        path="polaris.tasks.account_holder.enrolment_callback",
+        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
+        keys=[
+            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
+            TaskTypeKeyData(name="callback_url", type=STRING),
+            TaskTypeKeyData(name="third_party_identifier", type=STRING),
+        ],
+    ),
+    TaskTypeData(
+        name="create-campaign-balances",
+        path="polaris.tasks.account_holder.create_campaign_balances",
+        error_handler_path="polaris.tasks.error_handlers.default_handler",
+        keys=[
+            TaskTypeKeyData(name="retailer_slug", type=STRING),
+            TaskTypeKeyData(name="campaign_slug", type=STRING),
+        ],
+    ),
+    TaskTypeData(
+        name="anonymise-account-holder",
+        path="polaris.tasks.account_holder.anonymise_account_holder_data",
+        error_handler_path="polaris.tasks.error_handlers.default_handler",
+        keys=[
+            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
+            TaskTypeKeyData(name="retailer_id", type=INTEGER),
+        ],
+    ),
+]
+
+
+def add_task_data() -> None:
+    metadata = sa.MetaData()
+    conn = op.get_bind()
+    TaskType = sa.Table("task_type", metadata, autoload_with=conn)
+    TaskTypeKey = sa.Table("task_type_key", metadata, autoload_with=conn)
+    for data in task_type_data:
+        inserted_obj = conn.execute(
+            TaskType.insert().values(
+                name=data.name,
+                path=data.path,
+                error_handler_path=data.error_handler_path,
+                queue_name=QUEUE_NAME,
+            )
+        )
+        task_type_id = inserted_obj.inserted_primary_key[0]
+        for key in data.keys:
+            conn.execute(TaskTypeKey.insert().values(name=key.name, type=key.type, task_type_id=task_type_id))
 
 
 def upgrade() -> None:
@@ -541,6 +618,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("reward_uuid", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("reward_config_id", sa.BigInteger(), nullable=False),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
         sa.Column("code", sa.String(), nullable=False),
         sa.Column("deleted", sa.Boolean(), nullable=False),
         sa.Column("issued_date", sa.DateTime(), nullable=False),
@@ -548,12 +627,15 @@ def upgrade() -> None:
         sa.Column("redeemed_date", sa.DateTime(), nullable=True),
         sa.Column("cancelled_date", sa.DateTime(), nullable=True),
         sa.Column("associated_url", sa.String(), server_default="", nullable=False),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("campaign_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["reward_config_id"],
+            ["reward_config.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code", "retailer_id", name="code_retailer_unq"),
     )
@@ -609,6 +691,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     # ### end Alembic commands ###
+    add_task_data()
 
 
 def downgrade() -> None:

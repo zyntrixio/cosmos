@@ -12,7 +12,7 @@ from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_cre
 from cosmos.accounts.api.enums.http_error import HttpErrors
 from cosmos.core.config import redis_raw, settings
 from cosmos.db.base_class import sync_run_query
-from cosmos.db.models.accounts import AccountHolderPendingReward
+from cosmos.db.models import AccountHolderPendingReward
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator  # pragma: no cover
