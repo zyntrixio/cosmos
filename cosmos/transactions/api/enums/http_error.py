@@ -1,0 +1,64 @@
+from enum import Enum
+
+from fastapi import HTTPException, status
+
+
+class HttpErrors(Enum):
+    NO_ACTIVE_CAMPAIGNS = HTTPException(
+        detail={"display_message": "No active campaigns found for retailer.", "code": "NO_ACTIVE_CAMPAIGNS"},
+        status_code=status.HTTP_404_NOT_FOUND,
+    )
+    INVALID_RETAILER = HTTPException(
+        detail={
+            "display_message": "Requested retailer is invalid.",
+            "code": "INVALID_RETAILER",
+        },
+        status_code=status.HTTP_403_FORBIDDEN,
+    )
+    INVALID_TOKEN = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "display_message": "Supplied token is invalid.",
+            "code": "INVALID_TOKEN",
+        },
+    )
+    DUPLICATE_TRANSACTION = HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={"display_message": "Duplicate Transaction.", "code": "DUPLICATE_TRANSACTION"},
+    )
+    USER_NOT_FOUND = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={"display_message": "Unknown User.", "code": "USER_NOT_FOUND"},
+    )
+    USER_NOT_ACTIVE = HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={"display_message": "User Account not Active", "code": "USER_NOT_ACTIVE"},
+    )
+    GENERIC_HANDLED_ERROR = HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={
+            "display_message": "An unexpected system error occurred, please try again later.",
+            "code": "INTERNAL_ERROR",
+        },
+    )
+    INVALID_STATUS_REQUESTED = HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "display_message": "The requested status change could not be performed.",
+            "code": "INVALID_STATUS_REQUESTED",
+        },
+    )
+    NO_CAMPAIGN_FOUND = HTTPException(
+        detail={
+            "display_message": "Campaign not found for provided slug.",
+            "code": "NO_CAMPAIGN_FOUND",
+        },
+        status_code=status.HTTP_404_NOT_FOUND,
+    )
+    DELETE_FAILED = HTTPException(
+        detail={
+            "display_message": "The campaign could not be deleted.",
+            "code": "DELETE_FAILED",
+        },
+        status_code=status.HTTP_409_CONFLICT,
+    )

@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cosmos.accounts.api.enums.http_error import HttpErrors
 from cosmos.accounts.api.operations import enrol_account_holder
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
 from cosmos.accounts.schemas import AccountHolderEnrolment
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.deps import RetailerDependency, get_session
+from cosmos.core.api.http_error import HttpErrors
 from cosmos.core.api.tasks import enqueue_task
 from cosmos.core.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.db.models import Retailer

@@ -232,6 +232,22 @@ class Settings(BaseSettings):
     TX_HISTORY_ROUTING_KEY: str = "activity.vela.tx.processed"
     MESSAGE_QUEUE_NAME: str = "polaris-transaction-history"
 
+    VELA_API_AUTH_TOKEN: str | None = None
+
+    @validator("VELA_API_AUTH_TOKEN")
+    @classmethod
+    def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> Any:
+        if isinstance(v, str) and not values["TESTING"]:
+            return v
+
+        if "KEY_VAULT_URI" in values:
+            return KeyVault(
+                values["KEY_VAULT_URI"],
+                values["TESTING"] or values["MIGRATING"],
+            ).get_secret("bpl-vela-api-auth-token")
+
+        raise KeyError("required var KEY_VAULT_URI is not set.")
+
     class Config:
         case_sensitive = True
         # env var settings priority ie priority 1 will override priority 2:

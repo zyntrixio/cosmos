@@ -233,7 +233,6 @@ def _generate_account_holder_pending_rewards(
                         AccountHolderPendingReward(
                             **account_holder_pending_reward_payload(
                                 account_holder_id=account_holder.id,
-                                reward_config_id=campaign.reward_config_id,
                                 campaign_id=campaign.id,
                                 refund_window=refund_window,
                             )

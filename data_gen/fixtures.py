@@ -178,7 +178,6 @@ def account_holder_reward_payload(
 
 def account_holder_pending_reward_payload(
     account_holder_id: int,
-    reward_config_id: str,
     campaign_id: str,
     refund_window: int,
 ) -> dict:
@@ -192,7 +191,6 @@ def account_holder_pending_reward_payload(
         "value": 200,
         "account_holder_id": account_holder_id,
         "campaign_id": campaign_id,
-        "reward_config_id": reward_config_id,
         "count": count,
         "total_cost_to_user": pending_reward_value * count,
         "pending_reward_uuid": str(uuid4()),

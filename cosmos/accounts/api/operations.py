@@ -4,12 +4,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.enums import AccountHolderStatuses
+from cosmos.core.api.http_error import HttpErrors
 from cosmos.core.config import settings
 from cosmos.db.base_class import async_run_query
 from cosmos.db.models import AccountHolder, AccountHolderMarketingPreference, AccountHolderProfile
 from cosmos.retailers.enums import EmailTemplateTypes
-
-from .enums.http_error import HttpErrors
 
 
 async def enrol_account_holder(

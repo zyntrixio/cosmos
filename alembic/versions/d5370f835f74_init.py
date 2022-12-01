@@ -1,12 +1,10 @@
 """init
 
-Revision ID: 7006d0394a45
+Revision ID: d5370f835f74
 Revises: 
-Create Date: 2022-11-24 22:30:50.231868
+Create Date: 2022-12-01 18:10:57.425046
 
 """
-from collections import namedtuple
-
 import sqlalchemy as sa
 
 from sqlalchemy.dialects import postgresql
@@ -14,85 +12,10 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "7006d0394a45"
+revision = "d5370f835f74"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-STRING = "STRING"
-INTEGER = "INTEGER"
-
-QUEUE_NAME = "cosmos:default"
-
-TaskTypeKeyData = namedtuple("TaskTypeKeyData", ["name", "type"])
-TaskTypeData = namedtuple("TaskTypeData", ["name", "path", "error_handler_path", "keys"])
-task_type_data = [
-    TaskTypeData(
-        name="account-holder-activation",
-        path="polaris.tasks.account_holder.account_holder_activation",
-        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
-        keys=[
-            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
-            TaskTypeKeyData(name="welcome_email_retry_task_id", type=INTEGER),
-            TaskTypeKeyData(name="callback_retry_task_id", type=INTEGER),
-        ],
-    ),
-    TaskTypeData(
-        name="send-welcome-email",
-        path="polaris.tasks.account_holder.send_welcome_email",
-        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
-        keys=[
-            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
-        ],
-    ),
-    TaskTypeData(
-        name="enrolment-callback",
-        path="polaris.tasks.account_holder.enrolment_callback",
-        error_handler_path="polaris.tasks.error_handlers.handle_retry_task_request_error",
-        keys=[
-            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
-            TaskTypeKeyData(name="callback_url", type=STRING),
-            TaskTypeKeyData(name="third_party_identifier", type=STRING),
-        ],
-    ),
-    TaskTypeData(
-        name="create-campaign-balances",
-        path="polaris.tasks.account_holder.create_campaign_balances",
-        error_handler_path="polaris.tasks.error_handlers.default_handler",
-        keys=[
-            TaskTypeKeyData(name="retailer_slug", type=STRING),
-            TaskTypeKeyData(name="campaign_slug", type=STRING),
-        ],
-    ),
-    TaskTypeData(
-        name="anonymise-account-holder",
-        path="polaris.tasks.account_holder.anonymise_account_holder_data",
-        error_handler_path="polaris.tasks.error_handlers.default_handler",
-        keys=[
-            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
-            TaskTypeKeyData(name="retailer_id", type=INTEGER),
-        ],
-    ),
-]
-
-
-def add_task_data() -> None:
-    metadata = sa.MetaData()
-    conn = op.get_bind()
-    TaskType = sa.Table("task_type", metadata, autoload_with=conn)
-    TaskTypeKey = sa.Table("task_type_key", metadata, autoload_with=conn)
-    for data in task_type_data:
-        inserted_obj = conn.execute(
-            TaskType.insert().values(
-                name=data.name,
-                path=data.path,
-                error_handler_path=data.error_handler_path,
-                queue_name=QUEUE_NAME,
-            )
-        )
-        task_type_id = inserted_obj.inserted_primary_key[0]
-        for key in data.keys:
-            conn.execute(TaskTypeKey.insert().values(name=key.name, type=key.type, task_type_id=task_type_id))
 
 
 def upgrade() -> None:
@@ -506,20 +429,16 @@ def upgrade() -> None:
         sa.Column("mid", sa.String(length=128), nullable=False),
         sa.Column("datetime", sa.DateTime(), nullable=False),
         sa.Column("payment_transaction_id", sa.String(length=128), nullable=True),
-        sa.Column(
-            "status",
-            sa.Enum("PROCESSED", "DUPLICATE", "NO_ACTIVE_CAMPAIGNS", name="transactionprocessingstatuses"),
-            nullable=True,
-        ),
+        sa.Column("processed", sa.Boolean(), nullable=True),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("transaction_id", "retailer_id", name="transaction_retailer_unq"),
+        sa.UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
+        sa.CheckConstraint("processed IS NULL OR processed IS TRUE", name="processed_null_or_true_check"),
     )
     op.create_index(
         op.f("ix_transaction_payment_transaction_id"), "transaction", ["payment_transaction_id"], unique=False
     )
-    op.create_index(op.f("ix_transaction_status"), "transaction", ["status"], unique=False)
     op.create_index(op.f("ix_transaction_transaction_id"), "transaction", ["transaction_id"], unique=False)
     op.create_table(
         "account_holder_campaign_balance",
@@ -562,7 +481,6 @@ def upgrade() -> None:
         sa.Column("pending_reward_uuid", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
         sa.Column("campaign_id", sa.BigInteger(), nullable=True),
-        sa.Column("reward_config_id", sa.BigInteger(), nullable=True),
         sa.Column("created_date", sa.DateTime(), nullable=False),
         sa.Column("conversion_date", sa.DateTime(), nullable=False),
         sa.Column("value", sa.Integer(), nullable=False),
@@ -570,7 +488,6 @@ def upgrade() -> None:
         sa.Column("total_cost_to_user", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["reward_config_id"], ["reward_config.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -583,12 +500,6 @@ def upgrade() -> None:
         op.f("ix_account_holder_pending_reward_campaign_id"),
         "account_holder_pending_reward",
         ["campaign_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_account_holder_pending_reward_reward_config_id"),
-        "account_holder_pending_reward",
-        ["reward_config_id"],
         unique=False,
     )
     op.create_table(
@@ -691,7 +602,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     # ### end Alembic commands ###
-    add_task_data()
 
 
 def downgrade() -> None:
@@ -704,7 +614,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_reward_account_holder_id"), table_name="reward")
     op.drop_table("reward")
     op.drop_table("earn_rule")
-    op.drop_index(op.f("ix_account_holder_pending_reward_reward_config_id"), table_name="account_holder_pending_reward")
     op.drop_index(op.f("ix_account_holder_pending_reward_campaign_id"), table_name="account_holder_pending_reward")
     op.drop_index(
         op.f("ix_account_holder_pending_reward_account_holder_id"), table_name="account_holder_pending_reward"
@@ -716,7 +625,6 @@ def downgrade() -> None:
     )
     op.drop_table("account_holder_campaign_balance")
     op.drop_index(op.f("ix_transaction_transaction_id"), table_name="transaction")
-    op.drop_index(op.f("ix_transaction_status"), table_name="transaction")
     op.drop_index(op.f("ix_transaction_payment_transaction_id"), table_name="transaction")
     op.drop_table("transaction")
     op.drop_table("task_type_key_value")

@@ -5,7 +5,6 @@ from fastapi_prometheus_metrics.manager import PrometheusManager
 from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, PrometheusMiddleware
 from starlette.exceptions import HTTPException
 
-# from cosmos.accounts.api import api_router
 from cosmos.accounts.api.endpoints.enrolment import router as enrolment_router
 from cosmos.core.exception_handlers import (
     http_exception_handler,

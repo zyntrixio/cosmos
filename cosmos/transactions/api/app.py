@@ -5,17 +5,17 @@ from fastapi_prometheus_metrics.manager import PrometheusManager
 from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, PrometheusMiddleware
 from starlette.exceptions import HTTPException
 
-from cosmos.accounts.api import api_router
 from cosmos.core.exception_handlers import (
     http_exception_handler,
     request_validation_handler,
     unexpected_exception_handler,
 )
+from cosmos.transactions.api.endpoints.transaction import router as transactions_router
 
 
 def create_app() -> FastAPI:
     fapi = FastAPI(title="Transactions API")
-    fapi.include_router(api_router)
+    fapi.include_router(transactions_router, prefix="/retailers")
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)

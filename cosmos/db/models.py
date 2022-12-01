@@ -10,6 +10,7 @@ from pydantic import PositiveInt
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -27,7 +28,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
-from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap, TransactionProcessingStatuses
+from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
@@ -116,10 +117,9 @@ class AccountHolderMarketingPreference(IdPkMixin, Base, TimestampMixin):
 class AccountHolderPendingReward(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "account_holder_pending_reward"
 
-    pending_reward_uuid = Column(UUID(as_uuid=True), nullable=False)
+    pending_reward_uuid = Column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4)
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), index=True)
-    reward_config_id = Column(BigInteger, ForeignKey("reward_config.id", ondelete="CASCADE"), index=True)
     created_date = Column(DateTime, nullable=False)
     conversion_date = Column(DateTime, nullable=False)
     value = Column(Integer, nullable=False)
@@ -129,7 +129,6 @@ class AccountHolderPendingReward(IdPkMixin, Base, TimestampMixin):
 
     account_holder = relationship("AccountHolder", back_populates="pending_rewards")
     campaign = relationship("Campaign", back_populates="pending_rewards")
-    reward_config = relationship("RewardConfig", back_populates="pending_rewards")
 
     @property
     def total_value(self) -> int:
@@ -174,7 +173,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
 
     reward_config = relationship("RewardConfig", back_populates="campaigns")
     retailer = relationship("Retailer", back_populates="campaigns")
-    earn_rules = relationship("EarnRule", cascade="all,delete", back_populates="campaign")
+    earn_rule = relationship("EarnRule", cascade="all,delete", back_populates="campaign", uselist=False)
     reward_rule = relationship("RewardRule", cascade="all,delete", back_populates="campaign", uselist=False)
     pending_rewards = relationship("AccountHolderPendingReward", back_populates="campaign")
     current_balances = relationship("AccountHolderCampaignBalance", back_populates="campaign")
@@ -196,7 +195,7 @@ class EarnRule(IdPkMixin, Base, TimestampMixin):
     max_amount = Column(Integer, nullable=False, server_default="0")
 
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
-    campaign = relationship("Campaign", back_populates="earn_rules")
+    campaign = relationship("Campaign", back_populates="earn_rule")
 
 
 class RewardRule(IdPkMixin, Base, TimestampMixin):
@@ -358,7 +357,6 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
 
     campaigns = relationship("Campaign", back_populates="reward_config")
     rewards = relationship("Reward", back_populates="reward_config")
-    pending_rewards = relationship("AccountHolderPendingReward", back_populates="reward_config")
     retailer = relationship("Retailer", back_populates="reward_configs")
     fetch_type = relationship("FetchType", back_populates="reward_configs")
 
@@ -413,12 +411,18 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     mid = Column(String(128), nullable=False)
     datetime = Column(DateTime, nullable=False)
     payment_transaction_id = Column(String(128), nullable=True, index=True)
-    status = Column(Enum(TransactionProcessingStatuses), nullable=True, index=True)
+    processed = Column(
+        Boolean,
+        CheckConstraint("processed IS NULL OR processed IS TRUE", name="processed_null_or_true_check"),
+        nullable=True,
+    )
 
     account_holder = relationship("AccountHolder", back_populates="transactions")
     retailer = relationship("Retailer", back_populates="transactions")
 
-    __table_args__ = (UniqueConstraint("transaction_id", "retailer_id", name="transaction_retailer_unq"),)
+    __table_args__ = (
+        UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
+    )
     __mapper_args__ = {"eager_defaults": True}
 
 
