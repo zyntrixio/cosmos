@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 from cosmos.accounts.schemas.account_holder import AccountHolderStatuses
+from cosmos.core.api.crud import commit
 from cosmos.core.api.service_result import ServiceResult
 from cosmos.db.models import (
     AccountHolderCampaignBalance,
@@ -371,7 +372,7 @@ class TransactionService:
         )
         if not account_holder:
             return ServiceResult(HttpErrors.USER_NOT_FOUND.value)
-        elif account_holder.status != AccountHolderStatuses.ACTIVE:
+        if account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
 
         transaction = await crud.create_transaction(
@@ -415,5 +416,5 @@ class TransactionService:
                         adjustment=adjustment,
                     )
 
-        await crud.commit(self.db_session)
+        await commit(self.db_session)
         return ServiceResult(_get_transaction_response(adjustments, transaction.amount < 0))

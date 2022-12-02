@@ -8,6 +8,8 @@ from fastapi.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_500_INTERNAL_SERVER_ERROR
 
+from cosmos.core.api.exceptions import RequestPayloadValidationError
+
 logger = logging.getLogger(__name__)
 
 FIELD_VALIDATION_ERROR = "FIELD_VALIDATION_ERROR"
@@ -31,6 +33,13 @@ def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | di
     }
 
     return HTTP_422_UNPROCESSABLE_ENTITY, content
+
+
+# custom exception handler for bubbling pydandic validation errors
+async def payload_request_validation_error(request: Request, exc: RequestPayloadValidationError) -> Response:
+    pydantic_error = exc.validation_error
+    status_code, content = _format_validation_errors(cast(list[dict], pydantic_error.errors()))
+    return UJSONResponse(status_code=status_code, content=content)
 
 
 # customise Api RequestValidationError

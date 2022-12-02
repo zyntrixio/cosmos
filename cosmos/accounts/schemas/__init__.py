@@ -6,4 +6,5 @@ from .account_holder import (
     AccountHolderResponseSchema,
     AccountHolderStatuses,
     GetAccountHolderByCredentials,
+    MarketingPreference,
 )
