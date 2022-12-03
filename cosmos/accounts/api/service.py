@@ -8,7 +8,7 @@ import yaml
 
 from cosmos.accounts.api import crud
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.accounts.schemas import AccountHolderEnrolment, MarketingPreference
+from cosmos.accounts.schemas import AccountHolderEnrolment, GetAccountHolderByCredentials, MarketingPreference
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit, create_retry_task
@@ -133,3 +133,28 @@ class AccountService:
                 retailer_profile_config=retailer_profile_config,
             )
             asyncio.create_task(async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_REQUEST.value))
+
+    async def handle_account_auth(
+        self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None, channel: str
+    ) -> ServiceResult:
+        "Main handler for account auth"
+        account_holder = await crud.get_account_holder(
+            self.db_session,
+            email=request_payload.email,
+            retailer_id=self.retailer.id,
+            account_number=request_payload.account_number,
+            fetch_rewards=True,
+            tx_qty=tx_qty,
+            raise_404_if_inactive=True,
+        )
+        activity_payload = ActivityType.get_account_authentication_activity_data(
+            account_holder_uuid=account_holder.account_holder_uuid,
+            activity_datetime=datetime.now(tz=timezone.utc),
+            retailer_slug=self.retailer.slug,
+            channel=channel,
+        )
+        asyncio.create_task(
+            async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_AUTHENTICATION.value)
+        )
+        setattr(account_holder, "retailer_status", self.retailer.status)
+        return account_holder

@@ -382,6 +382,7 @@ class TransactionService:
             transaction_data=request_payload,
         )
         if not transaction.processed:
+            await commit(self.db_session)
             return ServiceResult(HttpErrors.DUPLICATE_TRANSACTION.value)
 
         campaigns = list(

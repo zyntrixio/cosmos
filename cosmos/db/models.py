@@ -415,6 +415,7 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
         Boolean,
         CheckConstraint("processed IS NULL OR processed IS TRUE", name="processed_null_or_true_check"),
         nullable=True,
+        index=True,
     )
 
     account_holder = relationship("AccountHolder", back_populates="transactions")
