@@ -1,14 +1,23 @@
 from typing import TYPE_CHECKING
 
-from pydantic import UUID4
+from pydantic import UUID4, EmailStr
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
-from sqlalchemy.orm import aliased, contains_eager, joinedload
+from sqlalchemy.orm import aliased, contains_eager, joinedload, raiseload
 
 from cosmos.accounts.enums import AccountHolderStatuses
-from cosmos.core.api.http_error import HttpErrors
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import AccountHolder, AccountHolderMarketingPreference, AccountHolderProfile, Transaction
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderCampaignBalance,
+    AccountHolderMarketingPreference,
+    AccountHolderPendingReward,
+    AccountHolderProfile,
+    Reward,
+    Transaction,
+    TransactionCampaign,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,55 +64,57 @@ async def create_account_holder(
 async def get_account_holder(
     db_session: "AsyncSession",
     *,
-    email: str,
-    account_number: str,
     retailer_id: int,
-    fetch_rewards: bool = True,
-    fetch_balances: bool = True,
+    fetch_rewards: bool = False,
+    fetch_balances: bool = False,
     tx_qty: int | None = None,
-    raise_404_if_inactive: bool = True,
-    # **query_param: str | int | UUID4,
-) -> AccountHolder:
+    **account_holder_query_params: str | int | UUID4 | EmailStr,
+) -> AccountHolder | None:
+    """
+    Get a single account holder based on query params. Ensure query params will
+    return one single AccountHolder instance or none at all (since we use
+    scalar_one_or_none here).
+
+    Also optionally load Rewards, PendingRewards, Balances and Transactions
+    using the relevant flags/params.
+    """
     account_holder_alias = aliased(AccountHolder, name="account_holder_alias")
-    stmt = select(account_holder_alias).where(
-        account_holder_alias.email == email,
-        account_holder_alias.account_number == account_number,
-        account_holder_alias.retailer_id == retailer_id,
-    )
+    stmt = select(account_holder_alias).filter_by(retailer_id=retailer_id, **account_holder_query_params)
     if fetch_rewards:
         stmt = stmt.options(
-            joinedload(account_holder_alias.rewards),
-            joinedload(account_holder_alias.pending_rewards),
+            joinedload(account_holder_alias.rewards).joinedload(Reward.campaign),
+            joinedload(account_holder_alias.pending_rewards).joinedload(AccountHolderPendingReward.campaign),
         )
     if fetch_balances:
-        stmt = stmt.options(  # join(account_holder_alias.current_balances).options(
+        stmt = stmt.options(
             joinedload(
                 account_holder_alias.current_balances,
-            )
+            ).joinedload(AccountHolderCampaignBalance.campaign)
         )
     if tx_qty:
         subq = (
             select(Transaction)
-            .join(AccountHolder)
+            .join(Transaction.account_holder)
             .where(
-                AccountHolder.email == email,
-                AccountHolder.account_number == account_number,
-                AccountHolder.retailer_id == retailer_id,
+                and_(*[(getattr(AccountHolder, k) == v) for k, v in account_holder_query_params.items()]),
                 Transaction.processed.is_(True),
             )
-            .order_by(Transaction.created_at.desc(), Transaction.id)
+            .order_by(Transaction.datetime.desc(), Transaction.id)
             .limit(tx_qty)
             .subquery(name="lastest_transactions")
         )
         stmt = stmt.outerjoin(subq).options(
-            contains_eager(account_holder_alias.transactions, alias=subq),
+            contains_eager(account_holder_alias.transactions, alias=subq).options(
+                joinedload(Transaction.store),
+                joinedload(Transaction.transaction_campaigns).joinedload(TransactionCampaign.campaign),
+            )
         )
 
+    stmt = stmt.options(raiseload("*"))
+
     async def _query() -> AccountHolder:
-        return (await db_session.execute(stmt)).scalars().first()
+        return (await db_session.execute(stmt)).unique().scalar_one_or_none()
 
     account_holder = await async_run_query(_query, db_session, rollback_on_exc=False)
-    if not account_holder or (raise_404_if_inactive and account_holder.status == AccountHolderStatuses.INACTIVE):
-        raise HttpErrors.NO_ACCOUNT_FOUND.value
 
     return account_holder

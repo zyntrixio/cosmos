@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
 
-from cosmos.accounts.enums import AccountHolderRewardApiStatuses, AccountHolderRewardStatuses, AccountHolderStatuses
+from cosmos.accounts.enums import AccountHolderStatuses, RewardApiStatuses
 from cosmos.db.models import AccountHolderPendingReward
 
 from .utils import utc_datetime, utc_datetime_from_timestamp
@@ -34,21 +34,26 @@ class AccountHolderRewardSchema(BaseModel):
     issued_date: utc_datetime
     redeemed_date: utc_datetime | None
     expiry_date: utc_datetime  # expiry_date must be declared before status
-    status: AccountHolderRewardStatuses
+    status: RewardApiStatuses | None = None
+
+    @classmethod
+    def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
+        obj.campaign_slug = obj.campaign.slug
+        if obj.redeemed_date:
+            obj.status = RewardApiStatuses.REDEEMED
+        elif obj.expiry_date.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
+            obj.status = RewardApiStatuses.EXPIRED
+        elif obj.cancelled_date:
+            obj.status = RewardApiStatuses.CANCELLED
+        else:
+            obj.status = RewardApiStatuses.ISSUED
+
+        return super().from_orm(obj)
 
     @validator("issued_date", "redeemed_date", "expiry_date", allow_reuse=True)
     @classmethod
     def get_timestamp(cls, dt: datetime | None) -> int | None:
         return int(dt.timestamp()) if dt else None
-
-    @validator("status")
-    @classmethod
-    def get_status(
-        cls, v: AccountHolderRewardStatuses, values: dict
-    ) -> AccountHolderRewardStatuses | AccountHolderRewardApiStatuses:
-        if int(values["expiry_date"]) < int(datetime.now(tz=timezone.utc).timestamp()):
-            return AccountHolderRewardApiStatuses.EXPIRED
-        return v
 
     class Config:
         orm_mode = True
@@ -77,7 +82,7 @@ class AccountHolderPendingRewardAllocationResponseSchema(BaseModel):
             {
                 "created_date": int(obj.created_date.timestamp()),
                 "conversion_date": int(obj.conversion_date.timestamp()),
-                "campaign_slug": obj.campaign_slug,
+                "campaign_slug": obj.campaign.slug,
             }
         ] * obj.count
 
@@ -97,18 +102,23 @@ class AccountHolderCampaignBalanceSchema(BaseModel):
     def get_float(cls, v: int) -> float:
         return v / 100
 
+    @classmethod
+    def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
+        obj.campaign_slug = obj.campaign.slug
+        return super().from_orm(obj)
+
     class Config:
         orm_mode = True
         allow_population_by_field_name = True
 
 
-class AccountHolderTransactionHistorySchema(BaseModel):
+class TransactionHistorySchema(BaseModel):
     datetime: int = Field(..., alias="datetime")
     amount: str
     amount_currency: str
-    location_name: str = Field(..., alias="location")
-    loyalty_earned_value: str
-    loyalty_earned_type: str
+    location_name: str | None = Field(None, alias="location")
+    loyalty_earned_value: str | None = None
+    loyalty_earned_type: str | None = None
 
     @validator("datetime", pre=True)
     @classmethod
@@ -117,13 +127,12 @@ class AccountHolderTransactionHistorySchema(BaseModel):
 
     @classmethod
     def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
-        val = obj.earned[0]["value"]
-        found_matches = strip_currency_re.findall(val)
-        if not found_matches:
-            raise ValueError(f"Unexpected earn value {val}")
-        if hasattr(obj, "earned"):
-            setattr(obj, "loyalty_earned_value", "".join(found_matches[0]))
-            setattr(obj, "loyalty_earned_type", obj.earned[0]["type"])
+        obj.amount_currency = "GBP"
+        if hasattr(obj, "store") and obj.store is not None:
+            obj.location_name = obj.store.store_name
+        if obj.transaction_campaigns:
+            obj.loyalty_earned_value = obj.transaction_campaigns[0].adjustment
+            obj.loyalty_earned_type = obj.transaction_campaigns[0].campaign.loyalty_type.name
 
         return super().from_orm(obj)
 
@@ -132,13 +141,19 @@ class AccountHolderTransactionHistorySchema(BaseModel):
         allow_population_by_field_name = True
 
 
-class AccountHolderResponseSchema(BaseModel):
+class AccountHolderStatusResponseSchema(BaseModel):
+    status: AccountHolderStatuses
+
+    class Config:
+        orm_mode = True
+
+
+class AccountHolderResponseSchema(AccountHolderStatusResponseSchema):
     account_holder_uuid: UUID4 = Field(..., alias="UUID")
     email: str
-    status: AccountHolderStatuses
     account_number: str | None
-    current_balances: list[AccountHolderCampaignBalanceSchema]
-    transaction_history: list[AccountHolderTransactionHistorySchema] = []
+    current_balances: list[AccountHolderCampaignBalanceSchema] = []
+    transactions: list[TransactionHistorySchema] = Field([], alias="transaction_history")
     rewards: list[AccountHolderRewardSchema] = []
     pending_rewards: list[AccountHolderPendingRewardAllocationResponseSchema] = []
 
@@ -148,6 +163,11 @@ class AccountHolderResponseSchema(BaseModel):
         cls, pending_rewards: list[AccountHolderPendingRewardAllocationResponseSchema]
     ) -> list:
         return [row for pending_reward in pending_rewards for row in pending_reward.pending_reward_items]
+
+    @validator("transactions")
+    @classmethod
+    def order_transactions(cls, transactions: list[TransactionHistorySchema]) -> list[TransactionHistorySchema]:
+        return sorted(transactions, key=lambda t: t.datetime, reverse=True)
 
     class Config:
         orm_mode = True

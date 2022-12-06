@@ -5,6 +5,8 @@ from .account_holder import (
     AccountHolderPendingRewardAllocationSchema,
     AccountHolderResponseSchema,
     AccountHolderStatuses,
+    AccountHolderStatusResponseSchema,
+    AccountHolderUpdateStatusSchema,
     GetAccountHolderByCredentials,
     MarketingPreference,
 )

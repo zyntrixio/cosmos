@@ -12,7 +12,7 @@ from cosmos.db.models import Retailer
 
 get_retailer = RetailerDependency(no_retailer_found_exc=HttpErrors.INVALID_RETAILER.value)
 
-router = APIRouter()
+router = APIRouter(prefix="/loyalty")
 
 
 @router.post(path="/{retailer_slug}/accounts/enrolment", status_code=status.HTTP_202_ACCEPTED)

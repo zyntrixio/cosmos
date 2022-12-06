@@ -7,37 +7,13 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import noload
 
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import (
-    AccountHolder,
-    AccountHolderCampaignBalance,
-    AccountHolderPendingReward,
-    Transaction,
-    TransactionCampaign,
-)
+from cosmos.db.models import AccountHolderCampaignBalance, AccountHolderPendingReward, Transaction, TransactionCampaign
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from cosmos.db.models import Campaign, Retailer
-
-
-async def get_account_holder_by_uuid_for_retailer(
-    db_session: "AsyncSession", *, retailer_id: int, account_holder_uuid: "UUID"
-) -> AccountHolder | None:
-    async def _query() -> AccountHolder | None:
-        return (
-            await (
-                db_session.execute(
-                    select(AccountHolder).where(
-                        AccountHolder.account_holder_uuid == account_holder_uuid,
-                        AccountHolder.retailer_id == retailer_id,
-                    )
-                )
-            )
-        ).scalar_one_or_none()
-
-    return await async_run_query(_query, db_session, rollback_on_exc=False)
 
 
 async def get_balances_for_update(
@@ -128,10 +104,12 @@ async def create_transaction(
 
 
 async def associate_campaign_to_transaction(
-    db_session: "AsyncSession", campaign_id: int, transaction_id: int
+    db_session: "AsyncSession", campaign_id: int, transaction_id: int, adjustment: int | None
 ) -> TransactionCampaign:
     async def _query() -> TransactionCampaign:
-        transaction_campaign = TransactionCampaign(campaign_id=campaign_id, transaction_id=transaction_id)
+        transaction_campaign = TransactionCampaign(
+            campaign_id=campaign_id, transaction_id=transaction_id, adjustment=adjustment
+        )
         db_session.add(transaction_campaign)
         db_session.flush()
         return transaction_campaign

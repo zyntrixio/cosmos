@@ -51,7 +51,7 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     rewards = relationship("Reward", back_populates="account_holder")
     current_balances = relationship("AccountHolderCampaignBalance", back_populates="account_holder")
     marketing_preferences = relationship("AccountHolderMarketingPreference", back_populates="account_holder")
-    transaction_history = relationship("AccountHolderTransactionHistory", back_populates="account_holder")
+    # transaction_history = relationship("AccountHolderTransactionHistory", back_populates="account_holder")
     transactions = relationship("Transaction", back_populates="account_holder")
 
     __table_args__ = (UniqueConstraint("email", "retailer_id", name="email_retailer_unq"),)
@@ -156,7 +156,7 @@ class AccountHolderTransactionHistory(IdPkMixin, Base, TimestampMixin):
     location_name = Column(String, nullable=False)
     earned = Column(JSONB, nullable=False)
 
-    account_holder = relationship("AccountHolder", back_populates="transaction_history")
+    # account_holder = relationship("AccountHolder", back_populates="transaction_history")
 
 
 class Campaign(IdPkMixin, Base, TimestampMixin):
@@ -178,6 +178,8 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     pending_rewards = relationship("AccountHolderPendingReward", back_populates="campaign")
     current_balances = relationship("AccountHolderCampaignBalance", back_populates="campaign")
     rewards = relationship("Reward", back_populates="campaign")
+    transactions = relationship("Transaction", secondary="transaction_campaign")
+    transaction_campaigns = relationship("TransactionCampaign", back_populates="campaign")
 
     def __str__(self) -> str:  # pragma: no cover
         return str(self.name)
@@ -408,7 +410,7 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     transaction_id = Column(String(128), nullable=False, index=True)
     amount = Column(Integer, nullable=False)
-    mid = Column(String(128), nullable=False)
+    mid = Column(String(128), nullable=False, index=True)
     datetime = Column(DateTime, nullable=False)
     payment_transaction_id = Column(String(128), nullable=True, index=True)
     processed = Column(
@@ -420,6 +422,14 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
 
     account_holder = relationship("AccountHolder", back_populates="transactions")
     retailer = relationship("Retailer", back_populates="transactions")
+    store = relationship(
+        "RetailerStore",
+        uselist=False,
+        primaryjoin="Transaction.mid==RetailerStore.mid",
+        foreign_keys=mid,
+    )
+    campaigns = relationship("Campaign", secondary="transaction_campaign")
+    transaction_campaigns = relationship("TransactionCampaign")
 
     __table_args__ = (
         UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
@@ -434,6 +444,10 @@ class TransactionCampaign(Base, TimestampMixin):
         BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False, primary_key=True
     )
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    adjustment = Column(Integer, nullable=True)
+
+    campaign = relationship("Campaign", uselist=False, back_populates="transaction_campaigns")
+    transaction = relationship("Transaction")
 
 
 class Retailer(IdPkMixin, Base, TimestampMixin):

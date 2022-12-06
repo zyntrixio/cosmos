@@ -1,13 +1,15 @@
-from fastapi import FastAPI, status
+from fastapi import APIRouter, FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastapi_prometheus_metrics.endpoints import router as metrics_router
 from fastapi_prometheus_metrics.manager import PrometheusManager
 from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, PrometheusMiddleware
 from starlette.exceptions import HTTPException
 
+from cosmos.accounts.api.endpoints.account import bpl_operations_router
 from cosmos.accounts.api.endpoints.account import router as account_router
 from cosmos.accounts.api.endpoints.enrolment import router as enrolment_router
 from cosmos.core.api.exceptions import RequestPayloadValidationError
+from cosmos.core.api.healthz import healthz_router
 from cosmos.core.exception_handlers import (
     http_exception_handler,
     payload_request_validation_error,
@@ -18,8 +20,10 @@ from cosmos.core.exception_handlers import (
 
 def create_app() -> FastAPI:
     fapi = FastAPI(title="Account Management API")
-    fapi.include_router(enrolment_router, prefix="/loyalty")
-    fapi.include_router(account_router, prefix="/loyalty")
+    fapi.include_router(healthz_router)
+    fapi.include_router(enrolment_router)
+    fapi.include_router(account_router)
+    fapi.include_router(bpl_operations_router)
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(RequestPayloadValidationError, payload_request_validation_error)

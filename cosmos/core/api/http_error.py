@@ -11,6 +11,13 @@ class HttpErrors(Enum):
         },
         status_code=status.HTTP_404_NOT_FOUND,
     )
+    USER_NOT_ACTIVE = HTTPException(
+        detail={
+            "display_message": "User Account not Active",
+            "code": "USER_NOT_ACTIVE",
+        },
+        status_code=status.HTTP_409_CONFLICT,
+    )
     INVALID_RETAILER = HTTPException(
         detail={
             "display_message": "Requested retailer is invalid.",
@@ -32,6 +39,10 @@ class HttpErrors(Enum):
             "display_message": "Supplied token is invalid.",
             "code": "INVALID_TOKEN",
         },
+    )
+    INVALID_ACCOUNT_HOLDER_STATUS = HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={"display_message": "Status could not be updated as requested.", "code": "STATUS_UPDATE_FAILED"},
     )
     # MISSING_BPL_CHANNEL_HEADER = HTTPException(
     #     status_code=status.HTTP_400_BAD_REQUEST,
@@ -68,9 +79,5 @@ class HttpErrors(Enum):
     # NO_CAMPAIGN_BALANCE = HTTPException(
     #     status_code=status.HTTP_409_CONFLICT,
     #     detail={"display_message": "No balance for provided campaign slug.", "code": "NO_CAMPAIGN_BALANCE"},
-    # )
-    # INVALID_ACCOUNT_HOLDER_STATUS = HTTPException(
-    #     status_code=status.HTTP_409_CONFLICT,
-    #     detail={"display_message": "Status could not be updated as requested.", "code": "STATUS_UPDATE_FAILED"},
     # )
     # INVALID_REQUEST = HTTPException(status_code=status.HTTP_404_NOT_FOUND)

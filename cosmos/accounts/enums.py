@@ -10,13 +10,10 @@ class AccountHolderStatuses(Enum):
     FAILED = "failed"
 
 
-class AccountHolderRewardStatuses(Enum):
+class RewardApiStatuses(Enum):
     ISSUED = "issued"
     CANCELLED = "cancelled"
     REDEEMED = "redeemed"
-
-
-class AccountHolderRewardApiStatuses(Enum):
     EXPIRED = "expired"
 
 

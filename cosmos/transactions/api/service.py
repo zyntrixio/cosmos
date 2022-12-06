@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
+from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.schemas.account_holder import AccountHolderStatuses
 from cosmos.core.api.crud import commit
 from cosmos.core.api.service_result import ServiceResult
@@ -367,7 +368,7 @@ class TransactionService:
     async def handle_incoming_transaction(self, request_payload: CreateTransactionSchema) -> ServiceResult:
         "Main handler for incoming transactions"
 
-        account_holder = await crud.get_account_holder_by_uuid_for_retailer(
+        account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
         if not account_holder:
@@ -406,7 +407,7 @@ class TransactionService:
             adjustment = await self._adjust_balance(
                 campaign=campaign, campaign_balance=campaign_balance, transaction=transaction
             )
-            await crud.associate_campaign_to_transaction(self.db_session, campaign.id, transaction.id)
+            await crud.associate_campaign_to_transaction(self.db_session, campaign.id, transaction.id, adjustment)
             if adjustment:
                 adjustments.append(adjustment)
                 if adjustment > 0:

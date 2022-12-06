@@ -234,6 +234,7 @@ class Settings(BaseSettings):
 
     VELA_API_AUTH_TOKEN: str | None = None
 
+    ###### FIXME - cleanup
     @validator("VELA_API_AUTH_TOKEN")
     @classmethod
     def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> Any:
@@ -247,6 +248,23 @@ class Settings(BaseSettings):
             ).get_secret("bpl-vela-api-auth-token")
 
         raise KeyError("required var KEY_VAULT_URI is not set.")
+
+    POLARIS_API_AUTH_TOKEN: str | None = None
+
+    @validator("POLARIS_API_AUTH_TOKEN")
+    @classmethod
+    def fetch_polaris_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> Any:
+        if isinstance(v, str) and not values["TESTING"]:
+            return v
+
+        if "KEY_VAULT_URI" in values:
+            return KeyVault(
+                values["KEY_VAULT_URI"],
+                values["TESTING"] or values["MIGRATING"],
+            ).get_secret("bpl-polaris-api-auth-token")
+        raise KeyError("required var KEY_VAULT_URI is not set.")
+
+    ###### FIXME - cleanup
 
     class Config:
         case_sensitive = True

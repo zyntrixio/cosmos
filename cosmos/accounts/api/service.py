@@ -3,12 +3,19 @@ import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-import pydantic
 import yaml
+
+from pydantic import UUID4, ValidationError
 
 from cosmos.accounts.api import crud
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.accounts.schemas import AccountHolderEnrolment, GetAccountHolderByCredentials, MarketingPreference
+from cosmos.accounts.schemas import (
+    AccountHolderEnrolment,
+    AccountHolderStatuses,
+    AccountHolderUpdateStatusSchema,
+    GetAccountHolderByCredentials,
+    MarketingPreference,
+)
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit, create_retry_task
@@ -113,7 +120,7 @@ class AccountService:
                     "channel": channel,
                 },
             )
-        except pydantic.ValidationError as exc:
+        except ValidationError as exc:
             result = FIELD_VALIDATION_ERROR
             return ServiceResult(RequestPayloadValidationError(validation_error=exc))
         except crud.AccountExists:
@@ -135,18 +142,23 @@ class AccountService:
             asyncio.create_task(async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_REQUEST.value))
 
     async def handle_account_auth(
-        self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None, channel: str
+        self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None = 10, channel: str
     ) -> ServiceResult:
         "Main handler for account auth"
         account_holder = await crud.get_account_holder(
             self.db_session,
-            email=request_payload.email,
             retailer_id=self.retailer.id,
-            account_number=request_payload.account_number,
             fetch_rewards=True,
+            fetch_balances=True,
             tx_qty=tx_qty,
-            raise_404_if_inactive=True,
+            email=request_payload.email,
+            account_number=request_payload.account_number,
         )
+        if not account_holder:
+            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+        if account_holder.status != AccountHolderStatuses.ACTIVE:
+            return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
+
         activity_payload = ActivityType.get_account_authentication_activity_data(
             account_holder_uuid=account_holder.account_holder_uuid,
             activity_datetime=datetime.now(tz=timezone.utc),
@@ -157,4 +169,47 @@ class AccountService:
             async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_AUTHENTICATION.value)
         )
         setattr(account_holder, "retailer_status", self.retailer.status)
-        return account_holder
+        return ServiceResult(account_holder)
+
+    async def handle_get_account(
+        self, *, account_holder_uuid: str | UUID4, tx_qty: int | None = 10, is_status_request: bool
+    ) -> ServiceResult:
+        "Main handler for account data"
+
+        fetch_extras = not is_status_request
+        account_holder = await crud.get_account_holder(
+            self.db_session,
+            retailer_id=self.retailer.id,
+            fetch_rewards=fetch_extras,
+            fetch_balances=fetch_extras,
+            tx_qty=tx_qty if fetch_extras else None,
+            account_holder_uuid=account_holder_uuid,
+        )
+        if not account_holder:
+            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+        if account_holder.status != AccountHolderStatuses.ACTIVE:
+            return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
+        return ServiceResult(account_holder)
+
+    async def handle_update_account_holder_status(
+        self, *, account_holder_uuid: str | UUID4, request_payload: AccountHolderUpdateStatusSchema
+    ) -> ServiceResult:
+        "Handler for account holder status update"
+        account_holder = await crud.get_account_holder(
+            self.db_session,
+            retailer_id=self.retailer.id,
+            account_holder_uuid=account_holder_uuid,
+        )
+
+        if not account_holder:
+            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+        if account_holder.status == AccountHolderStatuses.INACTIVE:
+            raise HttpErrors.INVALID_ACCOUNT_HOLDER_STATUS.value
+
+        # TODO/FIXME: Needs implementation
+        # account_anonymisation_retry_task = await crud.update_account_holder_status(
+        #     self.db_session, account_holder=account_holder, retailer_id=self.retailer.id, status=request_payload.status
+        # )
+        # asyncio.create_task(enqueue_task(account_anonymisation_retry_task.retry_task_id))
+
+        return ServiceResult({})

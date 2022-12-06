@@ -1,18 +1,16 @@
 """init
 
-Revision ID: d5370f835f74
+Revision ID: 07ae52708a7c
 Revises: 
-Create Date: 2022-12-01 18:10:57.425046
+Create Date: 2022-12-07 11:11:44.389674
 
 """
+from alembic import op
 import sqlalchemy as sa
-
 from sqlalchemy.dialects import postgresql
 
-from alembic import op
-
 # revision identifiers, used by Alembic.
-revision = "d5370f835f74"
+revision = "07ae52708a7c"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -434,11 +432,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
-        sa.CheckConstraint("processed IS NULL OR processed IS TRUE", name="processed_null_or_true_check"),
     )
+    op.create_index(op.f("ix_transaction_mid"), "transaction", ["mid"], unique=False)
     op.create_index(
         op.f("ix_transaction_payment_transaction_id"), "transaction", ["payment_transaction_id"], unique=False
     )
+    op.create_index(op.f("ix_transaction_processed"), "transaction", ["processed"], unique=False)
     op.create_index(op.f("ix_transaction_transaction_id"), "transaction", ["transaction_id"], unique=False)
     op.create_table(
         "account_holder_campaign_balance",
@@ -582,6 +581,7 @@ def upgrade() -> None:
         ),
         sa.Column("transaction_id", sa.BigInteger(), nullable=False),
         sa.Column("campaign_id", sa.BigInteger(), nullable=False),
+        sa.Column("adjustment", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["transaction_id"], ["transaction.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("transaction_id", "campaign_id"),
@@ -625,7 +625,9 @@ def downgrade() -> None:
     )
     op.drop_table("account_holder_campaign_balance")
     op.drop_index(op.f("ix_transaction_transaction_id"), table_name="transaction")
+    op.drop_index(op.f("ix_transaction_processed"), table_name="transaction")
     op.drop_index(op.f("ix_transaction_payment_transaction_id"), table_name="transaction")
+    op.drop_index(op.f("ix_transaction_mid"), table_name="transaction")
     op.drop_table("transaction")
     op.drop_table("task_type_key_value")
     op.drop_table("email_template_required_key")

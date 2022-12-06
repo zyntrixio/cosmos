@@ -9,6 +9,7 @@ from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.db.base_class import async_run_query
 from cosmos.db.models import Campaign, Retailer
 from cosmos.db.session import AsyncSessionMaker
+from cosmos.retailers.crud import get_retailer_by_slug
 
 
 async def get_session() -> AsyncGenerator:
@@ -27,24 +28,9 @@ class RetailerDependency:
         self.join_campaign_data = join_active_campaign_data
 
     async def __call__(self, retailer_slug: str, db_session: AsyncSession = Depends(get_session)) -> Retailer | None:
-        async def _query() -> Retailer | None:
-            stmt = select(Retailer).where(Retailer.slug == retailer_slug)
-            if self.join_campaign_data:
-                stmt = (
-                    stmt.join(Retailer.campaigns)
-                    .outerjoin(Retailer.stores)
-                    .options(
-                        contains_eager(Retailer.stores),
-                        contains_eager(Retailer.campaigns).options(
-                            joinedload(Campaign.reward_rule),
-                            joinedload(Campaign.earn_rule),
-                        ),
-                    )
-                    .where(Campaign.status == CampaignStatuses.ACTIVE)
-                )
-            return (await db_session.execute(stmt)).unique().scalar_one_or_none()
-
-        retailer = await async_run_query(_query, db_session, rollback_on_exc=False)
+        retailer = await get_retailer_by_slug(
+            db_session, retailer_slug=retailer_slug, with_campaign_data=self.join_campaign_data
+        )
         if retailer is None and self.no_retailer_found_exc:
             raise self.no_retailer_found_exc
         return retailer
