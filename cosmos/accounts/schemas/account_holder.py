@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
 
 from cosmos.accounts.enums import AccountHolderStatuses, RewardApiStatuses
-from cosmos.db.models import AccountHolderPendingReward
+from cosmos.db.models import PendingReward
 
 from .utils import utc_datetime, utc_datetime_from_timestamp
 
@@ -59,7 +59,7 @@ class AccountHolderRewardSchema(BaseModel):
         orm_mode = True
 
 
-class AccountHolderPendingRewardAllocationSchema(BaseModel):
+class PendingRewardAllocationSchema(BaseModel):
     created_date: float
     conversion_date: float
     value: int
@@ -73,11 +73,11 @@ class AccountHolderPendingRewardAllocationSchema(BaseModel):
     )
 
 
-class AccountHolderPendingRewardAllocationResponseSchema(BaseModel):
+class PendingRewardAllocationResponseSchema(BaseModel):
     pending_reward_items: list[dict]
 
     @classmethod
-    def from_orm(cls, obj: AccountHolderPendingReward) -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: PendingReward) -> BaseModel:  # type: ignore [override]
         pending_reward_items = [
             {
                 "created_date": int(obj.created_date.timestamp()),
@@ -93,7 +93,7 @@ class AccountHolderPendingRewardAllocationResponseSchema(BaseModel):
         orm_mode = True
 
 
-class AccountHolderCampaignBalanceSchema(BaseModel):
+class CampaignBalanceSchema(BaseModel):
     balance: int = Field(..., alias="value")
     campaign_slug: str
 
@@ -152,16 +152,14 @@ class AccountHolderResponseSchema(AccountHolderStatusResponseSchema):
     account_holder_uuid: UUID4 = Field(..., alias="UUID")
     email: str
     account_number: str | None
-    current_balances: list[AccountHolderCampaignBalanceSchema] = []
+    current_balances: list[CampaignBalanceSchema] = []
     transactions: list[TransactionHistorySchema] = Field([], alias="transaction_history")
     rewards: list[AccountHolderRewardSchema] = []
-    pending_rewards: list[AccountHolderPendingRewardAllocationResponseSchema] = []
+    pending_rewards: list[PendingRewardAllocationResponseSchema] = []
 
     @validator("pending_rewards")
     @classmethod
-    def format_pending_rewards_data(
-        cls, pending_rewards: list[AccountHolderPendingRewardAllocationResponseSchema]
-    ) -> list:
+    def format_pending_rewards_data(cls, pending_rewards: list[PendingRewardAllocationResponseSchema]) -> list:
         return [row for pending_reward in pending_rewards for row in pending_reward.pending_reward_items]
 
     @validator("transactions")

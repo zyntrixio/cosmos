@@ -15,12 +15,12 @@ from sqlalchemy.future import select
 from cosmos.db.models import (
     AccountHolder,
     AccountHolderMarketingPreference,
-    AccountHolderPendingReward,
     AccountHolderProfile,
     AccountHolderTransactionHistory,
     Campaign,
     EarnRule,
     FetchType,
+    PendingReward,
     Retailer,
     RetailerFetchType,
     Reward,
@@ -219,18 +219,18 @@ def _generate_account_holder_pending_rewards(
     account_holder: AccountHolder,
     active_campaigns: list[Campaign],
     refund_window: int,
-) -> list[AccountHolderPendingReward]:
+) -> list[PendingReward]:
     def _generate_pending_rewards(
         pending_rewards_required: list[tuple[int, AccountHolderRewardStatuses]]
-    ) -> list[AccountHolderPendingReward]:
-        account_holder_pending_rewards: list[AccountHolderPendingReward] = []
+    ) -> list[PendingReward]:
+        account_holder_pending_rewards: list[PendingReward] = []
         for campaign in active_campaigns:
             for _, (how_many, reward_status) in enumerate(pending_rewards_required):
                 if reward_status != AccountHolderRewardStatuses.PENDING:
                     continue
                 for _ in range(how_many):
                     account_holder_pending_rewards.append(
-                        AccountHolderPendingReward(
+                        PendingReward(
                             **account_holder_pending_reward_payload(
                                 account_holder_id=account_holder.id,
                                 campaign_id=campaign.id,

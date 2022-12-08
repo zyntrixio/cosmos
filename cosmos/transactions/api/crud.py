@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import noload
 
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import AccountHolderCampaignBalance, AccountHolderPendingReward, Transaction, TransactionCampaign
+from cosmos.db.models import CampaignBalance, PendingReward, Transaction, TransactionCampaign
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
@@ -18,16 +18,16 @@ if TYPE_CHECKING:
 
 async def get_balances_for_update(
     db_session: "AsyncSession", *, account_holder_id: int, campaigns: list["Campaign"]
-) -> list[AccountHolderCampaignBalance]:
-    async def _query() -> list[AccountHolderCampaignBalance]:
+) -> list[CampaignBalance]:
+    async def _query() -> list[CampaignBalance]:
         return (
             (
                 await (
                     db_session.execute(
-                        select(AccountHolderCampaignBalance)
+                        select(CampaignBalance)
                         .where(
-                            AccountHolderCampaignBalance.account_holder_id == account_holder_id,
-                            AccountHolderCampaignBalance.campaign_id.in_([campaign.id for campaign in campaigns]),
+                            CampaignBalance.account_holder_id == account_holder_id,
+                            CampaignBalance.campaign_id.in_([campaign.id for campaign in campaigns]),
                         )
                         .with_for_update()
                     )
@@ -42,19 +42,19 @@ async def get_balances_for_update(
 
 async def get_pending_rewards_for_update(
     db_session: "AsyncSession", *, account_holder_id: int, campaign_id: int
-) -> list[AccountHolderPendingReward]:
-    async def _query() -> list[AccountHolderPendingReward]:
+) -> list[PendingReward]:
+    async def _query() -> list[PendingReward]:
         return (
             (
                 await db_session.execute(
-                    select(AccountHolderPendingReward)
-                    .options(noload(AccountHolderPendingReward.account_holder))
+                    select(PendingReward)
+                    .options(noload(PendingReward.account_holder))
                     .where(
-                        AccountHolderPendingReward.account_holder_id == account_holder_id,
-                        AccountHolderPendingReward.campaign_id == campaign_id,
+                        PendingReward.account_holder_id == account_holder_id,
+                        PendingReward.campaign_id == campaign_id,
                     )
                     .with_for_update()
-                    .order_by(AccountHolderPendingReward.created_date.desc())
+                    .order_by(PendingReward.created_date.desc())
                 )
             )
             .scalars()
@@ -64,7 +64,7 @@ async def get_pending_rewards_for_update(
     return await async_run_query(_query, db_session, rollback_on_exc=False)
 
 
-async def delete_pending_reward(db_session: "AsyncSession", pending_reward: AccountHolderPendingReward) -> None:
+async def delete_pending_reward(db_session: "AsyncSession", pending_reward: PendingReward) -> None:
     return await db_session.delete(pending_reward)
 
 
@@ -126,8 +126,8 @@ async def create_pending_reward(
     value: int,
     count: int,
     total_cost_to_user: int,
-) -> AccountHolderPendingReward:
-    pending_reward = AccountHolderPendingReward(
+) -> PendingReward:
+    pending_reward = PendingReward(
         account_holder_id=account_holder_id,
         campaign_id=campaign_id,
         conversion_date=conversion_date,

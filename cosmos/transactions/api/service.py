@@ -11,15 +11,7 @@ from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.schemas.account_holder import AccountHolderStatuses
 from cosmos.core.api.crud import commit
 from cosmos.core.api.service_result import ServiceResult
-from cosmos.db.models import (
-    AccountHolderCampaignBalance,
-    AccountHolderPendingReward,
-    Campaign,
-    EarnRule,
-    LoyaltyTypes,
-    Retailer,
-    Transaction,
-)
+from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Retailer, Transaction
 from cosmos.transactions.api import crud
 from cosmos.transactions.api.enums.http_error import HttpErrors
 from cosmos.transactions.api.schemas import CreateTransactionSchema
@@ -167,7 +159,7 @@ class TransactionService:
     #         )
 
     async def _adjust_balance(
-        self, campaign: Campaign, campaign_balance: AccountHolderCampaignBalance, transaction: Transaction
+        self, campaign: Campaign, campaign_balance: CampaignBalance, transaction: Transaction
     ) -> int | None:
         adjustment = self._adjustment_amount_for_earn_rule(
             transaction.amount, campaign.loyalty_type, campaign.earn_rule, campaign.reward_rule.allocation_window
@@ -206,7 +198,7 @@ class TransactionService:
         *,
         shortfall: NonNegativeInt,
         current_balance: PositiveInt,
-        pending_rewards: list[AccountHolderPendingReward],
+        pending_rewards: list[PendingReward],
     ) -> tuple[int, dict, NonNegativeInt, list[TotalCostToUserDataSchema]]:
         """
         Shortfall absorption logic:
@@ -295,7 +287,7 @@ class TransactionService:
 
     async def _use_pending_rewards_to_absorb_balance_shortfall(
         self,
-        pending_rewards: list[AccountHolderPendingReward],
+        pending_rewards: list[PendingReward],
         current_balance: PositiveInt,
         shortfall: PositiveInt,
         deleted_count_by_uuid: dict,

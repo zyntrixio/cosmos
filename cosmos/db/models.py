@@ -47,9 +47,9 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     retailer = relationship("Retailer", back_populates="account_holders")
     profile = relationship("AccountHolderProfile", uselist=False, back_populates="account_holder")
     # balance_adjustments = relationship("BalanceAdjustment", back_populates="account_holder")
-    pending_rewards = relationship("AccountHolderPendingReward", back_populates="account_holder")
+    pending_rewards = relationship("PendingReward", back_populates="account_holder")
     rewards = relationship("Reward", back_populates="account_holder")
-    current_balances = relationship("AccountHolderCampaignBalance", back_populates="account_holder")
+    current_balances = relationship("CampaignBalance", back_populates="account_holder")
     marketing_preferences = relationship("AccountHolderMarketingPreference", back_populates="account_holder")
     # transaction_history = relationship("AccountHolderTransactionHistory", back_populates="account_holder")
     transactions = relationship("Transaction", back_populates="account_holder")
@@ -87,7 +87,7 @@ class AccountHolderProfile(IdPkMixin, Base, TimestampMixin):
     __mapper_args__ = {"eager_defaults": True}
 
 
-class AccountHolderCampaignBalance(IdPkMixin, Base, TimestampMixin):
+class CampaignBalance(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "account_holder_campaign_balance"
 
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
@@ -114,7 +114,7 @@ class AccountHolderMarketingPreference(IdPkMixin, Base, TimestampMixin):
 # # IDEMPOTENCY_TOKEN_PENDING_REWARD_UNQ_CONSTRAINT_NAME = "idempotency_token_account_holder_pending_reward_unq"
 
 
-class AccountHolderPendingReward(IdPkMixin, Base, TimestampMixin):
+class PendingReward(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "account_holder_pending_reward"
 
     pending_reward_uuid = Column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4)
@@ -175,8 +175,8 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     retailer = relationship("Retailer", back_populates="campaigns")
     earn_rule = relationship("EarnRule", cascade="all,delete", back_populates="campaign", uselist=False)
     reward_rule = relationship("RewardRule", cascade="all,delete", back_populates="campaign", uselist=False)
-    pending_rewards = relationship("AccountHolderPendingReward", back_populates="campaign")
-    current_balances = relationship("AccountHolderCampaignBalance", back_populates="campaign")
+    pending_rewards = relationship("PendingReward", back_populates="campaign")
+    current_balances = relationship("CampaignBalance", back_populates="campaign")
     rewards = relationship("Reward", back_populates="campaign")
     transactions = relationship("Transaction", secondary="transaction_campaign")
     transaction_campaigns = relationship("TransactionCampaign", back_populates="campaign")

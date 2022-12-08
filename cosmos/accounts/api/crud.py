@@ -10,10 +10,10 @@ from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.db.base_class import async_run_query
 from cosmos.db.models import (
     AccountHolder,
-    AccountHolderCampaignBalance,
     AccountHolderMarketingPreference,
-    AccountHolderPendingReward,
     AccountHolderProfile,
+    CampaignBalance,
+    PendingReward,
     Reward,
     Transaction,
     TransactionCampaign,
@@ -83,13 +83,13 @@ async def get_account_holder(
     if fetch_rewards:
         stmt = stmt.options(
             joinedload(account_holder_alias.rewards).joinedload(Reward.campaign),
-            joinedload(account_holder_alias.pending_rewards).joinedload(AccountHolderPendingReward.campaign),
+            joinedload(account_holder_alias.pending_rewards).joinedload(PendingReward.campaign),
         )
     if fetch_balances:
         stmt = stmt.options(
             joinedload(
                 account_holder_alias.current_balances,
-            ).joinedload(AccountHolderCampaignBalance.campaign)
+            ).joinedload(CampaignBalance.campaign)
         )
     if tx_qty:
         subq = (

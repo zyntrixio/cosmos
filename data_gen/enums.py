@@ -17,7 +17,7 @@ class AccountHolderRewardStatuses(Enum):
     CANCELLED = "CANCELLED"
     EXPIRED = "EXPIRED"
     REDEEMED = "REDEEMED"
-    PENDING = "PENDING"  # This is actually AccountHolderPendingReward but putting this here for simplicity
+    PENDING = "PENDING"  # This is actually PendingReward but putting this here for simplicity
 
 
 class FetchTypesEnum(Enum):

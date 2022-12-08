@@ -1,7 +1,7 @@
 from random import randint
 from typing import TYPE_CHECKING
 
-from cosmos.db.models import AccountHolderCampaignBalance, Campaign
+from cosmos.db.models import Campaign, CampaignBalance
 
 from .enums import AccountHolderTypes
 
@@ -37,9 +37,9 @@ def generate_account_holder_campaign_balances(
     active_campaigns: list[Campaign],
     account_holder_type: AccountHolderTypes,
     max_val: int,
-) -> list[AccountHolderCampaignBalance]:
+) -> list[CampaignBalance]:
     return [
-        AccountHolderCampaignBalance(
+        CampaignBalance(
             account_holder_id=account_holder.id,
             campaign_id=campaign.id,
             balance=_generate_balance(account_holder_type, max_val),

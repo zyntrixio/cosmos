@@ -16,7 +16,7 @@ from cosmos.core.api.http_error import HttpErrors
 
 # from cosmos.core.config import redis_raw, settings
 # from cosmos.db.base_class import sync_run_query
-# from cosmos.db.models import AccountHolderPendingReward
+# from cosmos.db.models import PendingReward
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator  # pragma: no cover
@@ -52,12 +52,12 @@ class AccountHolderUUIDValidator(UUID4):
 
 
 # def enqueue_pending_rewards(
-#     db_session: "Session", query_func: Callable[[], list[AccountHolderPendingReward]], logger: logging.Logger
+#     db_session: "Session", query_func: Callable[[], list[PendingReward]], logger: logging.Logger
 # ) -> None:
 #     while True:
 #         pending_rewards = sync_run_query(query_func, db_session, rollback_on_exc=False)
 #         if pending_rewards:
-#             logger.info(f"Processing {len(pending_rewards)} AccountHolderPendingRewards...")
+#             logger.info(f"Processing {len(pending_rewards)} PendingRewards...")
 #             try:
 #                 params_list = []
 
@@ -103,7 +103,7 @@ class AccountHolderUUIDValidator(UUID4):
 #                     lambda: db_session.commit(), db_session, rollback_on_exc=False  # pylint: disable=unnecessary-lambda
 #                 )
 #         else:
-#             logger.info("No AccountHolderPendingRewards to process.")
+#             logger.info("No PendingRewards to process.")
 #             break
 
 
