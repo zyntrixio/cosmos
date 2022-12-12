@@ -5,9 +5,11 @@ Revises:
 Create Date: 2022-12-07 11:11:44.389674
 
 """
-from alembic import op
 import sqlalchemy as sa
+
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "07ae52708a7c"
@@ -69,6 +71,7 @@ def upgrade() -> None:
             sa.Enum("TEST", "ACTIVE", "INACTIVE", "DELETED", "ARCHIVED", name="retailerstatuses"),
             nullable=False,
         ),
+        sa.Column("balance_lifespan", sa.Integer(), server_default="0", nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_retailer_slug"), "retailer", ["slug"], unique=True)
@@ -451,6 +454,7 @@ def upgrade() -> None:
         sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
         sa.Column("campaign_id", sa.BigInteger(), nullable=True),
         sa.Column("balance", sa.Integer(), nullable=False),
+        sa.Column("reset_date", sa.Date(), nullable=True),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

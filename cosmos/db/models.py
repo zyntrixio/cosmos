@@ -93,6 +93,7 @@ class CampaignBalance(IdPkMixin, Base, TimestampMixin):
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), index=True)
     balance = Column(Integer, nullable=False)
+    reset_date = Column(Date, nullable=True)
 
     account_holder = relationship("AccountHolder", back_populates="current_balances")
     campaign = relationship("Campaign", back_populates="current_balances")
@@ -461,6 +462,7 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     marketing_preference_config = Column(Text, nullable=False)
     loyalty_name = Column(String(64), nullable=False)
     status = Column(Enum(RetailerStatuses), nullable=False)
+    balance_lifespan = Column(Integer, server_default="0", nullable=False)
 
     account_holders = relationship("AccountHolder", back_populates="retailer")
     campaigns = relationship(Campaign, back_populates="retailer")
