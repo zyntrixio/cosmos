@@ -2,7 +2,7 @@ import json
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from random import randint
+from random import choice, randint
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -12,7 +12,7 @@ from .enums import AccountHolderRewardStatuses
 from .utils import generate_account_number, generate_email
 
 if TYPE_CHECKING:
-    from cosmos.db.models import AccountHolder, Retailer
+    from cosmos.db.models import AccountHolder, Retailer, RetailerStore
 
     from .enums import AccountHolderTypes
 
@@ -77,35 +77,36 @@ ACCOUNT_HOLDER_REWARD_SWITCHER: dict[int, list] = {
 
 @dataclass
 class TxHistoryRowsData:
-    tx_amount: float
-    location: str
+    tx_amount: int
+    mid: str
 
 
-def generate_tx_rows(reward_goal: int, retailer_slug: str) -> list[TxHistoryRowsData]:
+def generate_tx_rows(reward_goal: int, retailer: "Retailer") -> list[TxHistoryRowsData]:
+    mids = [store.mid for store in retailer.stores]
     tx_history_list = [
-        TxHistoryRowsData((reward_goal / 4), f"{retailer_slug} London"),
-        TxHistoryRowsData(-(reward_goal / 2), f"{retailer_slug} Edinburgh"),
-        TxHistoryRowsData(reward_goal / 2, f"{retailer_slug} Manchester"),
-        TxHistoryRowsData(reward_goal, f"{retailer_slug} London"),
-        TxHistoryRowsData(-reward_goal, f"{retailer_slug} Cardiff"),
-        TxHistoryRowsData(reward_goal * 1.5, f"{retailer_slug} London"),
-        TxHistoryRowsData(-(reward_goal * 1.5), f"{retailer_slug} Edinburgh"),
-        TxHistoryRowsData(-(reward_goal * 2), f"{retailer_slug} Manchester"),
-        TxHistoryRowsData(reward_goal * 2, f"{retailer_slug} London"),
-        TxHistoryRowsData(-(reward_goal / 4), f"{retailer_slug} Manchester"),
+        TxHistoryRowsData(int((reward_goal // 4)), choice(mids)),
+        TxHistoryRowsData(int(-(reward_goal // 2)), choice(mids)),
+        TxHistoryRowsData(int(reward_goal // 2), choice(mids)),
+        TxHistoryRowsData(int(reward_goal), choice(mids)),
+        TxHistoryRowsData(int(-reward_goal), choice(mids)),
+        TxHistoryRowsData(int(reward_goal * 1.5), choice(mids)),
+        TxHistoryRowsData(int(-(reward_goal * 1.5)), choice(mids)),
+        TxHistoryRowsData(int(-(reward_goal * 2)), choice(mids)),
+        TxHistoryRowsData(int(reward_goal * 2), choice(mids)),
+        TxHistoryRowsData(int(-(reward_goal // 4)), choice(mids)),
     ]
     return tx_history_list
 
 
 def account_holder_payload(
-    account_holder_n: int, account_holder_type: "AccountHolderTypes", retailer_config: "Retailer"
+    account_holder_n: int, account_holder_type: "AccountHolderTypes", retailer: "Retailer"
 ) -> dict:
     return {
         "email": generate_email(account_holder_type, account_holder_n),
-        "retailer_id": retailer_config.id,
+        "retailer_id": retailer.id,
         "status": "ACTIVE",
         "account_number": generate_account_number(
-            retailer_config.account_number_prefix, account_holder_type, account_holder_n
+            retailer.account_number_prefix, account_holder_type, account_holder_n
         ),
     }
 
@@ -132,7 +133,7 @@ def account_holder_profile_payload(account_holder: "AccountHolder") -> dict:
     }
 
 
-def account_holder_marketing_preference_payload(account_holder: "AccountHolder") -> dict:
+def marketing_preference_payload(account_holder: "AccountHolder") -> dict:
     return {
         "account_holder_id": account_holder.id,
         "key_name": "marketing_pref",
@@ -197,29 +198,22 @@ def account_holder_pending_reward_payload(
     }
 
 
-def account_holder_transaction_history_payload(
+def account_holder_transaction_payload(
+    retailer_id: int,
     account_holder_id: int,
-    tx_amount: str,
-    location: str,
-    loyalty_type: str,
+    tx_amount: int,
+    mid: str,
 ) -> dict:
     now = datetime.now(tz=timezone.utc).replace(microsecond=0)
-    if loyalty_type == "STAMPS":
-        if float(tx_amount) <= 0:
-            value = "0"
-        else:
-            value = "1"
-    else:
-        value = "£" + tx_amount
 
     return {
         "transaction_id": f"{account_holder_id}{randint(1, 1000000)}",
         "datetime": now,
         "amount": tx_amount,
-        "amount_currency": "GBP",
-        "location_name": location,
-        "earned": [{"type": loyalty_type, "value": value}],
+        "mid": mid,
+        "retailer_id": retailer_id,
         "account_holder_id": account_holder_id,
+        "processed": True,
     }
 
 
@@ -277,11 +271,11 @@ def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str, re
     }
 
 
-def reward_rule_payload(campaign_id: int, reward_slug: str, refund_window: int | None) -> dict:
+def reward_rule_payload(campaign_id: int, reward_config_id: int, refund_window: int | None) -> dict:
     payload = {
         "campaign_id": campaign_id,
-        "reward_slug": reward_slug,
-        "reward_goal": 200,
+        "reward_config_id": reward_config_id,
+        "reward_goal": 1000,
     }
     if refund_window is not None:
         payload.update({"allocation_window": refund_window})
@@ -298,9 +292,8 @@ def earn_rule_payload(campaign_id: int, loyalty_type: str) -> dict:
     }
 
 
-def reward_config_payload(retailer_id: int, reward_slug: str, fetch_type_id: int) -> dict:
+def reward_config_payload(retailer_id: int, fetch_type_id: int) -> dict:
     payload = {
-        "reward_slug": reward_slug,
         "retailer_id": retailer_id,
         "status": "ACTIVE",
         "fetch_type_id": fetch_type_id,

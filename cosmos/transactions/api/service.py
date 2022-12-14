@@ -12,12 +12,9 @@ from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
 from cosmos.core.api.crud import commit
 from cosmos.core.api.service import Service, ServiceException, ServiceResult
 from cosmos.core.error_codes import ErrorCode
-from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Retailer, Transaction
+from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
 from cosmos.transactions.api import crud
 from cosmos.transactions.api.schemas import CreateTransactionSchema
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("transaction-service")
 

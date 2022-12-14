@@ -10,9 +10,9 @@ from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.db.base_class import async_run_query
 from cosmos.db.models import (
     AccountHolder,
-    AccountHolderMarketingPreference,
     AccountHolderProfile,
     CampaignBalance,
+    MarketingPreference,
     PendingReward,
     Reward,
     Transaction,
@@ -55,7 +55,7 @@ async def create_account_holder(
     profile = AccountHolderProfile(account_holder_id=account_holder.id, **profile_data)
     db_session.add(profile)
     marketing_preferences = [
-        AccountHolderMarketingPreference(account_holder_id=account_holder.id, **mp) for mp in marketing_preferences_data
+        MarketingPreference(account_holder_id=account_holder.id, **mp) for mp in marketing_preferences_data
     ]
     db_session.add_all(marketing_preferences)
     return account_holder

@@ -26,6 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.schema import Index
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
@@ -46,15 +47,16 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
 
     retailer = relationship("Retailer", back_populates="account_holders")
     profile = relationship("AccountHolderProfile", uselist=False, back_populates="account_holder")
-    # balance_adjustments = relationship("BalanceAdjustment", back_populates="account_holder")
     pending_rewards = relationship("PendingReward", back_populates="account_holder")
     rewards = relationship("Reward", back_populates="account_holder")
     current_balances = relationship("CampaignBalance", back_populates="account_holder")
-    marketing_preferences = relationship("AccountHolderMarketingPreference", back_populates="account_holder")
-    # transaction_history = relationship("AccountHolderTransactionHistory", back_populates="account_holder")
+    marketing_preferences = relationship("MarketingPreference", back_populates="account_holder")
     transactions = relationship("Transaction", back_populates="account_holder")
 
-    __table_args__ = (UniqueConstraint("email", "retailer_id", name="email_retailer_unq"),)
+    __table_args__ = (
+        UniqueConstraint("email", "retailer_id", name="email_retailer_unq"),
+        Index("ix_retailer_id_email_account_number", "retailer_id", "email", "account_number"),
+    )
     __mapper_args__ = {"eager_defaults": True}
 
     def __str__(self) -> str:
@@ -88,7 +90,7 @@ class AccountHolderProfile(IdPkMixin, Base, TimestampMixin):
 
 
 class CampaignBalance(IdPkMixin, Base, TimestampMixin):
-    __tablename__ = "account_holder_campaign_balance"
+    __tablename__ = "campaign_balance"
 
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), index=True)
@@ -101,8 +103,8 @@ class CampaignBalance(IdPkMixin, Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("account_holder_id", "campaign_id", name="account_holder_campaign_unq"),)
 
 
-class AccountHolderMarketingPreference(IdPkMixin, Base, TimestampMixin):
-    __tablename__ = "account_holder_marketing_preference"
+class MarketingPreference(IdPkMixin, Base, TimestampMixin):
+    __tablename__ = "marketing_preference"
 
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
     key_name = Column(String, nullable=False)
@@ -112,11 +114,8 @@ class AccountHolderMarketingPreference(IdPkMixin, Base, TimestampMixin):
     account_holder = relationship("AccountHolder", back_populates="marketing_preferences")
 
 
-# # IDEMPOTENCY_TOKEN_PENDING_REWARD_UNQ_CONSTRAINT_NAME = "idempotency_token_account_holder_pending_reward_unq"
-
-
 class PendingReward(IdPkMixin, Base, TimestampMixin):
-    __tablename__ = "account_holder_pending_reward"
+    __tablename__ = "pending_reward"
 
     pending_reward_uuid = Column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4)
     account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True)
@@ -164,8 +163,8 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "campaign"
 
     status = Column(Enum(CampaignStatuses), nullable=False, server_default="DRAFT")
-    name = Column(String(128), nullable=False)
-    slug = Column(String(32), index=True, unique=True, nullable=False)
+    name = Column(String(), nullable=False)
+    slug = Column(String(), index=True, unique=True, nullable=False)
     reward_config_id = Column(BigInteger, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     loyalty_type = Column(Enum(LoyaltyTypes), nullable=False, server_default="STAMPS")
@@ -205,7 +204,6 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "reward_rule"
 
     reward_goal = Column(Integer, nullable=False)
-    reward_slug = Column(String(32), index=True, unique=False, nullable=False)
     allocation_window = Column(Integer, nullable=False, server_default="0")
     reward_cap = Column(
         Enum(RewardCap, values_callable=lambda x: [str(e.value) for e in RewardCap]),
@@ -213,7 +211,9 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
     )
 
     campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
+    reward_config_id = Column(Integer, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
     campaign = relationship("Campaign", back_populates="reward_rule")
+    reward_config = relationship("RewardConfig", back_populates="reward_rules")
 
 
 class EmailTemplate(IdPkMixin, Base, TimestampMixin):
@@ -352,7 +352,6 @@ class Reward(IdPkMixin, Base, TimestampMixin):
 class RewardConfig(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "reward_config"
 
-    reward_slug = Column(String(32), index=True, nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     status = Column(Enum(RewardTypeStatuses), nullable=False, default=RewardTypeStatuses.ACTIVE)
@@ -362,12 +361,12 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
     rewards = relationship("Reward", back_populates="reward_config")
     retailer = relationship("Retailer", back_populates="reward_configs")
     fetch_type = relationship("FetchType", back_populates="reward_configs")
+    reward_rules = relationship("RewardRule", back_populates="reward_config")
 
     __mapper_args__ = {"eager_defaults": True}
-    __table_args__ = (UniqueConstraint("reward_slug", "retailer_id", name="reward_slug_retailer_unq"),)
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.reward_slug})"
+        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.id})"
 
     def load_required_fields_values(self) -> dict:
         if self.required_fields_values in ["", None]:
@@ -407,7 +406,9 @@ class RewardFileLog(IdPkMixin, Base, TimestampMixin):
 class Transaction(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "transaction"
 
-    account_holder_id = Column(BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), nullable=False)
+    account_holder_id = Column(
+        BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     transaction_id = Column(String(128), nullable=False, index=True)
     amount = Column(Integer, nullable=False)

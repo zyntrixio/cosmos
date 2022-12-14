@@ -33,14 +33,13 @@ def _generate_account_holders_and_rewards_data(
     unallocated_rewards_to_create: int,
     refund_window: int | None,
     tx_history: bool,
-    loyalty_type: str,
 ) -> None:
 
     retailer = get_retailer_by_slug(db_session, retailer_slug)
     typer.echo("Selected retailer: %s" % retailer.name)
     reward_config, retailer = get_reward_config_and_retailer(db_session, retailer_slug)
-    typer.echo(f"Reward slug for {retailer.name}: {reward_config.reward_slug}")
-    active_campaigns = get_active_campaigns(db_session, retailer, loyalty_type)
+    typer.echo(f"Reward slug for {retailer.name}: {reward_config.id}")
+    active_campaigns = get_active_campaigns(db_session, retailer)
     typer.echo("Selected campaign %s." % campaign_slug)
     reward_rule = get_reward_rule(db_session, campaign_slug)
     typer.echo("Deleting previously generated account holders for requested retailer.")
@@ -81,7 +80,6 @@ def _generate_account_holders_and_rewards_data(
                     refund_window=refund_window,
                     tx_history=tx_history,
                     reward_goal=reward_rule.reward_goal,
-                    loyalty_type=loyalty_type,
                 )
                 batch_start = batch_end
 
@@ -110,7 +108,6 @@ def generate_account_holders_and_rewards(
                 unallocated_rewards_to_create,
                 refund_window,
                 tx_history,
-                loyalty_type=loyalty,
             )
     else:
         _generate_account_holders_and_rewards_data(
@@ -122,7 +119,6 @@ def generate_account_holders_and_rewards(
             unallocated_rewards_to_create,
             refund_window,
             tx_history,
-            loyalty_type,
         )
 
 
@@ -130,7 +126,6 @@ def generate_retailer_base_config(
     db_session: "Session",
     retailer_slug: str,
     campaign_slug: str,
-    reward_slug: str,
     refund_window: int,
     fetch_type: str,
     loyalty_type: str,
@@ -142,13 +137,11 @@ def generate_retailer_base_config(
     typer.echo("Creating '%s' retailer." % retailer_slug)
     if loyalty_type == "BOTH":
         for loyalty in ["ACCUMULATOR", "STAMPS"]:
-            loyalty_retailer_slug = retailer_slug + "-" + loyalty
-            loyalty_campaign_slug = campaign_slug + "-" + loyalty
-            loyalty_reward_slug = reward_slug + "-" + loyalty
+            loyalty_retailer_slug = retailer_slug + "-" + loyalty.lower()
+            loyalty_campaign_slug = campaign_slug + "-" + loyalty.lower()
             setup_retailer(
                 db_session,
                 retailer_slug=loyalty_retailer_slug,
-                reward_slug=loyalty_reward_slug,
                 campaign_slug=loyalty_campaign_slug,
                 fetch_type_name=fetch_type,
                 loyalty_type=loyalty,
@@ -159,7 +152,6 @@ def generate_retailer_base_config(
             db_session,
             retailer_slug=retailer_slug,
             fetch_type_name=fetch_type,
-            reward_slug=reward_slug,
             campaign_slug=campaign_slug,
             refund_window=refund_window,
             loyalty_type=loyalty_type,

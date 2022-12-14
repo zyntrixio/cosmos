@@ -54,11 +54,6 @@ def populate(
         "-L",
         help="Select campaign loyalty type",
     ),
-    reward_slug: str = typer.Option(
-        "10percentoff",
-        "--reward-slug",
-        help="reward_slug to use in case of a --bootstrap-new-retailer",
-    ),
     db_host: str = typer.Option(
         "localhost",
         "--host",
@@ -150,7 +145,6 @@ def populate(
                 db_session,
                 retailer,
                 campaign,
-                reward_slug,
                 refund_window,
                 fetch_type,
                 loyalty_type,

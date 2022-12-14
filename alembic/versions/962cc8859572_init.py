@@ -1,18 +1,16 @@
 """init
 
-Revision ID: 07ae52708a7c
+Revision ID: 962cc8859572
 Revises: 
-Create Date: 2022-12-07 11:11:44.389674
+Create Date: 2022-12-14 16:25:38.603579
 
 """
+from alembic import op
 import sqlalchemy as sa
-
 from sqlalchemy.dialects import postgresql
 
-from alembic import op
-
 # revision identifiers, used by Alembic.
-revision = "07ae52708a7c"
+revision = "962cc8859572"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -137,6 +135,12 @@ def upgrade() -> None:
     op.create_index(op.f("ix_account_holder_account_number"), "account_holder", ["account_number"], unique=True)
     op.create_index(op.f("ix_account_holder_email"), "account_holder", ["email"], unique=False)
     op.create_index(op.f("ix_account_holder_retailer_id"), "account_holder", ["retailer_id"], unique=False)
+    op.create_index(
+        "ix_retailer_id_email_account_number",
+        "account_holder",
+        ["retailer_id", "email", "account_number"],
+        unique=False,
+    )
     op.create_table(
         "email_template",
         sa.Column("id", sa.BigInteger(), nullable=False),
@@ -231,7 +235,6 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("reward_slug", sa.String(length=32), nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("fetch_type_id", sa.BigInteger(), nullable=False),
         sa.Column(
@@ -241,9 +244,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["fetch_type_id"], ["fetch_type.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("reward_slug", "retailer_id", name="reward_slug_retailer_unq"),
     )
-    op.create_index(op.f("ix_reward_config_reward_slug"), "reward_config", ["reward_slug"], unique=False)
     op.create_table(
         "task_type_key",
         sa.Column(
@@ -263,41 +264,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["task_type_id"], ["task_type.task_type_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("task_type_key_id"),
         sa.UniqueConstraint("name", "task_type_id", name="name_task_type_id_unq"),
-    )
-    op.create_table(
-        "account_holder_marketing_preference",
-        sa.Column("id", sa.BigInteger(), nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
-        ),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
-        sa.Column("key_name", sa.String(), nullable=False),
-        sa.Column("value", sa.String(), nullable=False),
-        sa.Column(
-            "value_type",
-            sa.Enum(
-                "BOOLEAN",
-                "INTEGER",
-                "FLOAT",
-                "STRING",
-                "STRING_LIST",
-                "DATE",
-                "DATETIME",
-                name="marketingpreferencevaluetypes",
-            ),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_account_holder_marketing_preference_account_holder_id"),
-        "account_holder_marketing_preference",
-        ["account_holder_id"],
-        unique=False,
     )
     op.create_table(
         "account_holder_profile",
@@ -368,8 +334,8 @@ def upgrade() -> None:
             server_default="DRAFT",
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=128), nullable=False),
-        sa.Column("slug", sa.String(length=32), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("slug", sa.String(), nullable=False),
         sa.Column("reward_config_id", sa.BigInteger(), nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column(
@@ -398,6 +364,38 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["email_template_id"], ["email_template.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["email_template_key_id"], ["email_template_key.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("email_template_id", "email_template_key_id"),
+    )
+    op.create_table(
+        "marketing_preference",
+        sa.Column("id", sa.BigInteger(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
+        sa.Column("key_name", sa.String(), nullable=False),
+        sa.Column("value", sa.String(), nullable=False),
+        sa.Column(
+            "value_type",
+            sa.Enum(
+                "BOOLEAN",
+                "INTEGER",
+                "FLOAT",
+                "STRING",
+                "STRING_LIST",
+                "DATE",
+                "DATETIME",
+                name="marketingpreferencevaluetypes",
+            ),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_marketing_preference_account_holder_id"), "marketing_preference", ["account_holder_id"], unique=False
     )
     op.create_table(
         "task_type_key_value",
@@ -436,6 +434,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
     )
+    op.create_index(op.f("ix_transaction_account_holder_id"), "transaction", ["account_holder_id"], unique=False)
     op.create_index(op.f("ix_transaction_mid"), "transaction", ["mid"], unique=False)
     op.create_index(
         op.f("ix_transaction_payment_transaction_id"), "transaction", ["payment_transaction_id"], unique=False
@@ -443,7 +442,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_transaction_processed"), "transaction", ["processed"], unique=False)
     op.create_index(op.f("ix_transaction_transaction_id"), "transaction", ["transaction_id"], unique=False)
     op.create_table(
-        "account_holder_campaign_balance",
+        "campaign_balance",
         sa.Column("id", sa.BigInteger(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
@@ -461,19 +460,28 @@ def upgrade() -> None:
         sa.UniqueConstraint("account_holder_id", "campaign_id", name="account_holder_campaign_unq"),
     )
     op.create_index(
-        op.f("ix_account_holder_campaign_balance_account_holder_id"),
-        "account_holder_campaign_balance",
-        ["account_holder_id"],
-        unique=False,
+        op.f("ix_campaign_balance_account_holder_id"), "campaign_balance", ["account_holder_id"], unique=False
     )
-    op.create_index(
-        op.f("ix_account_holder_campaign_balance_campaign_id"),
-        "account_holder_campaign_balance",
-        ["campaign_id"],
-        unique=False,
+    op.create_index(op.f("ix_campaign_balance_campaign_id"), "campaign_balance", ["campaign_id"], unique=False)
+    op.create_table(
+        "earn_rule",
+        sa.Column("id", sa.BigInteger(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.Column("threshold", sa.Integer(), nullable=False),
+        sa.Column("increment", sa.Integer(), nullable=True),
+        sa.Column("increment_multiplier", sa.Numeric(scale=2), nullable=False),
+        sa.Column("max_amount", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("campaign_id", sa.BigInteger(), nullable=False),
+        sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
-        "account_holder_pending_reward",
+        "pending_reward",
         sa.Column("id", sa.BigInteger(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
@@ -493,35 +501,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_account_holder_pending_reward_account_holder_id"),
-        "account_holder_pending_reward",
-        ["account_holder_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_account_holder_pending_reward_campaign_id"),
-        "account_holder_pending_reward",
-        ["campaign_id"],
-        unique=False,
-    )
-    op.create_table(
-        "earn_rule",
-        sa.Column("id", sa.BigInteger(), nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
-        ),
-        sa.Column("threshold", sa.Integer(), nullable=False),
-        sa.Column("increment", sa.Integer(), nullable=True),
-        sa.Column("increment_multiplier", sa.Numeric(scale=2), nullable=False),
-        sa.Column("max_amount", sa.Integer(), server_default="0", nullable=False),
-        sa.Column("campaign_id", sa.BigInteger(), nullable=False),
-        sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
+    op.create_index(op.f("ix_pending_reward_account_holder_id"), "pending_reward", ["account_holder_id"], unique=False)
+    op.create_index(op.f("ix_pending_reward_campaign_id"), "pending_reward", ["campaign_id"], unique=False)
     op.create_table(
         "reward",
         sa.Column("id", sa.BigInteger(), nullable=False),
@@ -565,16 +546,16 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("reward_goal", sa.Integer(), nullable=False),
-        sa.Column("reward_slug", sa.String(length=32), nullable=False),
         sa.Column("allocation_window", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "reward_cap", sa.Enum("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", name="rewardcap"), nullable=True
         ),
         sa.Column("campaign_id", sa.Integer(), nullable=False),
+        sa.Column("reward_config_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["reward_config_id"], ["reward_config.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_reward_rule_reward_slug"), "reward_rule", ["reward_slug"], unique=False)
     op.create_table(
         "transaction_campaign",
         sa.Column(
@@ -612,28 +593,26 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table("reward_update")
     op.drop_table("transaction_campaign")
-    op.drop_index(op.f("ix_reward_rule_reward_slug"), table_name="reward_rule")
     op.drop_table("reward_rule")
     op.drop_index(op.f("ix_reward_code"), table_name="reward")
     op.drop_index(op.f("ix_reward_account_holder_id"), table_name="reward")
     op.drop_table("reward")
+    op.drop_index(op.f("ix_pending_reward_campaign_id"), table_name="pending_reward")
+    op.drop_index(op.f("ix_pending_reward_account_holder_id"), table_name="pending_reward")
+    op.drop_table("pending_reward")
     op.drop_table("earn_rule")
-    op.drop_index(op.f("ix_account_holder_pending_reward_campaign_id"), table_name="account_holder_pending_reward")
-    op.drop_index(
-        op.f("ix_account_holder_pending_reward_account_holder_id"), table_name="account_holder_pending_reward"
-    )
-    op.drop_table("account_holder_pending_reward")
-    op.drop_index(op.f("ix_account_holder_campaign_balance_campaign_id"), table_name="account_holder_campaign_balance")
-    op.drop_index(
-        op.f("ix_account_holder_campaign_balance_account_holder_id"), table_name="account_holder_campaign_balance"
-    )
-    op.drop_table("account_holder_campaign_balance")
+    op.drop_index(op.f("ix_campaign_balance_campaign_id"), table_name="campaign_balance")
+    op.drop_index(op.f("ix_campaign_balance_account_holder_id"), table_name="campaign_balance")
+    op.drop_table("campaign_balance")
     op.drop_index(op.f("ix_transaction_transaction_id"), table_name="transaction")
     op.drop_index(op.f("ix_transaction_processed"), table_name="transaction")
     op.drop_index(op.f("ix_transaction_payment_transaction_id"), table_name="transaction")
     op.drop_index(op.f("ix_transaction_mid"), table_name="transaction")
+    op.drop_index(op.f("ix_transaction_account_holder_id"), table_name="transaction")
     op.drop_table("transaction")
     op.drop_table("task_type_key_value")
+    op.drop_index(op.f("ix_marketing_preference_account_holder_id"), table_name="marketing_preference")
+    op.drop_table("marketing_preference")
     op.drop_table("email_template_required_key")
     op.drop_index(op.f("ix_campaign_slug"), table_name="campaign")
     op.drop_table("campaign")
@@ -643,13 +622,7 @@ def downgrade() -> None:
     op.drop_table("account_holder_transaction_history")
     op.drop_index(op.f("ix_account_holder_profile_account_holder_id"), table_name="account_holder_profile")
     op.drop_table("account_holder_profile")
-    op.drop_index(
-        op.f("ix_account_holder_marketing_preference_account_holder_id"),
-        table_name="account_holder_marketing_preference",
-    )
-    op.drop_table("account_holder_marketing_preference")
     op.drop_table("task_type_key")
-    op.drop_index(op.f("ix_reward_config_reward_slug"), table_name="reward_config")
     op.drop_table("reward_config")
     op.drop_index(op.f("ix_retry_task_status"), table_name="retry_task")
     op.drop_table("retry_task")
@@ -657,6 +630,7 @@ def downgrade() -> None:
     op.drop_table("retailer_fetch_type")
     op.drop_index(op.f("ix_email_template_retailer_id"), table_name="email_template")
     op.drop_table("email_template")
+    op.drop_index("ix_retailer_id_email_account_number", table_name="account_holder")
     op.drop_index(op.f("ix_account_holder_retailer_id"), table_name="account_holder")
     op.drop_index(op.f("ix_account_holder_email"), table_name="account_holder")
     op.drop_index(op.f("ix_account_holder_account_number"), table_name="account_holder")
