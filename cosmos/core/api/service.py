@@ -1,4 +1,12 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from cosmos.core.error_codes import ErrorCode
+
+if TYPE_CHECKING:
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from cosmos.db.models import Retailer
 
 
 class ServiceResult:
@@ -17,13 +25,24 @@ class ServiceResult:
     def __repr__(self) -> str:
         if not self.success:
             return "<ServiceResult Success>"
-        return f"<ServiceResult Exception {self.value}>"
+        return f"<ServiceException {self.value}>"
 
     def __enter__(self) -> Any:
         return self.value
 
     def __exit__(self, *args: Any, **kwargs: Any) -> None:
         pass
+
+
+class Service:
+    def __init__(self, db_session: "AsyncSession", retailer: "Retailer") -> None:
+        self.db_session = db_session
+        self.retailer = retailer
+
+
+class ServiceException(Exception):
+    def __init__(self, error_code: ErrorCode) -> None:
+        self.error_code = error_code
 
 
 def handle_service_result(result: ServiceResult) -> Any:

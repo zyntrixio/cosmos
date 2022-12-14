@@ -3,11 +3,6 @@ import random
 
 from typing import TYPE_CHECKING  # , Any, Callable
 
-from pydantic import UUID4
-from pydantic.validators import str_validator
-
-from cosmos.core.api.http_error import HttpErrors
-
 # from uuid import uuid4
 
 # from retry_tasks_lib.db.models import RetryTask
@@ -19,7 +14,6 @@ from cosmos.core.api.http_error import HttpErrors
 # from cosmos.db.models import PendingReward
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pydantic.typing import CallableGenerator  # pragma: no cover
     from sqlalchemy.orm import Session
 
 MINIMUM_ACCOUNT_NUMBER_LENGTH = 10
@@ -33,22 +27,6 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
         raise ValueError(f"minimum card number length is {MINIMUM_ACCOUNT_NUMBER_LENGTH}")
     start, end = 1, (10**number_length) - 1
     return f"{prefix}{str(random.randint(start, end)).zfill(number_length)}"
-
-
-class AccountHolderUUIDValidator(UUID4):
-    @classmethod
-    def __get_validators__(cls) -> "CallableGenerator":
-        yield str_validator
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value: str) -> UUID4:
-        try:
-            v = UUID4(value)
-        except ValueError:
-            raise HttpErrors.NO_ACCOUNT_FOUND.value  # pylint: disable=raise-missing-from
-        else:
-            return v
 
 
 # def enqueue_pending_rewards(

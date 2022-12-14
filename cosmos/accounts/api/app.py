@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI, status
+from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastapi_prometheus_metrics.endpoints import router as metrics_router
 from fastapi_prometheus_metrics.manager import PrometheusManager
@@ -8,14 +8,16 @@ from starlette.exceptions import HTTPException
 from cosmos.accounts.api.endpoints.account import bpl_operations_router
 from cosmos.accounts.api.endpoints.account import router as account_router
 from cosmos.accounts.api.endpoints.enrolment import router as enrolment_router
-from cosmos.core.api.exceptions import RequestPayloadValidationError
-from cosmos.core.api.healthz import healthz_router
-from cosmos.core.exception_handlers import (
+from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     payload_request_validation_error,
     request_validation_handler,
+    service_exception_handler,
     unexpected_exception_handler,
 )
+from cosmos.core.api.exceptions import RequestPayloadValidationError
+from cosmos.core.api.healthz import healthz_router
+from cosmos.core.api.service import ServiceException
 
 
 def create_app() -> FastAPI:
@@ -28,6 +30,7 @@ def create_app() -> FastAPI:
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(RequestPayloadValidationError, payload_request_validation_error)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
+    fapi.add_exception_handler(ServiceException, service_exception_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
 
     fapi.add_middleware(MetricsSecurityMiddleware)

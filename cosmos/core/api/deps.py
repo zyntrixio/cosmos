@@ -2,12 +2,8 @@ from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import contains_eager, joinedload
 
-from cosmos.campaigns.enums import CampaignStatuses
-from cosmos.db.base_class import async_run_query
-from cosmos.db.models import Campaign, Retailer
+from cosmos.db.models import Retailer
 from cosmos.db.session import AsyncSessionMaker
 from cosmos.retailers.crud import get_retailer_by_slug
 
@@ -21,9 +17,7 @@ async def get_session() -> AsyncGenerator:
 
 
 class RetailerDependency:
-    def __init__(
-        self, join_active_campaign_data: bool = False, no_retailer_found_exc: HTTPException | None = None
-    ) -> None:
+    def __init__(self, join_active_campaign_data: bool = False, no_retailer_found_exc: Exception | None = None) -> None:
         self.no_retailer_found_exc = no_retailer_found_exc
         self.join_campaign_data = join_active_campaign_data
 

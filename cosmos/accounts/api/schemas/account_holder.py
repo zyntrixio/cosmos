@@ -2,16 +2,38 @@ import re
 import uuid
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
+from pydantic.validators import str_validator
 
 from cosmos.accounts.enums import AccountHolderStatuses, RewardApiStatuses
+from cosmos.core.api.service import ServiceException
+from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward
 
 from .utils import utc_datetime, utc_datetime_from_timestamp
 
+if TYPE_CHECKING:  # pragma: no cover
+    from pydantic.typing import CallableGenerator  # pragma: no cover
+
 strip_currency_re = re.compile(r"^(-)?[^0-9-]?([0-9,.]+)[^0-9-]*$")
+
+
+class AccountHolderUUIDValidator(UUID4):
+    @classmethod
+    def __get_validators__(cls) -> "CallableGenerator":
+        yield str_validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, value: str) -> UUID4:
+        try:
+            v = UUID4(value)
+        except ValueError:
+            raise ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND)  # pylint: disable=raise-missing-from
+        else:
+            return v
 
 
 class MarketingPreference(BaseModel):

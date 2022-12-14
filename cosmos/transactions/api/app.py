@@ -5,11 +5,13 @@ from fastapi_prometheus_metrics.manager import PrometheusManager
 from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, PrometheusMiddleware
 from starlette.exceptions import HTTPException
 
-from cosmos.core.exception_handlers import (
+from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     request_validation_handler,
+    service_exception_handler,
     unexpected_exception_handler,
 )
+from cosmos.core.api.service import ServiceException
 from cosmos.transactions.api.endpoints.transaction import router as transactions_router
 
 
@@ -19,6 +21,7 @@ def create_app() -> FastAPI:
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
+    fapi.add_exception_handler(ServiceException, service_exception_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
 
     fapi.add_middleware(MetricsSecurityMiddleware)

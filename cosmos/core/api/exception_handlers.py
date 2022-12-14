@@ -8,7 +8,9 @@ from fastapi.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_500_INTERNAL_SERVER_ERROR
 
+from cosmos.accounts.api.service import ServiceException
 from cosmos.core.api.exceptions import RequestPayloadValidationError
+from cosmos.core.error_codes import ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -35,19 +37,11 @@ def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | di
     return HTTP_422_UNPROCESSABLE_ENTITY, content
 
 
-# custom exception handler for bubbling pydandic validation errors
-async def payload_request_validation_error(request: Request, exc: RequestPayloadValidationError) -> Response:
-    pydantic_error = exc.validation_error
-    status_code, content = _format_validation_errors(cast(list[dict], pydantic_error.errors()))
-    return UJSONResponse(status_code=status_code, content=content)
-
-
-# customise Api RequestValidationError
-async def request_validation_handler(
-    request: Request, exc: RequestValidationError  # pylint: disable=unused-argument
-) -> Response:
-    status_code, content = _format_validation_errors(cast(list[dict], exc.errors()))
-    return UJSONResponse(status_code=status_code, content=content)
+async def service_exception_handler(
+    request: Request,  # pylint: disable=unused-argument
+    exc: ServiceException,
+) -> UJSONResponse:
+    return ErrorCode.http_exception_response(exc.error_code.name)
 
 
 # customise Api HTTPException to remove "details" and handle manually raised ValidationErrors
@@ -79,3 +73,21 @@ async def unexpected_exception_handler(
         )
     finally:
         logger.exception("Unexpected System Error", exc_info=exc)
+
+
+# custom exception handler for bubbling pydandic validation errors
+async def payload_request_validation_error(
+    request: Request,  # pylint: disable=unused-argument
+    exc: RequestPayloadValidationError,
+) -> Response:
+    pydantic_error = exc.validation_error
+    status_code, content = _format_validation_errors(cast(list[dict], pydantic_error.errors()))
+    return UJSONResponse(status_code=status_code, content=content)
+
+
+# customise Api RequestValidationError
+async def request_validation_handler(
+    request: Request, exc: RequestValidationError  # pylint: disable=unused-argument
+) -> Response:
+    status_code, content = _format_validation_errors(cast(list[dict], exc.errors()))
+    return UJSONResponse(status_code=status_code, content=content)

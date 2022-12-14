@@ -12,7 +12,7 @@ async def get_retailer_by_slug(
     stmt = select(Retailer).where(Retailer.slug == retailer_slug)
     if with_campaign_data:
         stmt = (
-            stmt.join(Retailer.campaigns)
+            stmt.outerjoin(Retailer.campaigns)
             .outerjoin(Retailer.stores)
             .options(
                 contains_eager(Retailer.stores),

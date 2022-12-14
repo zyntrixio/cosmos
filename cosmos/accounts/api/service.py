@@ -8,24 +8,26 @@ import yaml
 from pydantic import UUID4, ValidationError
 
 from cosmos.accounts.api import crud
-from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.accounts.schemas import (
+from cosmos.accounts.api.schemas import (
     AccountHolderEnrolment,
     AccountHolderStatuses,
     AccountHolderUpdateStatusSchema,
     GetAccountHolderByCredentials,
     MarketingPreference,
 )
+from cosmos.accounts.enums import MarketingPreferenceValueTypes
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
-from cosmos.core.api.crud import commit, create_retry_task
+from cosmos.core.api.crud import commit  # , create_retry_task
+
+# from cosmos.core.api.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.core.api.exceptions import RequestPayloadValidationError
-from cosmos.core.api.http_error import HttpErrors
-from cosmos.core.api.service_result import ServiceResult
-from cosmos.core.config import settings
-from cosmos.core.exception_handlers import FIELD_VALIDATION_ERROR
-from cosmos.db.models import Retailer
-from cosmos.retailers.enums import EmailTemplateTypes
+from cosmos.core.api.service import Service, ServiceException, ServiceResult
+
+# from cosmos.core.config import settings
+from cosmos.core.error_codes import ErrorCode
+
+# from cosmos.retailers.enums import EmailTemplateTypes
 from cosmos.retailers.schemas import (
     retailer_marketing_info_validation_factory,
     retailer_profile_info_validation_factory,
@@ -35,11 +37,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class AccountService:
-    def __init__(self, db_session: "AsyncSession", retailer: Retailer):
-        self.db_session = db_session
-        self.retailer = retailer
-
+class AccountService(Service):
     def _validate_profile_data(self, profile_data: dict, retailer_profile_config: dict) -> dict:
         ProfileConfigSchema = retailer_profile_info_validation_factory(  # pylint: disable=invalid-name
             retailer_profile_config
@@ -83,49 +81,50 @@ class AccountService:
             )
 
             email = profile_data.pop("email").lower()
-            account_holder = await crud.create_account_holder(
-                self.db_session,
-                email=email,
-                retailer_id=self.retailer.id,
-                profile_data=profile_data,
-                marketing_preferences_data=marketing_preferences_data,
-            )
+            try:
+                account_holder = await crud.create_account_holder(
+                    self.db_session,
+                    email=email,
+                    retailer_id=self.retailer.id,
+                    profile_data=profile_data,
+                    marketing_preferences_data=marketing_preferences_data,
+                )
+            except crud.AccountExists:
+                result = ErrorCode.ACCOUNT_EXISTS.name
+                return ServiceResult(ServiceException(error_code=ErrorCode.ACCOUNT_EXISTS))
 
-            callback_task = await create_retry_task(
-                self.db_session,
-                task_type_name=settings.ENROLMENT_CALLBACK_TASK_NAME,
-                params={
-                    "account_holder_id": account_holder.id,
-                    "callback_url": request_payload.callback_url,
-                    "third_party_identifier": request_payload.third_party_identifier,
-                },
-            )
-            welcome_email_task = await create_retry_task(
-                self.db_session,
-                task_type_name=settings.SEND_EMAIL_TASK_NAME,
-                params={
-                    "account_holder_id": account_holder.id,
-                    "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
-                    "retailer_id": self.retailer.id,
-                },
-            )
-            welcome_email_task = await create_retry_task(
-                self.db_session,
-                task_type_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
-                params={
-                    "account_holder_id": account_holder.id,
-                    "callback_retry_task_id": callback_task.retry_task_id,
-                    "welcome_email_retry_task_id": welcome_email_task.retry_task_id,
-                    "third_party_identifier": request_payload.third_party_identifier,
-                    "channel": channel,
-                },
-            )
+            # callback_task = await create_retry_task(
+            #     self.db_session,
+            #     task_type_name=settings.ENROLMENT_CALLBACK_TASK_NAME,
+            #     params={
+            #         "account_holder_id": account_holder.id,
+            #         "callback_url": request_payload.callback_url,
+            #         "third_party_identifier": request_payload.third_party_identifier,
+            #     },
+            # )
+            # welcome_email_task = await create_retry_task(
+            #     self.db_session,
+            #     task_type_name=settings.SEND_EMAIL_TASK_NAME,
+            #     params={
+            #         "account_holder_id": account_holder.id,
+            #         "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
+            #         "retailer_id": self.retailer.id,
+            #     },
+            # )
+            # welcome_email_task = await create_retry_task(
+            #     self.db_session,
+            #     task_type_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+            #     params={
+            #         "account_holder_id": account_holder.id,
+            #         "callback_retry_task_id": callback_task.retry_task_id,
+            #         "welcome_email_retry_task_id": welcome_email_task.retry_task_id,
+            #         "third_party_identifier": request_payload.third_party_identifier,
+            #         "channel": channel,
+            #     },
+            # )
         except ValidationError as exc:
-            result = FIELD_VALIDATION_ERROR
+            result = "FIELD_VALIDATION_ERROR"
             return ServiceResult(RequestPayloadValidationError(validation_error=exc))
-        except crud.AccountExists:
-            result = "ACCOUNT_EXISTS"
-            return ServiceResult(HttpErrors.ACCOUNT_EXISTS.value)
         else:
             await commit(self.db_session)
             result = "Accepted"
@@ -155,9 +154,9 @@ class AccountService:
             account_number=request_payload.account_number,
         )
         if not account_holder:
-            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         activity_payload = ActivityType.get_account_authentication_activity_data(
             account_holder_uuid=account_holder.account_holder_uuid,
@@ -186,13 +185,16 @@ class AccountService:
             account_holder_uuid=account_holder_uuid,
         )
         if not account_holder:
-            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
         return ServiceResult(account_holder)
 
     async def handle_update_account_holder_status(
-        self, *, account_holder_uuid: str | UUID4, request_payload: AccountHolderUpdateStatusSchema
+        self,
+        *,
+        account_holder_uuid: str | UUID4,
+        request_payload: AccountHolderUpdateStatusSchema,  # pylint: disable=unused-variable
     ) -> ServiceResult:
         "Handler for account holder status update"
         account_holder = await crud.get_account_holder(
@@ -202,13 +204,16 @@ class AccountService:
         )
 
         if not account_holder:
-            return ServiceResult(HttpErrors.NO_ACCOUNT_FOUND.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status == AccountHolderStatuses.INACTIVE:
-            raise HttpErrors.INVALID_ACCOUNT_HOLDER_STATUS.value
+            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         # TODO/FIXME: Needs implementation
         # account_anonymisation_retry_task = await crud.update_account_holder_status(
-        #     self.db_session, account_holder=account_holder, retailer_id=self.retailer.id, status=request_payload.status
+        #     self.db_session,
+        #     account_holder=account_holder,
+        #     retailer_id=self.retailer.id,
+        #     status=request_payload.status,
         # )
         # asyncio.create_task(enqueue_task(account_anonymisation_retry_task.retry_task_id))
 

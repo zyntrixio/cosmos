@@ -3,14 +3,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cosmos.accounts.api.schemas import AccountHolderEnrolment
 from cosmos.accounts.api.service import AccountService
-from cosmos.accounts.schemas import AccountHolderEnrolment
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.http_error import HttpErrors
-from cosmos.core.api.service_result import handle_service_result
+from cosmos.core.api.service import ServiceException, handle_service_result
+from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
-get_retailer = RetailerDependency(no_retailer_found_exc=HttpErrors.INVALID_RETAILER.value)
+get_retailer = RetailerDependency(no_retailer_found_exc=ServiceException(error_code=ErrorCode.INVALID_RETAILER))
 
 router = APIRouter(prefix="/loyalty")
 

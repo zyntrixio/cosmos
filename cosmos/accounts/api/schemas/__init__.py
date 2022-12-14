@@ -6,6 +6,7 @@ from .account_holder import (
     AccountHolderStatuses,
     AccountHolderStatusResponseSchema,
     AccountHolderUpdateStatusSchema,
+    AccountHolderUUIDValidator,
     GetAccountHolderByCredentials,
     MarketingPreference,
     PendingRewardAllocationSchema,

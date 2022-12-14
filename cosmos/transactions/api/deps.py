@@ -1,6 +1,6 @@
-from fastapi import Depends, Header
+from fastapi import Depends, Header, HTTPException
+from starlette import status
 
-from cosmos.core.api.http_error import HttpErrors
 from cosmos.core.config import settings
 
 
@@ -12,10 +12,22 @@ def get_authorization_token(authorization: str = Header(None)) -> str:
     except (ValueError, AttributeError):
         pass
 
-    raise HttpErrors.INVALID_TOKEN.value
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "display_message": "Supplied token is invalid.",
+            "code": "INVALID_TOKEN",
+        },
+    )
 
 
 # user as in user of our api, not an account holder.
 def user_is_authorised(token: str = Depends(get_authorization_token)) -> None:
     if not token == settings.VELA_API_AUTH_TOKEN:
-        raise HttpErrors.INVALID_TOKEN.value
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "display_message": "Supplied token is invalid.",
+                "code": "INVALID_TOKEN",
+            },
+        )

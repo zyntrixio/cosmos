@@ -144,7 +144,6 @@ class Settings(BaseSettings):
             )
         return db_uri
 
-    JWT_ALGORITHM: str = "HS512"
     KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
 
     HTTP_REQUEST_RETRY_TIMES: int = 3

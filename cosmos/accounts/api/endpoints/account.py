@@ -4,17 +4,17 @@ from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.api.deps import bpl_channel_header_is_populated, user_is_authorised
-from cosmos.accounts.api.service import AccountService
-from cosmos.accounts.schemas import (
+from cosmos.accounts.api.schemas import (
     AccountHolderResponseSchema,
     AccountHolderStatusResponseSchema,
     AccountHolderUpdateStatusSchema,
+    AccountHolderUUIDValidator,
     GetAccountHolderByCredentials,
 )
+from cosmos.accounts.api.service import AccountService
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.http_error import HttpErrors
-from cosmos.core.api.service_result import handle_service_result
-from cosmos.core.utils import AccountHolderUUIDValidator
+from cosmos.core.api.service import ServiceException, handle_service_result
+from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
 router = APIRouter(
@@ -26,7 +26,7 @@ bpl_operations_router = APIRouter(
     dependencies=[Depends(user_is_authorised), Depends(bpl_channel_header_is_populated)],
 )
 
-get_retailer = RetailerDependency(no_retailer_found_exc=HttpErrors.INVALID_RETAILER.value)
+get_retailer = RetailerDependency(no_retailer_found_exc=ServiceException(ErrorCode.INVALID_RETAILER))
 
 
 @router.post(

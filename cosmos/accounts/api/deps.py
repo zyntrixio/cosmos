@@ -1,6 +1,6 @@
-from fastapi import Depends, Header
+from fastapi import Depends, Header, HTTPException
+from starlette import status
 
-from cosmos.core.api.http_error import HttpErrors
 from cosmos.core.config import settings
 
 
@@ -12,16 +12,37 @@ def get_authorization_token(authorization: str = Header(None)) -> str:
     except (ValueError, AttributeError):
         pass
 
-    raise HttpErrors.INVALID_TOKEN.value
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "display_message": "Supplied token is invalid.",
+            "code": "INVALID_TOKEN",
+        },
+    )
 
 
 # user as in user of our api, not an account holder.
 def user_is_authorised(token: str = Depends(get_authorization_token)) -> None:
     if not token == settings.POLARIS_API_AUTH_TOKEN:
-        raise HttpErrors.INVALID_TOKEN.value
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "display_message": "Supplied token is invalid.",
+                "code": "INVALID_TOKEN",
+            },
+        )
 
 
 # check bpl-user-channel header is populated, for channel facing apis only.
 def bpl_channel_header_is_populated(bpl_user_channel: str = Header(None)) -> None:
     if not bpl_user_channel:
-        raise HttpErrors.MISSING_BPL_CHANNEL_HEADER.value
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "display_message": "Submitted headers are missing or invalid.",
+                "code": "HEADER_VALIDATION_ERROR",
+                "fields": [
+                    "bpl-user-channel",
+                ],
+            },
+        )

@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 from cosmos.accounts.api import crud as accounts_crud
-from cosmos.accounts.schemas.account_holder import AccountHolderStatuses
+from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
 from cosmos.core.api.crud import commit
-from cosmos.core.api.service_result import ServiceResult
+from cosmos.core.api.service import Service, ServiceException, ServiceResult
+from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Retailer, Transaction
 from cosmos.transactions.api import crud
-from cosmos.transactions.api.enums.http_error import HttpErrors
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
@@ -55,11 +55,7 @@ def _get_transaction_response(adjustments: list, is_refund: bool) -> str:
     return response
 
 
-class TransactionService:
-    def __init__(self, db_session: "AsyncSession", retailer: Retailer):
-        self.db_session = db_session
-        self.retailer = retailer
-
+class TransactionService(Service):
     def _adjustment_amount_for_earn_rule(
         self, tx_amount: int, loyalty_type: LoyaltyTypes, earn_rule: EarnRule, allocation_window: int
     ) -> int | None:
@@ -364,9 +360,9 @@ class TransactionService:
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
         if not account_holder:
-            return ServiceResult(HttpErrors.USER_NOT_FOUND.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(HttpErrors.USER_NOT_ACTIVE.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         transaction = await crud.create_transaction(
             self.db_session,
@@ -376,7 +372,7 @@ class TransactionService:
         )
         if not transaction.processed:
             await commit(self.db_session)
-            return ServiceResult(HttpErrors.DUPLICATE_TRANSACTION.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.DUPLICATE_TRANSACTION))
 
         campaigns = list(
             filter(
@@ -386,7 +382,7 @@ class TransactionService:
             )
         )
         if not campaigns:
-            return ServiceResult(HttpErrors.NO_ACTIVE_CAMPAIGNS.value)
+            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
 
         locked_balances = await crud.get_balances_for_update(
             self.db_session, account_holder_id=account_holder.id, campaigns=campaigns
