@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.api.deps import bpl_channel_header_is_populated, user_is_authorised
-from cosmos.accounts.api.schemas import (
+from cosmos.accounts.api.schemas import (  # AccountHolderStatusResponseSchema,; AccountHolderUpdateStatusSchema,
     AccountHolderResponseSchema,
-    AccountHolderStatusResponseSchema,
-    AccountHolderUpdateStatusSchema,
     AccountHolderUUIDValidator,
     GetAccountHolderByCredentials,
 )
@@ -49,10 +47,10 @@ async def get_account_holder_by_credentials(
     path="/{retailer_slug}/accounts/{account_holder_uuid}",
     response_model=AccountHolderResponseSchema,
 )
-@bpl_operations_router.get(
-    path="/{retailer_slug}/accounts/{account_holder_uuid}/status",
-    response_model=AccountHolderStatusResponseSchema,
-)
+# @bpl_operations_router.get(
+#     path="/{retailer_slug}/accounts/{account_holder_uuid}/status",
+#     response_model=AccountHolderStatusResponseSchema,
+# )
 async def get_account_holder(
     account_holder_uuid: AccountHolderUUIDValidator,
     request: Request,
@@ -67,15 +65,15 @@ async def get_account_holder(
     return handle_service_result(service_result)
 
 
-@bpl_operations_router.patch(path="/{retailer_slug}/accounts/{account_holder_uuid}/status")
-async def patch_account_holder_status(
-    account_holder_uuid: AccountHolderUUIDValidator,
-    payload: AccountHolderUpdateStatusSchema,
-    retailer: Retailer = Depends(get_retailer),
-    db_session: AsyncSession = Depends(get_session),
-) -> Any:
-    service = AccountService(db_session=db_session, retailer=retailer)
-    service_result = await service.handle_update_account_holder_status(
-        account_holder_uuid=account_holder_uuid, request_payload=payload
-    )
-    return handle_service_result(service_result)
+# @bpl_operations_router.patch(path="/{retailer_slug}/accounts/{account_holder_uuid}/status")
+# async def patch_account_holder_status(
+#     account_holder_uuid: AccountHolderUUIDValidator,
+#     payload: AccountHolderUpdateStatusSchema,
+#     retailer: Retailer = Depends(get_retailer),
+#     db_session: AsyncSession = Depends(get_session),
+# ) -> Any:
+#     service = AccountService(db_session=db_session, retailer=retailer)
+#     service_result = await service.handle_update_account_holder_status(
+#         account_holder_uuid=account_holder_uuid, request_payload=payload
+#     )
+#     return handle_service_result(service_result)

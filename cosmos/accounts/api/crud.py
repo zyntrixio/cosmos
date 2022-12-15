@@ -11,9 +11,11 @@ from cosmos.db.base_class import async_run_query
 from cosmos.db.models import (
     AccountHolder,
     AccountHolderProfile,
+    Campaign,
     CampaignBalance,
     MarketingPreference,
     PendingReward,
+    RetailerStore,
     Reward,
     Transaction,
     TransactionCampaign,
@@ -82,14 +84,23 @@ async def get_account_holder(
     stmt = select(account_holder_alias).filter_by(retailer_id=retailer_id, **account_holder_query_params)
     if fetch_rewards:
         stmt = stmt.options(
-            joinedload(account_holder_alias.rewards).joinedload(Reward.campaign),
-            joinedload(account_holder_alias.pending_rewards).joinedload(PendingReward.campaign),
+            joinedload(account_holder_alias.rewards)
+            .load_only(Reward.code, Reward.issued_date, Reward.expiry_date, Reward.redeemed_date, Reward.cancelled_date)
+            .joinedload(Reward.campaign)
+            .load_only(Campaign.slug),
+            joinedload(account_holder_alias.pending_rewards)
+            .load_only(PendingReward.created_date, PendingReward.conversion_date)
+            .joinedload(PendingReward.campaign)
+            .load_only(Campaign.slug),
         )
     if fetch_balances:
         stmt = stmt.options(
             joinedload(
                 account_holder_alias.current_balances,
-            ).joinedload(CampaignBalance.campaign)
+            )
+            .load_only(CampaignBalance.balance)
+            .joinedload(CampaignBalance.campaign)
+            .load_only(Campaign.slug)
         )
     if tx_qty:
         subq = (
@@ -105,8 +116,11 @@ async def get_account_holder(
         )
         stmt = stmt.outerjoin(subq).options(
             contains_eager(account_holder_alias.transactions, alias=subq).options(
-                joinedload(Transaction.store),
-                joinedload(Transaction.transaction_campaigns).joinedload(TransactionCampaign.campaign),
+                joinedload(Transaction.store).load_only(RetailerStore.store_name, RetailerStore.mid),
+                joinedload(Transaction.transaction_campaigns)
+                .defer(TransactionCampaign.created_at, TransactionCampaign.updated_at)
+                .joinedload(TransactionCampaign.campaign)
+                .load_only(Campaign.slug, Campaign.loyalty_type),
             )
         )
 

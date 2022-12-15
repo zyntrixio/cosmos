@@ -1,10 +1,9 @@
-from .account_holder import (
+from .account_holder import (  # AccountHolderStatusResponseSchema,
     AccountHolderAddRewardSchema,
     AccountHolderAdjustmentSchema,
     AccountHolderEnrolment,
     AccountHolderResponseSchema,
     AccountHolderStatuses,
-    AccountHolderStatusResponseSchema,
     AccountHolderUpdateStatusSchema,
     AccountHolderUUIDValidator,
     GetAccountHolderByCredentials,

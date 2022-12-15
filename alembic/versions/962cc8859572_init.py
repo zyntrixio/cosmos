@@ -5,9 +5,11 @@ Revises:
 Create Date: 2022-12-14 16:25:38.603579
 
 """
-from alembic import op
 import sqlalchemy as sa
+
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "962cc8859572"
@@ -351,6 +353,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_campaign_slug"), "campaign", ["slug"], unique=True)
+    op.create_index(op.f("ix_campaign_retailer_id"), "campaign", ["retailer_id"], unique=False)
     op.create_table(
         "email_template_required_key",
         sa.Column(

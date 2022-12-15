@@ -166,7 +166,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     name = Column(String(), nullable=False)
     slug = Column(String(), index=True, unique=True, nullable=False)
     reward_config_id = Column(BigInteger, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
-    retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
+    retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False, index=True)
     loyalty_type = Column(Enum(LoyaltyTypes), nullable=False, server_default="STAMPS")
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)

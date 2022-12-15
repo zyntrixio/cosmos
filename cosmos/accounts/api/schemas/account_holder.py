@@ -163,15 +163,16 @@ class TransactionHistorySchema(BaseModel):
         allow_population_by_field_name = True
 
 
-class AccountHolderStatusResponseSchema(BaseModel):
-    status: AccountHolderStatuses
+# class AccountHolderStatusResponseSchema(BaseModel):
+#     status: AccountHolderStatuses
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
 
-class AccountHolderResponseSchema(AccountHolderStatusResponseSchema):
+class AccountHolderResponseSchema(BaseModel):
     account_holder_uuid: UUID4 = Field(..., alias="UUID")
+    status: AccountHolderStatuses
     email: str
     account_number: str | None
     current_balances: list[CampaignBalanceSchema] = []
