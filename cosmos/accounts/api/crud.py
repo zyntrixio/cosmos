@@ -85,11 +85,20 @@ async def get_account_holder(
     if fetch_rewards:
         stmt = stmt.options(
             joinedload(account_holder_alias.rewards)
-            .load_only(Reward.code, Reward.issued_date, Reward.expiry_date, Reward.redeemed_date, Reward.cancelled_date)
+            .load_only(
+                Reward.code,
+                Reward.issued_date,
+                Reward.expiry_date,
+                Reward.redeemed_date,
+                Reward.cancelled_date,
+            )
             .joinedload(Reward.campaign)
             .load_only(Campaign.slug),
             joinedload(account_holder_alias.pending_rewards)
-            .load_only(PendingReward.created_date, PendingReward.conversion_date)
+            .load_only(
+                PendingReward.created_date,
+                PendingReward.conversion_date,
+            )
             .joinedload(PendingReward.campaign)
             .load_only(Campaign.slug),
         )
@@ -103,7 +112,7 @@ async def get_account_holder(
             .load_only(Campaign.slug)
         )
     if tx_qty:
-        subq = (
+        cte = (
             select(Transaction)
             .join(Transaction.account_holder)
             .where(
@@ -112,15 +121,24 @@ async def get_account_holder(
             )
             .order_by(Transaction.datetime.desc(), Transaction.id)
             .limit(tx_qty)
-            .subquery(name="lastest_transactions")
+            .cte("latest_tx_subq")
         )
-        stmt = stmt.outerjoin(subq).options(
-            contains_eager(account_holder_alias.transactions, alias=subq).options(
-                joinedload(Transaction.store).load_only(RetailerStore.store_name, RetailerStore.mid),
+        stmt = stmt.outerjoin(cte, cte.c.account_holder_id == account_holder_alias.id).options(
+            contains_eager(account_holder_alias.transactions, alias=cte).options(
+                joinedload(Transaction.store).load_only(
+                    RetailerStore.store_name,
+                    RetailerStore.mid,
+                ),
                 joinedload(Transaction.transaction_campaigns)
-                .defer(TransactionCampaign.created_at, TransactionCampaign.updated_at)
+                .defer(
+                    TransactionCampaign.created_at,
+                    TransactionCampaign.updated_at,
+                )
                 .joinedload(TransactionCampaign.campaign)
-                .load_only(Campaign.slug, Campaign.loyalty_type),
+                .load_only(
+                    Campaign.slug,
+                    Campaign.loyalty_type,
+                ),
             )
         )
 

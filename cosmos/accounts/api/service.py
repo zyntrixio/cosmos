@@ -194,7 +194,7 @@ class AccountService(Service):
         self,
         *,
         account_holder_uuid: str | UUID4,
-        request_payload: AccountHolderUpdateStatusSchema,  # pylint: disable=unused-variable
+        request_payload: AccountHolderUpdateStatusSchema,  # pylint: disable=unused-argument
     ) -> ServiceResult:
         "Handler for account holder status update"
         account_holder = await crud.get_account_holder(

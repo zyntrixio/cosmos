@@ -27,11 +27,11 @@ class ServiceResult:
             return "<ServiceResult Success>"
         return f"<ServiceException {self.value}>"
 
-    def __enter__(self) -> Any:
-        return self.value
+    # def __enter__(self) -> Any:
+    #     return self.value
 
-    def __exit__(self, *args: Any, **kwargs: Any) -> None:
-        pass
+    # def __exit__(self, *args: Any, **kwargs: Any) -> None:
+    #     pass
 
 
 class Service:
