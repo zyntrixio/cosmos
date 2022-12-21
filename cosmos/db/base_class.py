@@ -1,7 +1,7 @@
 # mypy checks for sqlalchemy core 2.0 require sqlalchemy2-stubs
 import logging
 
-from typing import Any, Callable
+from typing import Any, Callable, Coroutine, TypeVar
 
 import sentry_sdk
 
@@ -20,10 +20,12 @@ utc_timestamp_sql = text("TIMEZONE('utc', CURRENT_TIMESTAMP)")
 
 logger = logging.getLogger("db-base-class")
 
+ReturnType = TypeVar("ReturnType")
+
 
 @declarative_mixin
 class IdPkMixin:
-    id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True)  # noqa: A003
 
 
 @declarative_mixin
@@ -35,13 +37,13 @@ class TimestampMixin:
 # based on the following stackoverflow answer:
 # https://stackoverflow.com/a/30004941
 def sync_run_query(
-    fn: Callable,
+    fn: Callable[..., ReturnType],
     session: Session,
     *,
     attempts: int = settings.DB_CONNECTION_RETRY_TIMES,
     rollback_on_exc: bool = True,
-    **kwargs: Any,
-) -> Any:  # pragma: no cover
+    **kwargs: Any,  # noqa: ANN401
+) -> ReturnType:  # pragma: no cover
 
     while attempts > 0:
         attempts -= 1
@@ -53,20 +55,21 @@ def sync_run_query(
                 session.rollback()
 
             if attempts > 0 and ex.connection_invalidated:
-                logger.warning(f"Interrupted transaction: {repr(ex)}, attempts remaining:{attempts}")
+                logger.warning(f"Interrupted transaction: {ex!r}, attempts remaining:{attempts}")
             else:
-                sentry_sdk.capture_message(f"Max db connection attempts reached: {repr(ex)}")
-                raise
+                sentry_sdk.capture_message(f"Max db connection attempts reached: {ex!r}")
+
+    raise ValueError("reached end of while loop unexpectedly")
 
 
 async def async_run_query(
-    fn: Callable,
+    fn: Callable[..., Coroutine[None, None, ReturnType]],
     session: AsyncSession,
     *,
     attempts: int = settings.DB_CONNECTION_RETRY_TIMES,
     rollback_on_exc: bool = True,
-    **kwargs: Any,
-) -> Any:  # pragma: no cover
+    **kwargs: Any,  # noqa: ANN401
+) -> ReturnType:  # pragma: no cover
     while attempts > 0:
         attempts -= 1
         try:
@@ -77,7 +80,9 @@ async def async_run_query(
                 await session.rollback()
 
             if attempts > 0 and ex.connection_invalidated:
-                logger.warning(f"Interrupted transaction: {repr(ex)}, attempts remaining:{attempts}")
+                logger.warning(f"Interrupted transaction: {ex!r}, attempts remaining:{attempts}")
             else:
-                sentry_sdk.capture_message(f"Max db connection attempts reached: {repr(ex)}")
+                sentry_sdk.capture_message(f"Max db connection attempts reached: {ex!r}")
                 raise
+
+    raise ValueError("reached end of while loop unexpectedly")

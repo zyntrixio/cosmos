@@ -42,20 +42,17 @@ class ActivityType(Enum):
         campaigns: list[str] | None = None,
         user_id: UUID | str | None = None,
     ) -> dict:
-        activity_identifier = activity_identifier if activity_identifier else "N/A"
-        campaigns = campaigns if campaigns else []
-        reasons = reasons if reasons else []
         payload = {
             "type": activity_type.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
             "summary": summary,
-            "reasons": reasons,
-            "activity_identifier": activity_identifier,
+            "reasons": reasons or [],
+            "activity_identifier": activity_identifier or "N/A",
             "user_id": user_id,
             "associated_value": associated_value,
             "retailer": retailer_slug,
-            "campaigns": campaigns,
+            "campaigns": campaigns or [],
             "data": data,
         }
         return payload

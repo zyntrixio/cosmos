@@ -12,7 +12,7 @@ from .enums import AccountHolderRewardStatuses
 from .utils import generate_account_number, generate_email
 
 if TYPE_CHECKING:
-    from cosmos.db.models import AccountHolder, Retailer, RetailerStore
+    from cosmos.db.models import AccountHolder, Retailer
 
     from .enums import AccountHolderTypes
 

@@ -59,9 +59,10 @@ jobs:
       - run: poetry install
       - run: alembic upgrade head
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
-      - run: pylint cosmos tests
       - run: black --check .
       - run: isort --check .
+      - run: ruff cosmos tests
+      - run: refurb cosmos tests
       - run: mypy .
       - run: pytest --verbose --cov cosmos --cov-report term-missing
   release_dev:

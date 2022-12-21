@@ -26,14 +26,14 @@ class MarketingPreferenceValueTypes(Enum):
     DATE = date
     DATETIME = datetime
 
-    def convert_value(self, v: str) -> Any:
+    def convert_value(self, v: str) -> Any:  # noqa: ANN401
         if self.value == bool:
-            return v.lower() in ["true", "1", "t", "yes", "y"]
+            return v.lower() in ("true", "1", "t", "yes", "y")
 
         if self.value == list:
             return v.split(", ")
 
-        if self.value in [date, datetime]:
+        if self.value in (date, datetime):
             return self.value.fromisoformat(v)
 
         return self.value(v)

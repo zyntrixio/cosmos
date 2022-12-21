@@ -1,12 +1,10 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.api.schemas import AccountHolderEnrolment
 from cosmos.accounts.api.service import AccountService
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.service import ServiceException, handle_service_result
+from cosmos.core.api.service import ServiceException
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
@@ -21,8 +19,8 @@ async def endpoint_accounts_enrolment(
     bpl_user_channel: str = Header(None),
     retailer: Retailer = Depends(get_retailer),
     db_session: AsyncSession = Depends(get_session),
-) -> Any:
+) -> dict:
 
     service = AccountService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_account_enrolment(payload, channel=bpl_user_channel)
-    return handle_service_result(service_result)
+    return service_result.handle_service_result()

@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from fastapi import Depends, Header, HTTPException
 from starlette import status
 
@@ -5,12 +7,10 @@ from cosmos.core.config import settings
 
 
 def get_authorization_token(authorization: str = Header(None)) -> str:
-    try:
+    with suppress(ValueError, AttributeError):
         token_type, token_value = authorization.split(" ")
         if token_type.lower() == "token":
             return token_value
-    except (ValueError, AttributeError):
-        pass
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

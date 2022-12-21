@@ -34,26 +34,22 @@ from cosmos.retailers.schemas import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from cosmos.db.models import AccountHolder
 
 
 class AccountService(Service):
     def _validate_profile_data(self, profile_data: dict, retailer_profile_config: dict) -> dict:
-        ProfileConfigSchema = retailer_profile_info_validation_factory(  # pylint: disable=invalid-name
-            retailer_profile_config
-        )
+        ProfileConfigSchema = retailer_profile_info_validation_factory(retailer_profile_config)
         return ProfileConfigSchema(**profile_data).dict(exclude_unset=True)
 
     def _process_and_validate_marketing_data(
         self, marketing_prefs: list[MarketingPreference], marketing_config_raw: str
     ) -> list[dict]:
-        if marketing_config_raw == "":
+        if not marketing_config_raw:
             return []
 
         marketing_config = yaml.safe_load(marketing_config_raw)
-        MarketingConfigSchema = retailer_marketing_info_validation_factory(  # pylint: disable=invalid-name
-            marketing_config
-        )
+        MarketingConfigSchema = retailer_marketing_info_validation_factory(marketing_config)
         validated_marketing_data = MarketingConfigSchema(**{mk.key: mk.value for mk in marketing_prefs}).dict(
             exclude_unset=False
         )
@@ -70,7 +66,9 @@ class AccountService(Service):
 
         return marketing_preferences
 
-    async def handle_account_enrolment(self, request_payload: AccountHolderEnrolment, *, channel: str) -> ServiceResult:
+    async def handle_account_enrolment(
+        self, request_payload: AccountHolderEnrolment, *, channel: str
+    ) -> ServiceResult[dict, Exception]:
         "Main handler for account holder enrolments"
         result = "Error"  # default - assume unhandled Error until we reach Accepted after successful commit
         try:
@@ -82,7 +80,7 @@ class AccountService(Service):
 
             email = profile_data.pop("email").lower()
             try:
-                account_holder = await crud.create_account_holder(
+                account_holder = await crud.create_account_holder(  # noqa: F841 # remove me
                     self.db_session,
                     email=email,
                     retailer_id=self.retailer.id,
@@ -91,7 +89,7 @@ class AccountService(Service):
                 )
             except crud.AccountExists:
                 result = ErrorCode.ACCOUNT_EXISTS.name
-                return ServiceResult(ServiceException(error_code=ErrorCode.ACCOUNT_EXISTS))
+                return ServiceResult(error=ServiceException(error_code=ErrorCode.ACCOUNT_EXISTS))
 
             # callback_task = await create_retry_task(
             #     self.db_session,
@@ -124,7 +122,7 @@ class AccountService(Service):
             # )
         except ValidationError as exc:
             result = "FIELD_VALIDATION_ERROR"
-            return ServiceResult(RequestPayloadValidationError(validation_error=exc))
+            return ServiceResult(error=RequestPayloadValidationError(validation_error=exc))
         else:
             await commit(self.db_session)
             result = "Accepted"
@@ -142,7 +140,7 @@ class AccountService(Service):
 
     async def handle_account_auth(
         self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None = 10, channel: str
-    ) -> ServiceResult:
+    ) -> ServiceResult["AccountHolder", ServiceException]:
         "Main handler for account auth"
         account_holder = await crud.get_account_holder(
             self.db_session,
@@ -154,9 +152,9 @@ class AccountService(Service):
             account_number=request_payload.account_number,
         )
         if not account_holder:
-            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         activity_payload = ActivityType.get_account_authentication_activity_data(
             account_holder_uuid=account_holder.account_holder_uuid,
@@ -167,12 +165,12 @@ class AccountService(Service):
         asyncio.create_task(
             async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_AUTHENTICATION.value)
         )
-        setattr(account_holder, "retailer_status", self.retailer.status)
+        setattr(account_holder, "retailer_status", self.retailer.status)  # noqa: B010
         return ServiceResult(account_holder)
 
     async def handle_get_account(
         self, *, account_holder_uuid: str | UUID4, tx_qty: int | None = 10, is_status_request: bool
-    ) -> ServiceResult:
+    ) -> ServiceResult["AccountHolder", ServiceException]:
         "Main handler for account data"
 
         fetch_extras = not is_status_request
@@ -185,17 +183,18 @@ class AccountService(Service):
             account_holder_uuid=account_holder_uuid,
         )
         if not account_holder:
-            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+
         return ServiceResult(account_holder)
 
     async def handle_update_account_holder_status(
         self,
         *,
         account_holder_uuid: str | UUID4,
-        request_payload: AccountHolderUpdateStatusSchema,  # pylint: disable=unused-argument
-    ) -> ServiceResult:
+        request_payload: AccountHolderUpdateStatusSchema,
+    ) -> ServiceResult[dict, ServiceException]:
         "Handler for account holder status update"
         account_holder = await crud.get_account_holder(
             self.db_session,
@@ -204,9 +203,9 @@ class AccountService(Service):
         )
 
         if not account_holder:
-            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status == AccountHolderStatuses.INACTIVE:
-            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         # TODO/FIXME: Needs implementation
         # account_anonymisation_retry_task = await crud.update_account_holder_status(

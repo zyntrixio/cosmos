@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import status
 
 from cosmos.campaigns.api import api_router
@@ -10,5 +8,5 @@ from cosmos.campaigns.api import api_router
     status_code=status.HTTP_200_OK,
     # dependencies=[Depends(user_is_authorised)],
 )
-async def chamge_campaign_status() -> Any:
+async def change_campaign_status() -> dict:
     return {}

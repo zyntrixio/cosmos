@@ -38,7 +38,7 @@ def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | di
 
 
 async def service_exception_handler(
-    request: Request,  # pylint: disable=unused-argument
+    request: Request,
     exc: ServiceException,
 ) -> UJSONResponse:
     return ErrorCode.http_exception_response(exc.error_code.name)
@@ -46,7 +46,7 @@ async def service_exception_handler(
 
 # customise Api HTTPException to remove "details" and handle manually raised ValidationErrors
 async def http_exception_handler(
-    request: Request,  # pylint: disable=unused-argument
+    request: Request,
     exc: HTTPException,
 ) -> UJSONResponse:
 
@@ -60,7 +60,7 @@ async def http_exception_handler(
 
 
 async def unexpected_exception_handler(
-    request: Request,  # pylint: disable=unused-argument
+    request: Request,
     exc: Exception,
 ) -> UJSONResponse:
     try:
@@ -77,7 +77,7 @@ async def unexpected_exception_handler(
 
 # custom exception handler for bubbling pydandic validation errors
 async def payload_request_validation_error(
-    request: Request,  # pylint: disable=unused-argument
+    request: Request,
     exc: RequestPayloadValidationError,
 ) -> Response:
     pydantic_error = exc.validation_error
@@ -86,8 +86,6 @@ async def payload_request_validation_error(
 
 
 # customise Api RequestValidationError
-async def request_validation_handler(
-    request: Request, exc: RequestValidationError  # pylint: disable=unused-argument
-) -> Response:
+async def request_validation_handler(request: Request, exc: RequestValidationError) -> Response:
     status_code, content = _format_validation_errors(cast(list[dict], exc.errors()))
     return UJSONResponse(status_code=status_code, content=content)

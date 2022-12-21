@@ -15,7 +15,9 @@ from cosmos.db.models import PendingReward
 from .utils import utc_datetime, utc_datetime_from_timestamp
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pydantic.typing import CallableGenerator  # pragma: no cover
+    from pydantic.typing import CallableGenerator
+
+    from cosmos.db.models import CampaignBalance, Reward, Transaction
 
 strip_currency_re = re.compile(r"^(-)?[^0-9-]?([0-9,.]+)[^0-9-]*$")
 
@@ -31,7 +33,7 @@ class AccountHolderUUIDValidator(UUID4):
         try:
             v = UUID4(value)
         except ValueError:
-            raise ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND)  # pylint: disable=raise-missing-from
+            raise ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND)
         else:
             return v
 
@@ -59,7 +61,7 @@ class AccountHolderRewardSchema(BaseModel):
     status: RewardApiStatuses | None = None
 
     @classmethod
-    def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: "Reward") -> BaseModel:  # type: ignore [override]
         obj.campaign_slug = obj.campaign.slug
         if obj.redeemed_date:
             obj.status = RewardApiStatuses.REDEEMED
@@ -108,7 +110,7 @@ class PendingRewardAllocationResponseSchema(BaseModel):
             }
         ] * obj.count
 
-        setattr(obj, "pending_reward_items", pending_reward_items)
+        setattr(obj, "pending_reward_items", pending_reward_items)  # noqa: B010
         return super().from_orm(obj)
 
     class Config:
@@ -125,7 +127,7 @@ class CampaignBalanceSchema(BaseModel):
         return v / 100
 
     @classmethod
-    def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: "CampaignBalance") -> BaseModel:  # type: ignore [override]
         obj.campaign_slug = obj.campaign.slug
         return super().from_orm(obj)
 
@@ -148,7 +150,7 @@ class TransactionHistorySchema(BaseModel):
         return int(value.timestamp())  # type: ignore [attr-defined]
 
     @classmethod
-    def from_orm(cls, obj: Any) -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: "Transaction") -> BaseModel:  # type: ignore [override]
         obj.amount_currency = "GBP"
         if hasattr(obj, "store") and obj.store is not None:
             obj.location_name = obj.store.store_name

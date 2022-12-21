@@ -3,7 +3,6 @@ import uuid
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
@@ -31,7 +30,7 @@ class TotalCostToUserDataSchema(RewardUpdateDataSchema):
 
 @dataclass
 class AdjustmentAmount:
-    type: LoyaltyTypes
+    type: LoyaltyTypes  # noqa: A003
     amount: int
     threshold: int
     accepted: bool
@@ -39,17 +38,9 @@ class AdjustmentAmount:
 
 def _get_transaction_response(adjustments: list, is_refund: bool) -> str:
     if adjustments:
-        if is_refund:
-            response = "Refund accepted"
-        else:
-            response = "Awarded"
+        return "Refund accepted" if is_refund else "Awarded"
 
-    else:
-        if is_refund:
-            response = "Refunds not accepted"
-        else:
-            response = "Threshold not met"
-    return response
+    return "Refunds not accepted" if is_refund else "Threshold not met"
 
 
 class TransactionService(Service):
@@ -176,9 +167,9 @@ class TransactionService(Service):
                 )
             else:
                 campaign_balance.balance += adjustment
-                deleted_count_by_uuid = {}
-                total_costs = []
-                amount_not_recouped = 0
+                deleted_count_by_uuid = {}  # noqa: F841 # remove me
+                total_costs = []  # noqa: F841 # remove me
+                amount_not_recouped = 0  # noqa: F841 # remove me
 
             # try:
             #     await self._emit_events(total_costs, deleted_count_by_uuid, amount_not_recouped)
@@ -333,7 +324,7 @@ class TransactionService(Service):
                     "s" if rewards_achieved_n > 1 else "",
                     log_suffix,
                 )
-                post_msg = "Decreasing balance by total rewards value (%s) %s"
+                post_msg = "Decreasing balance by total rewards value (%s) %s"  # noqa: F841 # remove me
 
             if campaign.reward_rule.allocation_window > 0:
                 await crud.create_pending_reward(
@@ -350,43 +341,16 @@ class TransactionService(Service):
             else:
                 await self._allocate_reward()
 
-    async def handle_incoming_transaction(self, request_payload: CreateTransactionSchema) -> ServiceResult:
-        "Main handler for incoming transactions"
-
-        account_holder = await accounts_crud.get_account_holder(
-            self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
-        )
-        if not account_holder:
-            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_FOUND))
-        if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
-
-        transaction = await crud.create_transaction(
-            self.db_session,
-            account_holder_id=account_holder.id,
-            retailer_id=self.retailer.id,
-            transaction_data=request_payload,
-        )
-        if not transaction.processed:
-            await commit(self.db_session)
-            return ServiceResult(ServiceException(error_code=ErrorCode.DUPLICATE_TRANSACTION))
-
-        campaigns = list(
-            filter(
-                lambda campaign: campaign.start_date <= transaction.datetime
-                and (campaign.end_date is None or campaign.end_date > transaction.datetime),
-                self.retailer.campaigns,
-            )
-        )
-        if not campaigns:
-            return ServiceResult(ServiceException(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
-
+    # FIXME: check function name
+    async def _process_adjustments(
+        self, campaigns: list[Campaign], transaction: Transaction, account_holder_id: int
+    ) -> list[int]:
         locked_balances = await crud.get_balances_for_update(
-            self.db_session, account_holder_id=account_holder.id, campaigns=campaigns
+            self.db_session, account_holder_id=account_holder_id, campaigns=campaigns
         )
         balances_by_campaign_id = {balance.campaign_id: balance for balance in locked_balances}
 
-        adjustments = []
+        adjustments: list[int] = []
         for campaign in campaigns:
             campaign_balance = balances_by_campaign_id[campaign.id]
             adjustment = await self._adjust_balance(
@@ -403,5 +367,42 @@ class TransactionService(Service):
                         adjustment=adjustment,
                     )
 
+        return adjustments
+
+    async def handle_incoming_transaction(
+        self, request_payload: CreateTransactionSchema
+    ) -> ServiceResult[str, ServiceException]:
+        "Main handler for incoming transactions"
+
+        account_holder = await accounts_crud.get_account_holder(
+            self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
+        )
+        if not account_holder:
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_FOUND))
+        if account_holder.status != AccountHolderStatuses.ACTIVE:
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+
+        transaction = await crud.create_transaction(
+            self.db_session,
+            account_holder_id=account_holder.id,
+            retailer_id=self.retailer.id,
+            transaction_data=request_payload,
+        )
+        if not transaction.processed:
+            await commit(self.db_session)
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.DUPLICATE_TRANSACTION))
+
+        campaigns = list(
+            filter(
+                lambda campaign: campaign.start_date <= transaction.datetime
+                and (campaign.end_date is None or campaign.end_date > transaction.datetime),
+                self.retailer.campaigns,
+            )
+        )
+        if not campaigns:
+            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
+
+        adjustments = await self._process_adjustments(campaigns, transaction, account_holder.id)
         await commit(self.db_session)
+
         return ServiceResult(_get_transaction_response(adjustments, transaction.amount < 0))

@@ -24,11 +24,16 @@ class KeyVault:
                 ),
             )
 
-    def get_secret(self, secret_name: str) -> str | None:
+    def get_secret(self, secret_name: str) -> str:
         if not self.client:
             return "testing-token"
 
         try:
-            return self.client.get_secret(secret_name).value
+            value = self.client.get_secret(secret_name).value
         except (ServiceRequestError, ResourceNotFoundError, HttpResponseError) as ex:
             raise KeyVaultError(f"Could not retrieve secret {secret_name}") from ex
+
+        if not value:
+            raise KeyVaultError(f"Secret {secret_name} returned a None value.")
+
+        return value

@@ -11,9 +11,8 @@ from cosmos.db.models import CampaignBalance, PendingReward, Transaction, Transa
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
-    from uuid import UUID
 
-    from cosmos.db.models import Campaign, Retailer
+    from cosmos.db.models import Campaign
 
 
 async def get_balances_for_update(

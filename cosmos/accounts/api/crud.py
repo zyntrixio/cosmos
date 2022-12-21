@@ -52,7 +52,7 @@ async def create_account_holder(
         await nested.commit()
     except IntegrityError:
         await nested.rollback()
-        raise AccountExists  # pylint: disable=raise-missing-from
+        raise AccountExists
 
     profile = AccountHolderProfile(account_holder_id=account_holder.id, **profile_data)
     db_session.add(profile)

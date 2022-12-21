@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import sentry_sdk
 
-from pydantic import BaseSettings, HttpUrl, PostgresDsn, validator
+from pydantic import BaseSettings, Field, HttpUrl, PostgresDsn, validator
 from pydantic.validators import str_validator
 from redis import Redis
 from retry_tasks_lib.settings import load_settings
@@ -37,7 +37,7 @@ class LogLevel(str):
     @classmethod
     def validate(cls, value: str) -> str:
         v = value.upper()
-        if v not in ["CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG", "NOTSET"]:
+        if v not in ("CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG", "NOTSET"):
             raise ValueError(f"{value} is not a valid LOG_LEVEL value")
         return v
 
@@ -75,31 +75,14 @@ class Settings(BaseSettings):
     QUERY_LOG_LEVEL: LogLevel | None = None
     PROMETHEUS_LOG_LEVEL: LogLevel | None = None
     LOG_FORMATTER: Literal["json", "brief", "console"] = "json"
-
-    @validator("LOG_FORMATTER")
-    @classmethod
-    def validate_formatter(cls, v: str) -> str | None:
-        if v not in ["json", "brief", "detailed"]:
-            raise ValueError(f'"{v}" is not a valid LOG_FORMATTER value, choices are [json, brief, detailed]')
-        return v
-
     SENTRY_DSN: HttpUrl | None = None
     SENTRY_ENV: str | None = None
-    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(0.0, ge=0.0, le=1.0)
 
     @validator("SENTRY_DSN", pre=True)
     @classmethod
-    def sentry_dsn_can_be_blank(cls, v: str) -> str | None:
-        if v is not None and len(v) == 0:
-            return None
-        return v
-
-    @validator("SENTRY_TRACES_SAMPLE_RATE")
-    @classmethod
-    def validate_sentry_traces_sample_rate(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("SENTRY_TRACES_SAMPLE_RATE must be between 0.0 and 1.0")
-        return v
+    def sentry_dsn_can_be_blank(cls, v: str | None) -> str | None:
+        return v or None
 
     USE_NULL_POOL: bool = False
     POSTGRES_HOST: str = "localhost"
@@ -113,7 +96,7 @@ class Settings(BaseSettings):
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     @classmethod
-    def assemble_db_connection(cls, v: str, values: dict[str, Any]) -> Any:
+    def assemble_db_connection(cls, v: str, values: dict[str, Any]) -> str:
         if v != "":
             db_uri = v.format(values["POSTGRES_DB"])
         else:
@@ -133,7 +116,7 @@ class Settings(BaseSettings):
 
     @validator("SQLALCHEMY_DATABASE_URI_ASYNC", pre=True)
     @classmethod
-    def adapt_db_connection_to_async(cls, v: str, values: dict[str, Any]) -> Any:
+    def adapt_db_connection_to_async(cls, v: str, values: dict[str, Any]) -> str:
         if v != "":
             db_uri = v.format(values["POSTGRES_DB"])
         else:
@@ -200,7 +183,7 @@ class Settings(BaseSettings):
 
     @validator("MAILJET_API_PUBLIC_KEY")
     @classmethod
-    def fetch_mailjet_api_public_key(cls, v: str | None, values: dict[str, Any]) -> Any:
+    def fetch_mailjet_api_public_key(cls, v: str, values: dict[str, Any]) -> str:
         if v and isinstance(v, str):
             return v
 
@@ -209,11 +192,12 @@ class Settings(BaseSettings):
                 values["KEY_VAULT_URI"],
                 values["TESTING"] or values["MIGRATING"],
             ).get_secret("bpl-mailjet-api-public-key")
+
         raise KeyError("required var KEY_VAULT_URI is not set.")
 
     @validator("MAILJET_API_SECRET_KEY")
     @classmethod
-    def fetch_mailjet_api_secret_key(cls, v: str | None, values: dict[str, Any]) -> Any:
+    def fetch_mailjet_api_secret_key(cls, v: str | None, values: dict[str, Any]) -> str:
         if v and isinstance(v, str):
             return v
 
@@ -222,9 +206,10 @@ class Settings(BaseSettings):
                 values["KEY_VAULT_URI"],
                 values["TESTING"] or values["MIGRATING"],
             ).get_secret("bpl-mailjet-api-secret-key")
+
         raise KeyError("required var KEY_VAULT_URI is not set.")
 
-    ACTIVATE_TASKS_METRICS: bool = True  # pylint: disable=invalid-name
+    ACTIVATE_TASKS_METRICS: bool = True
 
     RABBITMQ_DSN: str = "amqp://guest:guest@localhost:5672//"
     MESSAGE_EXCHANGE_NAME: str = "hubble-activities"
@@ -233,10 +218,10 @@ class Settings(BaseSettings):
 
     VELA_API_AUTH_TOKEN: str | None = None
 
-    ###### FIXME - cleanup
+    # FIXME - cleanup
     @validator("VELA_API_AUTH_TOKEN")
     @classmethod
-    def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> Any:
+    def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
         if isinstance(v, str) and not values["TESTING"]:
             return v
 
@@ -252,7 +237,7 @@ class Settings(BaseSettings):
 
     @validator("POLARIS_API_AUTH_TOKEN")
     @classmethod
-    def fetch_polaris_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> Any:
+    def fetch_polaris_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
         if isinstance(v, str) and not values["TESTING"]:
             return v
 
@@ -261,9 +246,10 @@ class Settings(BaseSettings):
                 values["KEY_VAULT_URI"],
                 values["TESTING"] or values["MIGRATING"],
             ).get_secret("bpl-polaris-api-auth-token")
+
         raise KeyError("required var KEY_VAULT_URI is not set.")
 
-    ###### FIXME - cleanup
+    # FIXME - cleanup
 
     class Config:
         case_sensitive = True
@@ -359,7 +345,7 @@ redis_raw = Redis.from_url(
 )
 
 if settings.SENTRY_DSN:  # pragma: no cover
-    sentry_sdk.init(  # pylint: disable=abstract-class-instantiated
+    sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         environment=settings.SENTRY_ENV,
         integrations=[

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 from cosmos.core.error_codes import ErrorCode
 
@@ -9,29 +9,33 @@ if TYPE_CHECKING:
     from cosmos.db.models import Retailer
 
 
-class ServiceResult:
-    def __init__(self, val: Any) -> None:
-        self.value = val
+ServiceResultValue = TypeVar("ServiceResultValue")
+ServiceResultError = TypeVar("ServiceResultError", bound=Exception)
+
+
+class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
+    def __init__(self, value: ServiceResultValue = None, *, error: ServiceResultError | None = None) -> None:
+        self.value = value
+        self.error = error
 
     @property
     def success(self) -> bool:
-        return not isinstance(self.value, Exception)
+        return self.error is None
 
     def __str__(self) -> str:
-        if self.success:
-            return "[Success]"
-        return f'[Exception] "{self.value}"'
+        return "[Success]" if self.success else f'[Exception] "{self.error}"'
 
     def __repr__(self) -> str:
-        if not self.success:
+        if self.success:
             return "<ServiceResult Success>"
-        return f"<ServiceException {self.value}>"
 
-    # def __enter__(self) -> Any:
-    #     return self.value
+        return f"<ServiceException {self.error!r}>"
 
-    # def __exit__(self, *args: Any, **kwargs: Any) -> None:
-    #     pass
+    def handle_service_result(self) -> ServiceResultValue:
+        if self.error:
+            raise self.error
+
+        return cast(ServiceResultValue, self.value)
 
 
 class Service:
@@ -43,9 +47,3 @@ class Service:
 class ServiceException(Exception):
     def __init__(self, error_code: ErrorCode) -> None:
         self.error_code = error_code
-
-
-def handle_service_result(result: ServiceResult) -> Any:
-    if not result.success:
-        raise result.value
-    return result.value

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, NonNegativeInt
 
 class EarnedSchema(BaseModel):
     value: str
-    type: str
+    type: str  # noqa: A003
 
 
 class TransactionHistorySchema(BaseModel):

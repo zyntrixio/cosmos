@@ -1,8 +1,7 @@
 # Import all the models, so that Base has them before being
 # imported by Alembic
-# pylint: disable=unused-import
-from cosmos.db.base_class import Base  # noqa
-from cosmos.db.models import (  # noqa
+from cosmos.db.base_class import Base
+from cosmos.db.models import (
     AccountHolder,
     AccountHolderProfile,
     Campaign,

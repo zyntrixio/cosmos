@@ -220,7 +220,7 @@ class EmailTemplate(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "email_template"
 
     template_id = Column(String, nullable=False)
-    type = Column(Enum(EmailTemplateTypes), nullable=False)
+    type = Column(Enum(EmailTemplateTypes), nullable=False)  # noqa: A003
     retailer_id = Column(BigInteger, ForeignKey("retailer.id"), index=True)
 
     retailer = relationship("Retailer", back_populates="email_templates")
@@ -300,7 +300,7 @@ class RetailerFetchType(Base, TimestampMixin):
         return f"{self.__class__.__name__}: {self.retailer_id} - {self.fetch_type}"
 
     def load_agent_config(self) -> dict:
-        if self.agent_config in ["", None]:
+        if self.agent_config in ("", None):
             return {}
 
         return yaml.safe_load(self.agent_config)
@@ -369,7 +369,7 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
         return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.id})"
 
     def load_required_fields_values(self) -> dict:
-        if self.required_fields_values in ["", None]:
+        if self.required_fields_values in ("", None):
             return {}
 
         return yaml.safe_load(self.required_fields_values)

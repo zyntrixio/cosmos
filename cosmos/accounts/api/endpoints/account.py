@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +11,12 @@ from cosmos.accounts.api.schemas import (  # AccountHolderStatusResponseSchema,;
 )
 from cosmos.accounts.api.service import AccountService
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.service import ServiceException, handle_service_result
+from cosmos.core.api.service import ServiceException
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
+
+if TYPE_CHECKING:
+    from cosmos.db.models import AccountHolder
 
 router = APIRouter(
     prefix="/loyalty",
@@ -37,10 +40,10 @@ async def get_account_holder_by_credentials(
     bpl_user_channel: str = Header(None),
     retailer: Retailer = Depends(get_retailer),
     db_session: AsyncSession = Depends(get_session),
-) -> Any:
+) -> "AccountHolder":
     service = AccountService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_account_auth(payload, tx_qty=tx_qty, channel=bpl_user_channel)
-    return handle_service_result(service_result)
+    return service_result.handle_service_result()
 
 
 @router.get(
@@ -57,12 +60,12 @@ async def get_account_holder(
     tx_qty: int | None = 10,
     retailer: Retailer = Depends(get_retailer),
     db_session: AsyncSession = Depends(get_session),
-) -> Any:
+) -> "AccountHolder":
     service = AccountService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_get_account(
         account_holder_uuid=account_holder_uuid, tx_qty=tx_qty, is_status_request=request.url.path.endswith("/status")
     )
-    return handle_service_result(service_result)
+    return service_result.handle_service_result()
 
 
 # @bpl_operations_router.patch(path="/{retailer_slug}/accounts/{account_holder_uuid}/status")
@@ -76,4 +79,5 @@ async def get_account_holder(
 #     service_result = await service.handle_update_account_holder_status(
 #         account_holder_uuid=account_holder_uuid, request_payload=payload
 #     )
+#     return handle_service_result(service_result)
 #     return handle_service_result(service_result)

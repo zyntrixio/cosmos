@@ -1,10 +1,8 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.service import ServiceException, handle_service_result
+from cosmos.core.api.service import ServiceException
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 from cosmos.transactions.api.deps import user_is_authorised
@@ -24,12 +22,11 @@ get_retailer = RetailerDependency(
     path="/{retailer_slug}/transaction",
     response_model=str,
 )
-# pylint: disable=too-many-locals
 async def process_transaction(
     payload: CreateTransactionSchema,
     retailer: Retailer = Depends(get_retailer),
     db_session: AsyncSession = Depends(get_session),
-) -> Any:
+) -> str:
     service = TransactionService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_incoming_transaction(payload)
-    return handle_service_result(service_result)
+    return service_result.handle_service_result()

@@ -1,8 +1,6 @@
 # import logging
 import random
 
-from typing import TYPE_CHECKING  # , Any, Callable
-
 # from uuid import uuid4
 
 # from retry_tasks_lib.db.models import RetryTask
@@ -13,8 +11,6 @@ from typing import TYPE_CHECKING  # , Any, Callable
 # from cosmos.db.base_class import sync_run_query
 # from cosmos.db.models import PendingReward
 
-if TYPE_CHECKING:  # pragma: no cover
-    from sqlalchemy.orm import Session
 
 MINIMUM_ACCOUNT_NUMBER_LENGTH = 10
 
@@ -59,18 +55,18 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
 #                 )
 #                 # We have task ids here as sync_create_many_tasks calls flush(). We do not call commit here as
 #                 # if the enqueuing was to fail, then each task would be marked as queued when it hadn't been. Instead,
-#                 # we opt to commit once we know the enqueuing has succeeded, acknowledging that there is a small window
+#                 # we opt to commit once we know the enqueuing has succeeded, acknowledging that there is a small window # noqa
 #                 # for an RQ worker to pick up the job prior to the task being committed to the db. This eventuality is
 #                 # benign as the job will simply fail and we'd be left with PENDING retry tasks in the database.
-#                 # If we encounter this in the future (it has not happened yet), an option would be to enqueue the tasks
+#                 # If we encounter this in the future (it has not happened yet), an option would be to enqueue the tasks  # noqa
 #                 # a short time in the future so that the commit has time to happen prior to workers receiving the jobs
 #                 # to run.
 #                 enqueue_many_retry_tasks(
 #                     db_session, retry_tasks_ids=[task.retry_task_id for task in tasks], connection=redis_raw
 #                 )
-#             except Exception as ex:  # pylint: disable=broad-except
+#             except Exception as ex:
 #                 sync_run_query(
-#                     lambda: db_session.rollback(),  # pylint: disable=unnecessary-lambda
+#                     lambda: db_session.rollback(),
 #                     db_session,
 #                     rollback_on_exc=False,
 #                 )
@@ -78,7 +74,7 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
 #                 break
 #             else:
 #                 sync_run_query(
-#                     lambda: db_session.commit(), db_session, rollback_on_exc=False  # pylint: disable=unnecessary-lambda
+#                     lambda: db_session.commit(), db_session, rollback_on_exc=False   # noqa
 #                 )
 #         else:
 #             logger.info("No PendingRewards to process.")

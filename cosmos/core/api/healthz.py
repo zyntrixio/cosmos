@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
@@ -11,17 +9,17 @@ healthz_router = APIRouter()
 
 
 @healthz_router.get(path="/livez")
-async def livez() -> Any:
+async def livez() -> dict:
     return {}
 
 
 @healthz_router.get(path="/readyz")
-async def readyz(db_session: AsyncSession = Depends(get_session)) -> Any:
+async def readyz(db_session: AsyncSession = Depends(get_session)) -> dict:
     try:
         await db_session.execute(text("SELECT 1"))
     except Exception as ex:
-        raise HTTPException(  # pylint: disable=raise-missing-from
-            detail={"postgres": f"failed to connect to postgres due to error: {repr(ex)}"},
+        raise HTTPException(
+            detail={"postgres": f"failed to connect to postgres due to error: {ex!r}"},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
