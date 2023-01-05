@@ -96,6 +96,46 @@ plugins = [
 format = "grouped"
 line-length = 120
 show-source = true
+target-version = "py310"
+select = [
+    "F",    # Pyflakes (F)
+    "E", 
+    "W",    # pycodestyle (E, W)
+    "C90",  # mccabe (C90)
+    "I",    # isort (I)
+    "D",    # pydocstyle (D)
+    "UP",   # pyupgrade (UP)
+    "N",    # pep8-naming (N)
+    "YTT",  # flake8-2020 (YTT)
+    "ANN",  # flake8-annotations (ANN)
+    "S",    # flake8-bandit (S)
+    "BLE",  # flake8-blind-except (BLE)
+    "FBT",  # flake8-boolean-trap (FBT)
+    "B",    # flake8-bugbear (B)
+    "A",    # flake8-builtins (A)
+    "C4",   # flake8-comprehensions (C4)
+    "T10",  # flake8-debugger (T10)
+    "EM",   # flake8-errmsg (EM)
+    "ISC",  # flake8-implicit-str-concat (ISC)
+    "ICN",  # flake8-import-conventions (ICN)
+    "T20",  # flake8-print (T20)
+    "PT",   # flake8-pytest-style (PT)
+    "Q",    # flake8-quotes (Q)
+    "RET",  # flake8-return (RET)
+    "SIM",  # flake8-simplify (SIM)
+    "TID",  # flake8-tidy-imports (TID)
+    "ARG",  # flake8-unused-arguments (ARG)
+    "DTZ",  # flake8-datetimez (DTZ)
+    "ERA",  # eradicate (ERA)
+    # pandas-vet (PD)
+    # pygrep-hooks (PGH)
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",  # Pylint (PLC, PLE, PLR, PLW)
+    "PIE",  # flake8-pie (PIE)
+    "RUF",  # Ruff-specific rules (RUF)
+]
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
