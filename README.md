@@ -27,3 +27,21 @@
 ### Transactions API
 
 `poetry run cosmos api --port 8000 --reload transactions`
+
+
+
+# Testing
+
+Checking unit test coverage
+
+Run pytest with cov-report
+
+```sh
+pytest --verbose --cov cosmos --cov-report html
+```
+
+Then open the html report
+
+```sh
+open htmlcov/index.html
+```

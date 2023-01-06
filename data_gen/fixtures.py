@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from faker import Faker
+from pydantic import BaseModel
 
 from .enums import AccountHolderRewardStatuses
 from .utils import generate_account_number, generate_email
@@ -142,6 +143,36 @@ def marketing_preference_payload(account_holder: "AccountHolder") -> dict:
     }
 
 
+class RewardDatetime(BaseModel):
+    issued_date: datetime | None = None
+    expiry_date: datetime
+    redeemed_date: datetime | None = None
+    cancelled_date: datetime | None = None
+
+
+def _datetimes_for_reward_by_status(
+    now: datetime,
+    reward_status: AccountHolderRewardStatuses,
+) -> RewardDatetime:
+    old_date = now - timedelta(days=randint(2, 10))
+    default_expiry = now + timedelta(weeks=52)
+
+    match reward_status:  # noqa: E999
+        case AccountHolderRewardStatuses.REDEEMED:
+            dates = RewardDatetime(expiry_date=default_expiry, redeemed_date=old_date)
+        case AccountHolderRewardStatuses.CANCELLED:
+            dates = RewardDatetime(expiry_date=default_expiry, cancelled_date=old_date)
+        case AccountHolderRewardStatuses.ISSUED:
+            dates = RewardDatetime(expiry_date=default_expiry, issued_date=old_date)
+        case AccountHolderRewardStatuses.EXPIRED:
+            dates = RewardDatetime(expiry_date=old_date)
+        case _:
+            msg = "Couldn't calculate datetimes for reward status"
+            raise Exception(msg)
+
+    return dates
+
+
 def account_holder_reward_payload(
     account_holder_id: int,
     retailer_id: int,
@@ -150,30 +181,23 @@ def account_holder_reward_payload(
     reward_code: str,
     reward_config_id: int,
     reward_status: AccountHolderRewardStatuses,
-    issue_date: datetime,
 ) -> dict:
     now = datetime.now(tz=timezone.utc).replace(microsecond=0)
 
+    reward_datetimes = _datetimes_for_reward_by_status(now, reward_status)
+
     return {
+        "reward_uuid": reward_uuid,
+        "reward_config_id": reward_config_id,
         "account_holder_id": account_holder_id,
+        "code": reward_code,
+        "deleted": False,
+        "issued_date": reward_datetimes.issued_date,
+        "expiry_date": reward_datetimes.expiry_date,
+        "redeemed_date": reward_datetimes.redeemed_date,
+        "cancelled_date": reward_datetimes.cancelled_date,
         "retailer_id": retailer_id,
         "campaign_id": campaign_id,
-        "reward_uuid": reward_uuid,
-        "code": reward_code,
-        "reward_config_id": reward_config_id,
-        # "status": AccountHolderRewardStatuses.ISSUED.value
-        # if reward_status == AccountHolderRewardStatuses.EXPIRED
-        # else reward_status.value,
-        "issued_date": issue_date,
-        "expiry_date": now - timedelta(days=randint(2, 10))
-        if reward_status == AccountHolderRewardStatuses.EXPIRED
-        else datetime(2030, 1, 1),
-        "redeemed_date": now - timedelta(days=randint(2, 10))
-        if reward_status == AccountHolderRewardStatuses.REDEEMED
-        else None,
-        "cancelled_date": now - timedelta(days=randint(2, 10))
-        if reward_status == AccountHolderRewardStatuses.CANCELLED
-        else None,
     }
 
 
@@ -292,8 +316,9 @@ def earn_rule_payload(campaign_id: int, loyalty_type: str) -> dict:
     }
 
 
-def reward_config_payload(retailer_id: int, fetch_type_id: int) -> dict:
+def reward_config_payload(retailer_id: int, fetch_type_id: int, slug: str) -> dict:
     payload = {
+        "slug": slug,
         "retailer_id": retailer_id,
         "status": "ACTIVE",
         "fetch_type_id": fetch_type_id,

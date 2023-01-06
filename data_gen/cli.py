@@ -48,6 +48,7 @@ def populate(
         "-c",
         help="backup campaign name used for generating balances if no active campaign is found",
     ),
+    reward_slug: str = typer.Option("10percentoff", "--reward_slug", "-rs", help="Reward slug used for reward_config"),
     loyalty_type: str = typer.Option(
         LoyaltyTypes.ACCUMULATOR.value,
         "--loyalty-type",
@@ -140,11 +141,12 @@ def populate(
 
     db_session: "Session" = scoped_session(sessionmaker(bind=engine))()
     try:
-        if setup_retailer is True:
+        if setup_retailer:
             generate_retailer_base_config(
                 db_session,
                 retailer,
                 campaign,
+                reward_slug,
                 refund_window,
                 fetch_type,
                 loyalty_type,

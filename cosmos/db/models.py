@@ -1,6 +1,8 @@
 # from typing import TYPE_CHECKING
+import enum
 import uuid
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import yaml
@@ -317,9 +319,8 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     code = Column(String, nullable=False, index=True)
     deleted = Column(Boolean, default=False, nullable=False)
 
-    issued_date = Column(DateTime, nullable=False)
+    issued_date = Column(DateTime, nullable=True)
     expiry_date = Column(DateTime, nullable=False)
-    # status = Column(Enum(AccountHolderRewardStatuses), nullable=False, default=AccountHolderRewardStatuses.ISSUED)
     redeemed_date = Column(DateTime, nullable=True)
     cancelled_date = Column(DateTime, nullable=True)
     associated_url = Column(String, nullable=False, server_default="")
@@ -334,12 +335,33 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     campaign = relationship("Campaign", back_populates="rewards")
     reward_updates = relationship("RewardUpdate", back_populates="reward")
 
+    class RewardStatuses(enum.Enum):
+        UNALLOCATED = "unallocated"
+        ISSUED = "issued"
+        CANCELLED = "cancelled"
+        REDEEMED = "redeemed"
+        EXPIRED = "expired"
+
+    @property
+    def status(self) -> RewardStatuses:
+        if self.redeemed_date:
+            return self.RewardStatuses.REDEEMED
+
+        if self.cancelled_date:
+            return self.RewardStatuses.CANCELLED
+
+        if self.issued_date:
+            if datetime.now(tz=timezone.utc) >= self.expiry_date.replace(tzinfo=timezone.utc):
+                return self.RewardStatuses.EXPIRED
+            return self.RewardStatuses.ISSUED
+        return self.RewardStatuses.UNALLOCATED
+
     __table_args__ = (
         UniqueConstraint(
             "code",
             "retailer_id",
-            # "reward_config_id",
-            # name="code_retailer_reward_config_unq",
+            # "reward_config_id", # FIXME: We think this is not required?
+            # name="code_retailer_reward_config_unq", # TODO
             name="code_retailer_unq",
         ),
     )
@@ -352,6 +374,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
 class RewardConfig(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "reward_config"
 
+    slug = Column(String, index=True, nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     status = Column(Enum(RewardTypeStatuses), nullable=False, default=RewardTypeStatuses.ACTIVE)
@@ -364,6 +387,8 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
     reward_rules = relationship("RewardRule", back_populates="reward_config")
 
     __mapper_args__ = {"eager_defaults": True}
+
+    __table_args__ = (UniqueConstraint("slug", "retailer_id", name="slug_retailer_unq"),)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.id})"
