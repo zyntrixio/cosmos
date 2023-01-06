@@ -50,7 +50,7 @@ def sync_run_query(
         try:
             return fn(**kwargs)
         except exc.DBAPIError as ex:
-            logger.debug(f"Attempt failed: {type(ex).__name__} {ex}")
+            logger.info(f"Attempt failed: {type(ex).__name__} {ex}")
             if rollback_on_exc:
                 session.rollback()
 
@@ -75,7 +75,7 @@ async def async_run_query(
         try:
             return await fn(**kwargs)
         except exc.DBAPIError as ex:
-            logger.debug(f"Attempt failed: {type(ex).__name__} {ex}")
+            logger.info(f"Attempt failed: {type(ex).__name__} {ex}")
             if rollback_on_exc:
                 await session.rollback()
 

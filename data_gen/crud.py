@@ -193,7 +193,6 @@ def _generate_allocated_rewards(
             for campaign in active_campaigns:
                 if reward_status == AccountHolderRewardStatuses.PENDING:
                     continue
-                issue_date = datetime.now(tz=timezone.utc) - timedelta(days=14)
                 for reward_n in range(how_many):
                     reward_uuid = uuid4()
                     reward_code = hashids.encode(i, reward_n, account_holder_n)
@@ -207,7 +206,6 @@ def _generate_allocated_rewards(
                                 reward_code=reward_code,
                                 reward_config_id=campaign.reward_config.id,
                                 reward_status=reward_status,
-                                issue_date=issue_date,
                             )
                         )
                     )
@@ -305,6 +303,7 @@ def setup_retailer(
     fetch_type_name: str,
     loyalty_type: str,
     campaign_slug: str,
+    reward_slug: str,
     refund_window: int | None,
 ) -> Retailer:
     retailer = _get_retailer(db_session, retailer_slug)
@@ -343,7 +342,7 @@ def setup_retailer(
     for i in range(1, 6):
         db_session.add(RetailerStore(store_name=f"Super Store {i}", mid=f"mid-{i}", retailer_id=retailer.id))
     db_session.add(RetailerFetchType(**retailer_fetch_type_payload(retailer.id, fetch_type.id)))
-    reward_config = RewardConfig(**reward_config_payload(retailer.id, fetch_type.id))
+    reward_config = RewardConfig(**reward_config_payload(retailer.id, fetch_type.id, reward_slug))
     db_session.add(reward_config)
     db_session.flush()
     if loyalty_type == "STAMPS":

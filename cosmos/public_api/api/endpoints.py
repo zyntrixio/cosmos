@@ -1,0 +1,47 @@
+import logging
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import HTMLResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from cosmos.core.api.deps import get_session
+from cosmos.core.config import settings
+from cosmos.public_api.api.schemas import RewardMicrositeResponseSchema
+from cosmos.public_api.api.service import PublicService
+
+logger = logging.getLogger("opt-out-marketing")
+
+public_router = APIRouter(prefix=f"{settings.API_PREFIX}/public")
+
+
+@public_router.get(
+    path="/{retailer_slug}/marketing/unsubscribe",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_class=HTMLResponse,
+)
+async def opt_out_marketing_preferences(
+    retailer_slug: str,
+    u: str = None,
+    db_session: AsyncSession = Depends(get_session),
+) -> Any:
+    service = PublicService(db_session=db_session, retailer_slug=retailer_slug)
+    service_result = await service.handle_marketing_unsubscribe(u)
+    return service_result.handle_service_result()
+
+
+@public_router.get(
+    path="/{retailer_slug}/reward/{reward_uuid}",
+    status_code=status.HTTP_200_OK,
+    response_model=RewardMicrositeResponseSchema,
+    response_model_exclude_none=True,
+)
+async def get_reward_for_micorsite(
+    reward_uuid: str,
+    retailer_slug: str,
+    db_session: AsyncSession = Depends(get_session),
+) -> Any:
+    service = PublicService(db_session=db_session, retailer_slug=retailer_slug)
+    service_result = await service.handle_get_reward_for_microsite(reward_uuid)
+    return service_result.handle_service_result()

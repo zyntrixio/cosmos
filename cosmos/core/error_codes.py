@@ -69,6 +69,20 @@ class ErrorCode(enum.Enum):
             code="INVALID_RETAILER",
         ),
     )
+    NO_REWARD_FOUND = HttpError(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=HttpErrorDetail(
+            display_message="Reward not found.",
+            code="NO_REWARD_FOUND",
+        ),
+    )
+    INVALID_REQUEST = HttpError(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=HttpErrorDetail(
+            display_message="Request is invalid",
+            code="INVALID_REQUEST",
+        ),
+    )
     # INVALID_RETAILER = "INVALID_RETAILER"
     # INVALID_TOKEN = "INVALID_TOKEN"
     # INVALID_ACCOUNT_HOLDER_STATUS = "INVALID_ACCOUNT_HOLDER_STATUS"

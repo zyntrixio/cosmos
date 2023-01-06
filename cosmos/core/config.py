@@ -43,7 +43,7 @@ class LogLevel(str):
 
 
 class Settings(BaseSettings):
-    API_PREFIX: str = "/loyalty"
+    API_PREFIX: str = "/api"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     TESTING: bool = False

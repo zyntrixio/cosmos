@@ -1,0 +1,15 @@
+[run]
+omit = *test*
+       *alembic*
+       tests/*
+       cosmos/version.py
+       cosmos/
+       data_gen
+branch = True
+concurrency = thread
+              greenlet
+
+[report]
+fail_under = 0
+exclude_lines =
+        pragma: no cover

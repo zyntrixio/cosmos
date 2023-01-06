@@ -1,23 +1,23 @@
 import re
 import uuid
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
 from pydantic.validators import str_validator
 
-from cosmos.accounts.enums import AccountHolderStatuses, RewardApiStatuses
+from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.core.api.service import ServiceException
 from cosmos.core.error_codes import ErrorCode
-from cosmos.db.models import PendingReward
+from cosmos.db.models import PendingReward, Reward
 
 from .utils import utc_datetime, utc_datetime_from_timestamp
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator
 
-    from cosmos.db.models import CampaignBalance, Reward, Transaction
+    from cosmos.db.models import CampaignBalance, Transaction
 
 strip_currency_re = re.compile(r"^(-)?[^0-9-]?([0-9,.]+)[^0-9-]*$")
 
@@ -57,22 +57,8 @@ class AccountHolderRewardSchema(BaseModel):
     campaign_slug: str
     issued_date: utc_datetime
     redeemed_date: utc_datetime | None
-    expiry_date: utc_datetime  # expiry_date must be declared before status
-    status: RewardApiStatuses | None = None
-
-    @classmethod
-    def from_orm(cls, obj: "Reward") -> BaseModel:  # type: ignore [override]
-        obj.campaign_slug = obj.campaign.slug
-        if obj.redeemed_date:
-            obj.status = RewardApiStatuses.REDEEMED
-        elif obj.expiry_date.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
-            obj.status = RewardApiStatuses.EXPIRED
-        elif obj.cancelled_date:
-            obj.status = RewardApiStatuses.CANCELLED
-        else:
-            obj.status = RewardApiStatuses.ISSUED
-
-        return super().from_orm(obj)
+    expiry_date: utc_datetime
+    status: Reward.RewardStatuses | None = None
 
     @validator("issued_date", "redeemed_date", "expiry_date", allow_reuse=True)
     @classmethod
@@ -81,6 +67,7 @@ class AccountHolderRewardSchema(BaseModel):
 
     class Config:
         orm_mode = True
+        arbitrary_types_allowed = True
 
 
 class PendingRewardAllocationSchema(BaseModel):
