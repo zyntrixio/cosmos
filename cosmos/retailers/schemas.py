@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 from pydantic import EmailStr, Field, StrictBool, StrictFloat, StrictInt, StrictStr, constr, create_model
 
@@ -32,7 +32,7 @@ MARKETING_FIELD_TYPES = {
 }
 
 
-def retailer_profile_info_validation_factory(profile_config: dict) -> Type["BaseModel"]:
+def retailer_profile_info_validation_factory(profile_config: dict) -> type["BaseModel"]:
     return create_model(
         "ProfileConfigSchema",
         **{
@@ -45,7 +45,7 @@ def retailer_profile_info_validation_factory(profile_config: dict) -> Type["Base
     )
 
 
-def retailer_marketing_info_validation_factory(marketing_config: dict) -> Type["BaseModel"]:
+def retailer_marketing_info_validation_factory(marketing_config: dict) -> type["BaseModel"]:
     return create_model(
         "MarketingConfigSchema",
         **{

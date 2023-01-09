@@ -190,7 +190,7 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
     reward_goal = Column(Integer, nullable=False)
     allocation_window = Column(Integer, nullable=False, server_default="0")
     reward_cap = Column(
-        Enum(RewardCap, values_callable=lambda x: [str(e.value) for e in RewardCap]),
+        Enum(RewardCap, values_callable=lambda _: [str(e.value) for e in RewardCap]),
         nullable=True,
     )
     campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)

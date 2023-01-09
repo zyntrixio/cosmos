@@ -1,5 +1,3 @@
-import uuid
-
 from cosmos_message_lib.schemas import utc_datetime
 from pydantic import BaseModel, Field, NonNegativeInt
 
@@ -26,22 +24,6 @@ class AccountEventSchema(BaseModel):
 class AccountRequestSchema(AccountEventSchema):
     fields: list[dict]
     result: str | None
-
-
-class RewardStatusDataSchema(BaseModel):
-    new_status: str
-    original_status: str | None
-    count: int | None
-
-
-class RewardUpdateDataSchema(BaseModel):
-    new_total_cost_to_user: int
-    original_total_cost_to_user: int
-
-
-class TotalCostToUserDataSchema(RewardUpdateDataSchema):
-    pending_reward_id: int
-    pending_reward_uuid: uuid.UUID
 
 
 class MarketingPreferenceChangeSchema(BaseModel):

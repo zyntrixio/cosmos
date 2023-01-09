@@ -4,11 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cosmos.accounts.api.schemas import AccountHolderEnrolment
 from cosmos.accounts.api.service import AccountService
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.service import ServiceException
+from cosmos.core.api.service import ServiceError
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
-get_retailer = RetailerDependency(no_retailer_found_exc=ServiceException(error_code=ErrorCode.INVALID_RETAILER))
+get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(error_code=ErrorCode.INVALID_RETAILER))
 
 router = APIRouter(prefix="/loyalty")
 

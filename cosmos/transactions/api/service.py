@@ -9,7 +9,7 @@ from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
 from cosmos.core.api.crud import commit
-from cosmos.core.api.service import Service, ServiceException, ServiceResult
+from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
 from cosmos.transactions.api import crud
@@ -371,16 +371,16 @@ class TransactionService(Service):
 
     async def handle_incoming_transaction(
         self, request_payload: CreateTransactionSchema
-    ) -> ServiceResult[str, ServiceException]:
-        "Main handler for incoming transactions"
+    ) -> ServiceResult[str, ServiceError]:
+        """Main handler for incoming transactions"""
 
         account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
         if not account_holder:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         transaction = await crud.create_transaction(
             self.db_session,
@@ -390,7 +390,7 @@ class TransactionService(Service):
         )
         if not transaction.processed:
             await commit(self.db_session)
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.DUPLICATE_TRANSACTION))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.DUPLICATE_TRANSACTION))
 
         campaigns = list(
             filter(
@@ -400,7 +400,7 @@ class TransactionService(Service):
             )
         )
         if not campaigns:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
 
         adjustments = await self._process_adjustments(campaigns, transaction, account_holder.id)
         await commit(self.db_session)

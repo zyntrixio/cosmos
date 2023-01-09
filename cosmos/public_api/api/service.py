@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit, get_reward
-from cosmos.core.api.service import ServiceException, ServiceResult
+from cosmos.core.api.service import ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.public_api.api import crud
 from cosmos.public_api.api.metrics import invalid_marketing_opt_out, microsite_reward_requests
@@ -36,7 +36,7 @@ class PublicService:
         self.db_session = db_session
         self.retailer_slug = retailer_slug
 
-    async def handle_marketing_unsubscribe(self, u: str | None) -> ServiceResult[str, ServiceException]:
+    async def handle_marketing_unsubscribe(self, u: str | None) -> ServiceResult[str, ServiceError]:
         msg = "You have opted out of any further marketing"
         if u:
             try:
@@ -81,7 +81,7 @@ class PublicService:
         html_resp = RESPONSE_TEMPLATE.format(msg=msg)
         return ServiceResult(value=html_resp)
 
-    async def handle_get_reward_for_microsite(self, reward_uuid: str) -> ServiceResult["Reward", ServiceException]:
+    async def handle_get_reward_for_microsite(self, reward_uuid: str) -> ServiceResult["Reward", ServiceError]:
         try:
             valid_reward_uuid = UUID(reward_uuid)
         except ValueError:
@@ -90,7 +90,7 @@ class PublicService:
                 unknown_retailer=False,
                 invalid_reward_uuid=True,
             ).inc()
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.INVALID_REQUEST))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_REQUEST))
 
         if retailer := await get_retailer_by_slug(self.db_session, retailer_slug=self.retailer_slug):
             if reward := await get_reward(self.db_session, reward_uuid=valid_reward_uuid, retailer_id=retailer.id):
@@ -98,11 +98,11 @@ class PublicService:
                     response_status=status.HTTP_200_OK, unknown_retailer=False, invalid_reward_uuid=False
                 ).inc()
                 return ServiceResult(reward)
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_REWARD_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_REWARD_FOUND))
 
         microsite_reward_requests.labels(
             response_status=status.HTTP_404_NOT_FOUND,
             unknown_retailer=retailer is None,
             invalid_reward_uuid=retailer is not None,
         ).inc()
-        return ServiceResult(error=ServiceException(error_code=ErrorCode.INVALID_REQUEST))
+        return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_REQUEST))

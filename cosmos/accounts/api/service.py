@@ -22,7 +22,7 @@ from cosmos.core.api.crud import commit  # , create_retry_task
 
 # from cosmos.core.api.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.core.api.exceptions import RequestPayloadValidationError
-from cosmos.core.api.service import Service, ServiceException, ServiceResult
+from cosmos.core.api.service import Service, ServiceError, ServiceResult
 
 # from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 class AccountService(Service):
     def _validate_profile_data(self, profile_data: dict, retailer_profile_config: dict) -> dict:
-        ProfileConfigSchema = retailer_profile_info_validation_factory(retailer_profile_config)
+        ProfileConfigSchema = retailer_profile_info_validation_factory(retailer_profile_config)  # noqa N806
         return ProfileConfigSchema(**profile_data).dict(exclude_unset=True)
 
     def _process_and_validate_marketing_data(
@@ -49,7 +49,7 @@ class AccountService(Service):
             return []
 
         marketing_config = yaml.safe_load(marketing_config_raw)
-        MarketingConfigSchema = retailer_marketing_info_validation_factory(marketing_config)
+        MarketingConfigSchema = retailer_marketing_info_validation_factory(marketing_config)  # noqa N806
         validated_marketing_data = MarketingConfigSchema(**{mk.key: mk.value for mk in marketing_prefs}).dict(
             exclude_unset=False
         )
@@ -57,11 +57,7 @@ class AccountService(Service):
         marketing_preferences = []
         for k, v in validated_marketing_data.items():
             value_type = MarketingPreferenceValueTypes[marketing_config[k]["type"].upper()]
-            if value_type == MarketingPreferenceValueTypes.STRING_LIST:
-                value = ", ".join(v)
-            else:
-                value = str(v)
-
+            value = ", ".join(v) if value_type == MarketingPreferenceValueTypes.STRING_LIST else str(v)
             marketing_preferences.append({"key_name": k, "value": value, "value_type": value_type})
 
         return marketing_preferences
@@ -69,7 +65,7 @@ class AccountService(Service):
     async def handle_account_enrolment(
         self, request_payload: AccountHolderEnrolment, *, channel: str
     ) -> ServiceResult[dict, Exception]:
-        "Main handler for account holder enrolments"
+        """Main handler for account holder enrolments"""
         result = "Error"  # default - assume unhandled Error until we reach Accepted after successful commit
         try:
             retailer_profile_config = yaml.safe_load(self.retailer.profile_config)
@@ -87,9 +83,9 @@ class AccountService(Service):
                     profile_data=profile_data,
                     marketing_preferences_data=marketing_preferences_data,
                 )
-            except crud.AccountExists:
+            except crud.AccountExistsError:
                 result = ErrorCode.ACCOUNT_EXISTS.name
-                return ServiceResult(error=ServiceException(error_code=ErrorCode.ACCOUNT_EXISTS))
+                return ServiceResult(error=ServiceError(error_code=ErrorCode.ACCOUNT_EXISTS))
 
             # callback_task = await create_retry_task(
             #     self.db_session,
@@ -140,8 +136,8 @@ class AccountService(Service):
 
     async def handle_account_auth(
         self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None = 10, channel: str
-    ) -> ServiceResult["AccountHolder", ServiceException]:
-        "Main handler for account auth"
+    ) -> ServiceResult["AccountHolder", ServiceError]:
+        """Main handler for account auth"""
         account_holder = await crud.get_account_holder(
             self.db_session,
             retailer_id=self.retailer.id,
@@ -152,9 +148,9 @@ class AccountService(Service):
             account_number=request_payload.account_number,
         )
         if not account_holder:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         activity_payload = ActivityType.get_account_authentication_activity_data(
             account_holder_uuid=account_holder.account_holder_uuid,
@@ -170,8 +166,8 @@ class AccountService(Service):
 
     async def handle_get_account(
         self, *, account_holder_uuid: str | UUID4, tx_qty: int | None = 10, is_status_request: bool
-    ) -> ServiceResult["AccountHolder", ServiceException]:
-        "Main handler for account data"
+    ) -> ServiceResult["AccountHolder", ServiceError]:
+        """Main handler for account data"""
 
         fetch_extras = not is_status_request
         account_holder = await crud.get_account_holder(
@@ -183,9 +179,9 @@ class AccountService(Service):
             account_holder_uuid=account_holder_uuid,
         )
         if not account_holder:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         return ServiceResult(account_holder)
 
@@ -193,9 +189,9 @@ class AccountService(Service):
         self,
         *,
         account_holder_uuid: str | UUID4,
-        request_payload: AccountHolderUpdateStatusSchema,
-    ) -> ServiceResult[dict, ServiceException]:
-        "Handler for account holder status update"
+        request_payload: AccountHolderUpdateStatusSchema,  # noqa ARG002
+    ) -> ServiceResult[dict, ServiceError]:
+        """Handler for account holder status update"""
         account_holder = await crud.get_account_holder(
             self.db_session,
             retailer_id=self.retailer.id,
@@ -203,9 +199,9 @@ class AccountService(Service):
         )
 
         if not account_holder:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
         if account_holder.status == AccountHolderStatuses.INACTIVE:
-            return ServiceResult(error=ServiceException(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
         # TODO/FIXME: Needs implementation
         # account_anonymisation_retry_task = await crud.update_account_holder_status(

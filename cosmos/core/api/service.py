@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 from cosmos.core.error_codes import ErrorCode
+from cosmos.db.base_class import async_run_query
 
 if TYPE_CHECKING:
 
@@ -29,7 +30,7 @@ class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
         if self.success:
             return "<ServiceResult Success>"
 
-        return f"<ServiceException {self.error!r}>"
+        return f"<ServiceError {self.error!r}>"
 
     def handle_service_result(self) -> ServiceResultValue:
         if self.error:
@@ -43,7 +44,13 @@ class Service:
         self.db_session = db_session
         self.retailer = retailer
 
+    async def commit_db_changes(self) -> None:
+        async def _query() -> None:
+            await self.db_session.commit()
 
-class ServiceException(Exception):
+        await async_run_query(_query, self.db_session, rollback_on_exc=False)
+
+
+class ServiceError(Exception):
     def __init__(self, error_code: ErrorCode) -> None:
         self.error_code = error_code

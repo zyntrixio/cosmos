@@ -12,6 +12,8 @@ from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
 
+    from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
+
     from cosmos.db.models import Campaign
 
 
@@ -75,17 +77,17 @@ async def create_transaction(
     transaction_data: CreateTransactionSchema,
 ) -> Transaction:
 
-    transaction_kwargs = dict(
-        account_holder_id=account_holder_id,
-        retailer_id=retailer_id,
-        transaction_id=transaction_data.transaction_id,
-        amount=transaction_data.amount,
-        mid=transaction_data.mid,
-        datetime=cast(datetime, transaction_data.datetime).replace(tzinfo=None),
-        payment_transaction_id=transaction_data.payment_transaction_id,
-    )
+    transaction_kwargs = {
+        "account_holder_id": account_holder_id,
+        "retailer_id": retailer_id,
+        "transaction_id": transaction_data.transaction_id,
+        "amount": transaction_data.amount,
+        "mid": transaction_data.mid,
+        "datetime": cast(datetime, transaction_data.datetime).replace(tzinfo=None),
+        "payment_transaction_id": transaction_data.payment_transaction_id,
+    }
 
-    async def _query() -> Transaction:
+    async def _query(savepoint: "AsyncSessionTransaction") -> Transaction:
         try:
             nested_trans = await db_session.begin_nested()
             transaction = Transaction(processed=True, **transaction_kwargs)
@@ -96,7 +98,7 @@ async def create_transaction(
             await nested_trans.rollback()
             transaction = Transaction(processed=None, **transaction_kwargs)
             db_session.add(transaction)
-            await db_session.flush()
+            await savepoint.commit()
             return transaction
 
     return await async_run_query(_query, db_session)
@@ -105,12 +107,12 @@ async def create_transaction(
 async def associate_campaign_to_transaction(
     db_session: "AsyncSession", campaign_id: int, transaction_id: int, adjustment: int | None
 ) -> TransactionCampaign:
-    async def _query() -> TransactionCampaign:
+    async def _query(savepoint: "AsyncSessionTransaction") -> TransactionCampaign:
         transaction_campaign = TransactionCampaign(
             campaign_id=campaign_id, transaction_id=transaction_id, adjustment=adjustment
         )
         db_session.add(transaction_campaign)
-        db_session.flush()
+        await savepoint.commit()
         return transaction_campaign
 
     return await async_run_query(_query, db_session)

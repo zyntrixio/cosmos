@@ -1,5 +1,3 @@
-# pylint: disable=import-outside-toplevel,protected-access,invalid-name
-
 import logging
 import uuid
 
@@ -84,12 +82,13 @@ def test_import_agent__process_csv(setup: SetupType, mocker: MockerFixture) -> N
     # We should be sentry warned about the existing token
     assert capture_message_spy.call_count == 2  # Errors should all be rolled up in to one call per error category
     assert (
-        "Invalid rows found in re-test/rewards.import.test-reward-slug.new-reward.csv:\nrows: 5, 6"
-        == capture_message_spy.call_args_list[0][0][0]
+        capture_message_spy.call_args_list[0][0][0]
+        == "Invalid rows found in re-test/rewards.import.test-reward-slug.new-reward.csv:\nrows: 5, 6"
     )
     assert (
-        "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:" "\nrows: 4"
-    ) == capture_message_spy.call_args_list[1][0][0]
+        capture_message_spy.call_args_list[1][0][0]
+        == "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:\nrows: 4"
+    )
 
 
 def test_import_agent__process_csv_with_expiry_date(setup: SetupType, mocker: MockerFixture) -> None:
@@ -104,7 +103,7 @@ def test_import_agent__process_csv_with_expiry_date(setup: SetupType, mocker: Mo
         db_session=db_session,
     )
 
-    expiry_date = datetime.strptime("2023-01-16", "%Y-%m-%d").date()
+    expiry_date = datetime.strptime("2023-01-16", "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
     rewards = _get_reward_rows(db_session)
     for reward in rewards[1:4]:
         assert reward.expiry_date.date() == expiry_date
@@ -209,8 +208,9 @@ def test_import_agent__process_csv_not_soft_deleted(
     # We should be sentry warned about the existing token
     assert capture_message_spy.call_count == 1
     assert (
-        "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:" "\nrows: 4"
-    ) == capture_message_spy.call_args_list[0][0][0]
+        capture_message_spy.call_args_list[0][0][0]
+        == "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:\nrows: 4"
+    )
 
 
 def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(setup: SetupType, mocker: MockerFixture) -> None:
@@ -247,8 +247,9 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(setup: Setu
     # We should be sentry warned about the existing token
     assert capture_message_spy.call_count == 1
     assert (
-        "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:" "\nrows: 4"
-    ) == capture_message_spy.call_args_list[0][0][0]
+        capture_message_spy.call_args_list[0][0][0]
+        == "Pre-existing reward codes found in re-test/rewards.import.test-reward-slug.new-reward.csv:\nrows: 4"
+    )
 
 
 def test_import_agent__reward_config_non_active_status_error(
@@ -443,14 +444,14 @@ def test_updates_agent__process_csv_reward_code_fails_malformed_csv_rows(
 def test_updates_agent__process_updates(setup: SetupType, mocker: MockerFixture, account_holder: AccountHolder) -> None:
     db_session, reward_config, reward = setup
     reward.account_holder_id = account_holder.id  # allocated/issued
-    reward.issued_date = datetime(2021, 7, 25)  # not required but for the sake of completeness
+    reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
     other_reward = Reward(
         code="other_code",
         retailer_id=account_holder.retailer_id,
         reward_uuid=uuid.uuid4(),
         reward_config_id=reward_config.id,
         account_holder_id=account_holder.id,
-        issued_date=datetime(2021, 7, 20),
+        issued_date=datetime(2021, 7, 20, tzinfo=timezone.utc),
     )
     db_session.add(other_reward)
     db_session.commit()
@@ -510,11 +511,11 @@ def test_updates_agent__process_updates(setup: SetupType, mocker: MockerFixture,
     db_session.refresh(reward)
     db_session.refresh(other_reward)
 
-    assert reward.redeemed_date == datetime(2021, 7, 30)
+    assert reward.redeemed_date == datetime(2021, 7, 30, tzinfo=timezone.utc).replace(tzinfo=None)
     assert reward.cancelled_date is None
     assert reward.status == Reward.RewardStatuses.REDEEMED
 
-    assert other_reward.cancelled_date == datetime(2021, 7, 29)
+    assert other_reward.cancelled_date == datetime(2021, 7, 29, tzinfo=timezone.utc).replace(tzinfo=None)
     assert other_reward.redeemed_date is None
     assert other_reward.status == Reward.RewardStatuses.CANCELLED
 
@@ -524,7 +525,7 @@ def test_updates_agent__process_updates_duplicates(
 ) -> None:
     db_session, reward_config, reward = setup
     reward.account_holder_id = account_holder.id  # allocated/issued
-    reward.issued_date = datetime(2021, 7, 25)  # not required but for the sake of completeness
+    reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
 
     other_reward = Reward(
         code="code2",
@@ -532,7 +533,7 @@ def test_updates_agent__process_updates_duplicates(
         reward_uuid=uuid.uuid4(),
         reward_config_id=reward_config.id,
         account_holder_id=account_holder.id,
-        issued_date=datetime(2021, 7, 29),
+        issued_date=datetime(2021, 7, 29, tzinfo=timezone.utc),
     )
     db_session.add(other_reward)
     db_session.commit()
@@ -602,7 +603,7 @@ def test_updates_agent__process_updates_duplicates(
     assert reward.cancelled_date is None
     assert reward.status == Reward.RewardStatuses.ISSUED  # This one is ignored due to duplicate/conflicting lines
 
-    assert other_reward.cancelled_date == datetime(2021, 7, 30)
+    assert other_reward.cancelled_date == datetime(2021, 7, 30, tzinfo=timezone.utc).replace(tzinfo=None)
     assert other_reward.redeemed_date is None
     assert other_reward.status == Reward.RewardStatuses.CANCELLED
 
@@ -643,7 +644,7 @@ def test_updates_agent__process_updates_reward_code_not_allocated(setup: SetupTy
     assert capture_message_spy.call_count == 1  # Errors should all be rolled up in to a single call
     expected_error_msg: str = capture_message_spy.call_args.args[0]
     assert "Unallocated reward codes found" in expected_error_msg
-    assert len(reward_update_rows) == 0
+    assert not reward_update_rows
     assert reward.status == Reward.RewardStatuses.UNALLOCATED
     assert reward.expiry_date is None
     assert reward.cancelled_date is None
@@ -685,11 +686,11 @@ def test_updates_agent__process_updates_reward_code_does_not_exist(setup: SetupT
     assert capture_message_spy.call_count == 1  # Errors should all be rolled up in to a single call
     expected_error_msg: str = capture_message_spy.call_args.args[0]
     assert "Unknown reward codes found while processing /re-test/rewards.update.test.csv, rows: 1" in expected_error_msg
-    assert len(reward_update_rows) == 0
+    assert not reward_update_rows
 
 
 class Blob:
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
 
@@ -777,8 +778,8 @@ def test_process_blobs_not_csv(setup: SetupType, mocker: MockerFixture) -> None:
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)
     assert logger_error_spy.call_count == 1  # Errors should all be rolled up in to a single call
     assert (
-        "re-test/rewards.update.update.docx does not have .csv ext. Moving to ERROR-CONTAINER for checking"
-        == logger_error_spy.call_args.args[0]
+        logger_error_spy.call_args.args[0]
+        == "re-test/rewards.update.update.docx does not have .csv ext. Moving to ERROR-CONTAINER for checking"
     )
     mock_move_blob.assert_called_once()
     assert mock_move_blob.call_args[0][0] == "ERROR-CONTAINER"
@@ -818,8 +819,8 @@ def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFix
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)
     assert logger_error_spy.call_count == 1  # Errors should all be rolled up in to a single call
     assert (
-        "re-test/rewards.update.update.csv is a duplicate. Moving to ERROR-CONTAINER for checking"
-        == logger_error_spy.call_args.args[0]
+        logger_error_spy.call_args.args[0]
+        == "re-test/rewards.update.update.csv is a duplicate. Moving to ERROR-CONTAINER for checking"
     )
     mock_move_blob.assert_called_once()
     assert mock_move_blob.call_args[0][0] == "ERROR-CONTAINER"

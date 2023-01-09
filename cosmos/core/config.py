@@ -99,10 +99,10 @@ class Settings(BaseSettings):
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     @classmethod
     def assemble_db_connection(cls, v: str, values: dict[str, Any]) -> str:
-        if v != "":
-            db_uri = v.format(values["POSTGRES_DB"])
-        else:
-            db_uri = PostgresDsn.build(
+        db_uri = (
+            v.format(values["POSTGRES_DB"])
+            if v
+            else PostgresDsn.build(
                 scheme="postgresql",
                 user=values.get("POSTGRES_USER"),
                 password=values.get("POSTGRES_PASSWORD"),
@@ -110,7 +110,7 @@ class Settings(BaseSettings):
                 port=values.get("POSTGRES_PORT"),
                 path="/" + values.get("POSTGRES_DB", ""),
             )
-
+        )
         if values["TESTING"]:
             db_uri += "_test"
 
@@ -119,15 +119,15 @@ class Settings(BaseSettings):
     @validator("SQLALCHEMY_DATABASE_URI_ASYNC", pre=True)
     @classmethod
     def adapt_db_connection_to_async(cls, v: str, values: dict[str, Any]) -> str:
-        if v != "":
-            db_uri = v.format(values["POSTGRES_DB"])
-        else:
-            db_uri = (
+        return (
+            v.format(values["POSTGRES_DB"])
+            if v
+            else (
                 values["SQLALCHEMY_DATABASE_URI"]
                 .replace("postgresql://", "postgresql+asyncpg://")
                 .replace("sslmode=", "ssl=")
             )
-        return db_uri
+        )
 
     KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
 

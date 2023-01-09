@@ -17,7 +17,7 @@ from cosmos.core.api.exception_handlers import (
 )
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.healthz import healthz_router
-from cosmos.core.api.service import ServiceException
+from cosmos.core.api.service import ServiceError
 
 
 def create_app() -> FastAPI:
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(RequestPayloadValidationError, payload_request_validation_error)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
-    fapi.add_exception_handler(ServiceException, service_exception_handler)
+    fapi.add_exception_handler(ServiceError, service_exception_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
 
     fapi.add_middleware(MetricsSecurityMiddleware)

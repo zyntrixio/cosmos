@@ -11,7 +11,7 @@ from cosmos.core.api.exception_handlers import (
     service_exception_handler,
     unexpected_exception_handler,
 )
-from cosmos.core.api.service import ServiceException
+from cosmos.core.api.service import ServiceError
 from cosmos.transactions.api.endpoints.transaction import router as transactions_router
 
 
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
-    fapi.add_exception_handler(ServiceException, service_exception_handler)
+    fapi.add_exception_handler(ServiceError, service_exception_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
 
     fapi.add_middleware(MetricsSecurityMiddleware)

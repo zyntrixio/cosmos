@@ -3,10 +3,11 @@ import logging
 import string
 
 from collections import defaultdict
+from contextlib import suppress
 from datetime import date, datetime, timezone
 from functools import lru_cache
 from io import StringIO
-from typing import TYPE_CHECKING, Callable, DefaultDict, NamedTuple
+from typing import TYPE_CHECKING, DefaultDict, NamedTuple
 
 import sentry_sdk
 
@@ -19,7 +20,6 @@ from sqlalchemy.sql import and_, not_, or_
 
 from cosmos.core.config import settings
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
-from cosmos.db.base_class import sync_run_query
 from cosmos.db.models import Retailer, Reward, RewardConfig, RewardFileLog, RewardUpdate
 from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
@@ -61,22 +61,18 @@ class BlobFileAgent:
             settings.BLOB_STORAGE_DSN, logger=blob_client_logger
         )
         # type hints for blob storage still not working properly, remove ignores if it gets fixed.
-        try:
+        with suppress(ResourceExistsError):
             self.blob_service_client.create_container(self.container_name)  # type: ignore
-        except ResourceExistsError:
-            pass  # this is fine
+
         self.container_client = self.blob_service_client.get_container_client(self.container_name)  # type: ignore
 
     def _blob_name_is_duplicate(self, db_session: "Session", file_name: str) -> bool:
-        file_name = sync_run_query(
-            lambda: db_session.execute(
-                select(RewardFileLog.file_name).where(
-                    RewardFileLog.file_agent_type == self.file_agent_type,
-                    RewardFileLog.file_name == file_name,
-                )
-            ).scalar_one_or_none(),
-            db_session,
-        )
+        file_name = db_session.execute(
+            select(RewardFileLog.file_name).where(
+                RewardFileLog.file_agent_type == self.file_agent_type,
+                RewardFileLog.file_name == file_name,
+            )
+        ).scalar_one_or_none()
 
         return file_name is not None
 
@@ -87,7 +83,7 @@ class BlobFileAgent:
 
     @staticmethod
     def get_retailers(db_session: "Session") -> list[Retailer]:
-        return sync_run_query(lambda: db_session.execute(select(Retailer)).scalars().all(), db_session)
+        return db_session.execute(select(Retailer)).scalars().all()
 
     def process_csv(
         self, retailer: Retailer, blob_name: str, blob_content: str, db_session: "Session"
@@ -103,10 +99,8 @@ class BlobFileAgent:
         dst_blob_name: str | None = None,
     ) -> None:
 
-        try:
+        with suppress(ResourceExistsError):
             self.blob_service_client.create_container(destination_container)
-        except ResourceExistsError:
-            pass  # this is fine
 
         dst_blob_client = self.blob_service_client.get_blob_client(
             destination_container,
@@ -235,7 +229,7 @@ class RewardImportAgent(BlobFileAgent):
     def do_import(self) -> None:  # pragma: no cover
         super()._do_import()
 
-    @lru_cache()
+    @lru_cache  # noqa: B019
     def reward_configs_by_slug(self, retailer_id: int, db_session: "Session") -> dict[str, RewardConfig]:
         reward_configs = (
             db_session.execute(select(RewardConfig).where(RewardConfig.retailer_id == retailer_id)).scalars().all()
@@ -247,7 +241,7 @@ class RewardImportAgent(BlobFileAgent):
         if ".expires." in sub_blob_name:
             try:
                 extracted_date = sub_blob_name.split(".expires.")[1].split(".")[0]
-                expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").date()
+                expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
             except ValueError as ex:
                 raise BlobProcessingError(f"Invalid filename, expiry date is invalid: {blob_name}") from ex
         else:
@@ -282,7 +276,7 @@ class RewardImportAgent(BlobFileAgent):
 
         row_nums_by_code: defaultdict[str, list[int]] = defaultdict(list)
         for row_num, row in enumerate(content_reader, start=1):
-            if not len(row) == 1:
+            if len(row) != 1:
                 invalid_rows.append(row_num)
             elif code := row[0].strip():
                 row_nums_by_code[code].append(row_num)
@@ -317,7 +311,7 @@ class RewardImportAgent(BlobFileAgent):
             slug = sub_blob_name.split(".", 1)[0]
             reward_config = self.reward_configs_by_slug(retailer.id, db_session)[slug]
         except KeyError:
-            raise BlobProcessingError(f"No RewardConfig found for slug {slug}")  # pylint: disable=raise-missing-from
+            raise BlobProcessingError(f"No RewardConfig found for slug {slug}") from None
 
         if reward_config.status != RewardTypeStatuses.ACTIVE:
             raise RewardConfigNotActiveError(slug=slug)
@@ -398,7 +392,7 @@ class RewardUpdatesAgent(BlobFileAgent):
 
         if invalid_rows:
             msg = f"Error validating RewardUpdate from CSV file {blob_name}:\n" + "\n".join(
-                [f"row {row_num}: {repr(e)}" for row_num, e in invalid_rows]
+                [f"row {row_num}: {e!r}" for row_num, e in invalid_rows]
             )
             self._log_warn_and_alert(msg)
 
