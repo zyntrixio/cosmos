@@ -1,15 +1,12 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from cosmos.db.models import AccountHolder, Campaign, Reward, RewardConfig
+from cosmos.db.models import Campaign, Reward, RewardConfig
 from tests.conftest import SetupType
 
 
 def test_reward_status_prop_unallocated(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
     db_session, retailer, _ = setup
-
-    now = datetime.now(tz=timezone.utc)
-
     reward = Reward(
         account_holder_id=None,
         issued_date=None,

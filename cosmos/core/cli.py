@@ -30,7 +30,7 @@ def api(
     try:
         importlib.import_module(mod)
         uvicorn.run(f"{mod}:app", port=port, reload=dev)
-    except Exception as exc:
+    except Exception as exc:  # noqa BLE001
         logger.exception(f"Could not start {mod_name} service", exc_info=exc)
         raise typer.Abort() from exc
 

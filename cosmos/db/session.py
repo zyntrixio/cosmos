@@ -5,10 +5,7 @@ from sqlalchemy.pool import NullPool
 
 from cosmos.core.config import settings
 
-if settings.USE_NULL_POOL or settings.TESTING:
-    null_pool = {"poolclass": NullPool}
-else:
-    null_pool = {}  # pragma: no cover
+null_pool = {"poolclass": NullPool} if settings.USE_NULL_POOL or settings.TESTING else {}  # pragma: no cover
 
 # application_name
 CONNECT_ARGS = {"application_name": "cosmos"}

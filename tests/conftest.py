@@ -137,7 +137,7 @@ def test_account_holder_activation_data() -> dict:
         "credentials": {
             "first_name": "Test User",
             "last_name": "Test 1",
-            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").date(),
+            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").replace(tzinfo=timezone.utc).date(),
             "phone": "+447968100999",
             "address_line1": "Flat 3, Some Place",
             "address_line2": "Some Street",
@@ -251,8 +251,8 @@ def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campa
         "reward_config_id": reward_config.id,
         "code": "test_reward_code",
         "deleted": False,
-        "issued_date": datetime(2021, 6, 25, 14, 30, 00).replace(tzinfo=timezone.utc),
-        "expiry_date": datetime(2121, 6, 25, 14, 30, 00).replace(tzinfo=timezone.utc),
+        "issued_date": datetime(2021, 6, 25, 14, 30, 00, tzinfo=timezone.utc),
+        "expiry_date": datetime(2121, 6, 25, 14, 30, 00, tzinfo=timezone.utc),
         "redeemed_date": None,
         "cancelled_date": None,
         "account_holder": None,  # Pass this in as an account_holder obj

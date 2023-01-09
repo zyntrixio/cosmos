@@ -74,7 +74,7 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
 #                 break
 #             else:
 #                 sync_run_query(
-#                     lambda: db_session.commit(), db_session, rollback_on_exc=False   # noqa
+#                     lambda: db_session.commit(), db_session, rollback_on_exc=False
 #                 )
 #         else:
 #             logger.info("No PendingRewards to process.")

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from uuid import UUID
 
+from cosmos_message_lib.schemas import ActivitySchema
 from pydantic import NonNegativeInt
 
 from cosmos.core.activity.schemas import (
@@ -10,27 +11,16 @@ from cosmos.core.activity.schemas import (
     BalanceChangeDataSchema,
     MarketingPreferenceChangeSchema,
     RefundNotRecoupedDataSchema,
-    RewardStatusDataSchema,
-    RewardUpdateDataSchema,
 )
 from cosmos.core.activity.utils import pence_integer_to_currency_string
 from cosmos.core.config import settings
 
 
-class ActivityType(Enum):
-    ACCOUNT_REQUEST = f"activity.{settings.PROJECT_NAME}.account.request"
-    ACCOUNT_ENROLMENT = f"activity.{settings.PROJECT_NAME}.account.enrolment"
-    ACCOUNT_AUTHENTICATION = f"activity.{settings.PROJECT_NAME}.account.authentication"
-    ACCOUNT_CHANGE = f"activity.{settings.PROJECT_NAME}.account.change"
-    REWARD_STATUS = f"activity.{settings.PROJECT_NAME}.reward.status"
-    REWARD_UPDATE = f"activity.{settings.PROJECT_NAME}.reward.update"
-    BALANCE_CHANGE = f"activity.{settings.PROJECT_NAME}.balance.change"
-    REFUND_NOT_RECOUPED = f"activity.{settings.PROJECT_NAME}.refund.not.recouped"
-
+class ActivityTypeMixin:
     @classmethod
     def _assemble_payload(
         cls,
-        activity_type: "ActivityType",
+        activity_type: str,
         *,
         activity_datetime: datetime,
         summary: str,
@@ -42,20 +32,28 @@ class ActivityType(Enum):
         campaigns: list[str] | None = None,
         user_id: UUID | str | None = None,
     ) -> dict:
-        payload = {
-            "type": activity_type.name,
-            "datetime": datetime.now(tz=timezone.utc),
-            "underlying_datetime": activity_datetime,
-            "summary": summary,
-            "reasons": reasons or [],
-            "activity_identifier": activity_identifier or "N/A",
-            "user_id": user_id,
-            "associated_value": associated_value,
-            "retailer": retailer_slug,
-            "campaigns": campaigns or [],
-            "data": data,
-        }
-        return payload
+        return ActivitySchema(
+            type=activity_type,
+            datetime=datetime.now(tz=timezone.utc),
+            underlying_datetime=activity_datetime,
+            summary=summary,
+            reasons=reasons or [],
+            activity_identifier=activity_identifier or "N/A",
+            user_id=user_id,
+            associated_value=associated_value,
+            retailer=retailer_slug,
+            campaigns=campaigns or [],
+            data=data,
+        ).dict(exclude_unset=True)
+
+
+class ActivityType(ActivityTypeMixin, Enum):
+    ACCOUNT_REQUEST = f"activity.{settings.PROJECT_NAME}.account.request"
+    ACCOUNT_ENROLMENT = f"activity.{settings.PROJECT_NAME}.account.enrolment"
+    ACCOUNT_AUTHENTICATION = f"activity.{settings.PROJECT_NAME}.account.authentication"
+    ACCOUNT_CHANGE = f"activity.{settings.PROJECT_NAME}.account.change"
+    BALANCE_CHANGE = f"activity.{settings.PROJECT_NAME}.balance.change"
+    REFUND_NOT_RECOUPED = f"activity.{settings.PROJECT_NAME}.refund.not.recouped"
 
     @classmethod
     def get_account_request_activity_data(
@@ -78,7 +76,7 @@ class ActivityType(Enum):
             fields.extend([{"field_name": pref["key"], "value": pref["value"]} for pref in marketing_prefs])
         email = request_data["credentials"]["email"]
         return cls._assemble_payload(
-            ActivityType.ACCOUNT_REQUEST,
+            ActivityType.ACCOUNT_REQUEST.name,
             user_id=str(request_data["third_party_identifier"]),
             activity_datetime=activity_datetime,
             summary=f"Enrolment Requested for {email}",
@@ -97,7 +95,7 @@ class ActivityType(Enum):
         channel: str,
     ) -> dict:
         return cls._assemble_payload(
-            ActivityType.ACCOUNT_AUTHENTICATION,
+            ActivityType.ACCOUNT_AUTHENTICATION.name,
             user_id=account_holder_uuid,
             activity_datetime=activity_datetime,
             summary=f"Account added to {channel}",
@@ -117,7 +115,7 @@ class ActivityType(Enum):
         third_party_identifier: str,
     ) -> dict:
         return cls._assemble_payload(
-            ActivityType.ACCOUNT_ENROLMENT,
+            ActivityType.ACCOUNT_ENROLMENT.name,
             user_id=account_holder_uuid,
             activity_datetime=activity_datetime,
             summary=f"Joined via {channel}; Account activated",
@@ -142,7 +140,7 @@ class ActivityType(Enum):
         new_value: str,
     ) -> dict:
         return cls._assemble_payload(
-            ActivityType.ACCOUNT_CHANGE,
+            ActivityType.ACCOUNT_CHANGE.name,
             activity_datetime=activity_datetime,
             user_id=account_holder_uuid,
             retailer_slug=retailer_slug,
@@ -151,91 +149,6 @@ class ActivityType(Enum):
             data=MarketingPreferenceChangeSchema(
                 field_name=field_name, original_value=original_value, new_value=new_value
             ).dict(),
-        )
-
-    @classmethod
-    def get_reward_status_activity_data(
-        cls,
-        *,
-        account_holder_uuid: UUID | str,
-        retailer_slug: str,
-        summary: str,
-        new_status: str,
-        campaigns: list[str] | None = None,
-        reason: str | None = None,
-        activity_datetime: datetime,
-        original_status: str | None = None,
-        activity_identifier: str | None = None,
-        count: int | None = None,
-    ) -> dict:
-        data_kwargs = {"new_status": new_status, "count": count}
-        if original_status:
-            data_kwargs.update({"original_status": original_status})
-        if count:
-            data_kwargs.update({"count": count})
-        return cls._assemble_payload(
-            ActivityType.REWARD_STATUS,
-            user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
-            activity_identifier=activity_identifier,
-            summary=summary,
-            reasons=[reason] if reason else None,
-            associated_value=new_status,
-            retailer_slug=retailer_slug,
-            campaigns=campaigns,
-            data=RewardStatusDataSchema(**data_kwargs).dict(exclude_unset=True),
-        )
-
-    @classmethod
-    def get_reward_update_activity_data(
-        cls,
-        *,
-        account_holder_uuid: UUID | str,
-        retailer_slug: str,
-        summary: str,
-        campaigns: list[str] | None = None,
-        reason: str | None = None,
-        activity_datetime: datetime,
-        activity_identifier: str | None = None,
-        reward_update_data: dict,
-    ) -> dict:
-        return cls._assemble_payload(
-            ActivityType.REWARD_UPDATE,
-            user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
-            activity_identifier=activity_identifier,
-            summary=summary,
-            reasons=[reason] if reason else None,
-            associated_value=pence_integer_to_currency_string(reward_update_data["new_total_cost_to_user"], "GBP"),
-            retailer_slug=retailer_slug,
-            campaigns=campaigns,
-            data=RewardUpdateDataSchema(**reward_update_data).dict(exclude_unset=True),
-        )
-
-    @classmethod
-    def get_pending_reward_deleted_activity_data(
-        cls,
-        *,
-        retailer_slug: str,
-        campaign_slug: str,
-        account_holder_uuid: UUID | str,
-        pending_reward_uuid: UUID | str,
-        activity_datetime: datetime,
-    ) -> dict:
-        return cls._assemble_payload(
-            ActivityType.REWARD_STATUS,
-            user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
-            activity_identifier=str(pending_reward_uuid),
-            summary=f"{retailer_slug} Pending Reward removed for {campaign_slug}",
-            reasons=["Pending Reward removed due to campaign end"],
-            associated_value="Deleted",
-            retailer_slug=retailer_slug,
-            campaigns=[campaign_slug],
-            data=RewardStatusDataSchema(
-                new_status="deleted",
-                original_status="pending",
-            ).dict(exclude_unset=True),
         )
 
     @classmethod
@@ -253,7 +166,7 @@ class ActivityType(Enum):
     ) -> dict:
 
         return cls._assemble_payload(
-            ActivityType.BALANCE_CHANGE,
+            ActivityType.BALANCE_CHANGE.name,
             user_id=account_holder_uuid,
             activity_datetime=activity_datetime,
             activity_identifier="N/A",
@@ -280,7 +193,7 @@ class ActivityType(Enum):
         amount_not_recouped: NonNegativeInt,
     ) -> dict:
         return cls._assemble_payload(
-            ActivityType.REFUND_NOT_RECOUPED,
+            ActivityType.REFUND_NOT_RECOUPED.name,
             user_id=account_holder_uuid,
             activity_datetime=activity_datetime,
             summary=f"{retailer_slug} Refund transaction caused an account shortfall",

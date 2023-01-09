@@ -8,7 +8,7 @@ from fastapi.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_500_INTERNAL_SERVER_ERROR
 
-from cosmos.accounts.api.service import ServiceException
+from cosmos.accounts.api.service import ServiceError
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.error_codes import ErrorCode
 
@@ -38,15 +38,15 @@ def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | di
 
 
 async def service_exception_handler(
-    request: Request,
-    exc: ServiceException,
+    request: Request,  # noqa ARG001
+    exc: ServiceError,
 ) -> UJSONResponse:
     return ErrorCode.http_exception_response(exc.error_code.name)
 
 
 # customise Api HTTPException to remove "details" and handle manually raised ValidationErrors
 async def http_exception_handler(
-    request: Request,
+    request: Request,  # noqa ARG001
     exc: HTTPException,
 ) -> UJSONResponse:
 
@@ -60,7 +60,7 @@ async def http_exception_handler(
 
 
 async def unexpected_exception_handler(
-    request: Request,
+    request: Request,  # noqa ARG001
     exc: Exception,
 ) -> UJSONResponse:
     try:
@@ -77,8 +77,7 @@ async def unexpected_exception_handler(
 
 # custom exception handler for bubbling pydandic validation errors
 async def payload_request_validation_error(
-    request: Request,
-    exc: RequestPayloadValidationError,
+    request: Request, exc: RequestPayloadValidationError  # noqa ARG001
 ) -> Response:
     pydantic_error = exc.validation_error
     status_code, content = _format_validation_errors(cast(list[dict], pydantic_error.errors()))
@@ -86,6 +85,6 @@ async def payload_request_validation_error(
 
 
 # customise Api RequestValidationError
-async def request_validation_handler(request: Request, exc: RequestValidationError) -> Response:
+async def request_validation_handler(request: Request, exc: RequestValidationError) -> Response:  # noqa ARG001
     status_code, content = _format_validation_errors(cast(list[dict], exc.errors()))
     return UJSONResponse(status_code=status_code, content=content)

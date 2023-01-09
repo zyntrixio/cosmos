@@ -31,7 +31,7 @@ def acquire_lock(runner: Runner) -> Callable:
 
     def decorater(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> None:
+        def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa ANN401
             func_lock_key = f"{settings.REDIS_KEY_PREFIX}{runner.name}:{func.__qualname__}"
             value = f"{runner.uid}:{datetime.now(tz=timezone.utc)}"
             if redis.set(func_lock_key, value, LOCK_TIMEOUT_SECS, nx=True):
@@ -40,7 +40,7 @@ def acquire_lock(runner: Runner) -> Callable:
                 # the function without consequence
                 try:
                     func(*args, **kwargs)
-                except Exception as ex:  # pylint: disable=broad-except
+                except Exception as ex:  # noqa: BLE001
                     logger.exception("Unexpected error occurred while running '%s'", func.__qualname__, exc_info=ex)
                 finally:
                     redis.delete(func_lock_key)
@@ -65,7 +65,7 @@ class CronScheduler:  # pragma: no cover
     name = "cron-scheduler"
     default_schedule = "* * * * *"
 
-    def __init__(self, *, log: Logger = None):
+    def __init__(self, *, log: Logger = None) -> None:
         self.uid = str(uuid4())
         self.log = log if log is not None else logging.getLogger("cron-scheduler")
         self._scheduler = BlockingScheduler()

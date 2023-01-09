@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import RetailerDependency, get_session
-from cosmos.core.api.service import ServiceException
+from cosmos.core.api.service import ServiceError
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 from cosmos.transactions.api.deps import user_is_authorised
@@ -13,7 +13,7 @@ router = APIRouter(dependencies=[Depends(user_is_authorised)])
 
 
 get_retailer = RetailerDependency(
-    no_retailer_found_exc=ServiceException(error_code=ErrorCode.INVALID_RETAILER),
+    no_retailer_found_exc=ServiceError(error_code=ErrorCode.INVALID_RETAILER),
     join_active_campaign_data=True,
 )
 

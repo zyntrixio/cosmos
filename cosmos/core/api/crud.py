@@ -24,7 +24,7 @@ async def commit(db_session: "AsyncSession") -> None:
     async def _persist() -> None:
         return await db_session.commit()
 
-    await async_run_query(_persist, db_session)
+    await async_run_query(_persist, db_session, rollback_on_exc=False)
 
 
 async def get_reward(db_session: "AsyncSession", reward_uuid: UUID, retailer_id: int) -> Reward:

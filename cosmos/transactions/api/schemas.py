@@ -21,7 +21,7 @@ class CreateTransactionSchema(BaseModel):  # pragma: no cover
     def get_datetime_from_timestamp(cls, v: float) -> dt:
         try:
             processed_datetime = dt.fromtimestamp(v, tz=timezone.utc)
-        except Exception:
-            raise ValueError("invalid datetime")
+        except TypeError as e:
+            raise ValueError("invalid datetime") from e
 
         return processed_datetime

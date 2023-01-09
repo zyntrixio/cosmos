@@ -50,17 +50,17 @@ isort = "^5.10.1"
 xenon = "^0.9.0"
 types-PyYAML = "^6.0.12.1"
 types-redis = "^4.3.21.3"
-refurb = "^1.9.0"
+refurb = "!=1.9.1"  # refurb 1.9.1 raises a mypy error
 ipython = "^8.7.0"
-ruff = "^0.0.191"
-SQLAlchemy-Utils = "^0.38.3"
-testfixtures = "^7.0.4"
+ruff = "^0.0.217"
 
 [tool.poetry.group.pytest.dependencies]
 pytest = "^7.2.0"
 pytest-cov = "^4.0.0"
 pytest-asyncio = "^0.20.3"
 pytest-mock = "^3.8.2"
+SQLAlchemy-Utils = "^0.39.0"
+testfixtures = "^7.0.4"
 
 [tool.poetry.group.datagen.dependencies]
 hashids = "^1.3.1"
@@ -101,7 +101,7 @@ plugins = [
 ]
 
 [tool.ruff]
-format = "grouped"
+# format = "grouped"
 line-length = 120
 show-source = true
 target-version = "py310"
@@ -110,41 +110,49 @@ select = [
     "E", 
     "W",    # pycodestyle (E, W)
     "C90",  # mccabe (C90)
-    "I",    # isort (I)
-    "D",    # pydocstyle (D)
+    # isort (I)
+    # pydocstyle (D)
     "UP",   # pyupgrade (UP)
     "N",    # pep8-naming (N)
     "YTT",  # flake8-2020 (YTT)
     "ANN",  # flake8-annotations (ANN)
     "S",    # flake8-bandit (S)
     "BLE",  # flake8-blind-except (BLE)
-    "FBT",  # flake8-boolean-trap (FBT)
+    # flake8-boolean-trap (FBT)
     "B",    # flake8-bugbear (B)
     "A",    # flake8-builtins (A)
     "C4",   # flake8-comprehensions (C4)
     "T10",  # flake8-debugger (T10)
-    "EM",   # flake8-errmsg (EM)
-    "ISC",  # flake8-implicit-str-concat (ISC)
+    # flake8-errmsg (EM)
     "ICN",  # flake8-import-conventions (ICN)
     "T20",  # flake8-print (T20)
-    "PT",   # flake8-pytest-style (PT)
+    # "PT",   # flake8-pytest-style (PT)
     "Q",    # flake8-quotes (Q)
-    "RET",  # flake8-return (RET)
+    # flake8-return (RET)
     "SIM",  # flake8-simplify (SIM)
     "TID",  # flake8-tidy-imports (TID)
     "ARG",  # flake8-unused-arguments (ARG)
     "DTZ",  # flake8-datetimez (DTZ)
-    "ERA",  # eradicate (ERA)
+    # "ERA",  # eradicate (ERA) until we can remove commented out code this has to stay deactivated
     # pandas-vet (PD)
     # pygrep-hooks (PGH)
     "PLC",
     "PLE",
     "PLR",
     "PLW",  # Pylint (PLC, PLE, PLR, PLW)
-    "PIE",  # flake8-pie (PIE)
     "RUF",  # Ruff-specific rules (RUF)
+]
+ignore = [
+    "ANN101", 
+    "ANN102", 
+    # disables function call in function parameter error 
+    # arg = Depends(..) and arg = typer.Option(..) would be flagged
+    "B008"
 ]
 
 [tool.ruff.per-file-ignores]
+# disable unused import error for __init__.py and cosmos/db/base.py
 "__init__.py" = ["F401"]
 "cosmos/db/base.py" = ["F401"]
+"tests/*" = ["S101"]
+"tests/rewards/test_reward_import_and_updates.py" = ["N806"]

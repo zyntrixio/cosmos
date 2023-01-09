@@ -8,11 +8,11 @@ from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr
 from pydantic.validators import str_validator
 
 from cosmos.accounts.enums import AccountHolderStatuses
-from cosmos.core.api.service import ServiceException
+from cosmos.core.api.service import ServiceError
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Reward
 
-from .utils import utc_datetime, utc_datetime_from_timestamp
+from .utils import UTCDatetime, utc_datetime_from_timestamp
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator
@@ -33,7 +33,7 @@ class AccountHolderUUIDValidator(UUID4):
         try:
             v = UUID4(value)
         except ValueError:
-            raise ServiceException(error_code=ErrorCode.NO_ACCOUNT_FOUND)
+            raise ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND) from None
         else:
             return v
 
@@ -55,9 +55,9 @@ class AccountHolderEnrolment(BaseModel):
 class AccountHolderRewardSchema(BaseModel):
     code: str
     campaign_slug: str
-    issued_date: utc_datetime
-    redeemed_date: utc_datetime | None
-    expiry_date: utc_datetime
+    issued_date: UTCDatetime
+    redeemed_date: UTCDatetime | None
+    expiry_date: UTCDatetime  # expiry_date must be declared before status
     status: Reward.RewardStatuses | None = None
 
     @validator("issued_date", "redeemed_date", "expiry_date", allow_reuse=True)

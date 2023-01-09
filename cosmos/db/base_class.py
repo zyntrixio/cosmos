@@ -1,7 +1,7 @@
 # mypy checks for sqlalchemy core 2.0 require sqlalchemy2-stubs
 import logging
 
-from typing import Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
 import sentry_sdk
 
@@ -11,6 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, declarative_base, declarative_mixin
 
 from cosmos.core.config import settings
+
+if TYPE_CHECKING:  # pragma: no cover
+    from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
+    from sqlalchemy.orm import SessionTransaction
 
 Base = declarative_base()
 load_models_to_metadata(Base.metadata)
@@ -44,15 +48,20 @@ def sync_run_query(
     rollback_on_exc: bool = True,
     **kwargs: Any,  # noqa: ANN401
 ) -> ReturnType:  # pragma: no cover
-
     while attempts > 0:
         attempts -= 1
         try:
+            sp: "SessionTransaction | None" = None
+            if rollback_on_exc:
+                sp = session.begin_nested()
+                kwargs["savepoint"] = sp
+
             return fn(**kwargs)
         except exc.DBAPIError as ex:
             logger.info(f"Attempt failed: {type(ex).__name__} {ex}")
-            if rollback_on_exc:
-                session.rollback()
+
+            if sp:
+                sp.rollback()
 
             if attempts > 0 and ex.connection_invalidated:
                 logger.warning(f"Interrupted transaction: {ex!r}, attempts remaining:{attempts}")
@@ -73,11 +82,17 @@ async def async_run_query(
     while attempts > 0:
         attempts -= 1
         try:
+            sp: "AsyncSessionTransaction | None" = None
+            if rollback_on_exc:
+                sp = await session.begin_nested()
+                kwargs["savepoint"] = sp
+
             return await fn(**kwargs)
         except exc.DBAPIError as ex:
             logger.info(f"Attempt failed: {type(ex).__name__} {ex}")
-            if rollback_on_exc:
-                await session.rollback()
+
+            if sp:
+                await sp.rollback()
 
             if attempts > 0 and ex.connection_invalidated:
                 logger.warning(f"Interrupted transaction: {ex!r}, attempts remaining:{attempts}")

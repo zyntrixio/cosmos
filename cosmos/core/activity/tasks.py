@@ -12,7 +12,7 @@ connection, exchange = get_connection_and_exchange(
 )
 
 
-async def async_send_activity(payload: dict, *, routing_key: str) -> None:
+async def async_send_activity(payload: dict | Iterable[dict], *, routing_key: str) -> None:
     await asyncio.to_thread(verify_payload_and_send_activity, connection, exchange, payload, routing_key)
 
 

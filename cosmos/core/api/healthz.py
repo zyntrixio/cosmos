@@ -17,10 +17,10 @@ async def livez() -> dict:
 async def readyz(db_session: AsyncSession = Depends(get_session)) -> dict:
     try:
         await db_session.execute(text("SELECT 1"))
-    except Exception as ex:
+    except Exception as ex:  # noqa BLE001
         raise HTTPException(
             detail={"postgres": f"failed to connect to postgres due to error: {ex!r}"},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        ) from None
 
     return {}

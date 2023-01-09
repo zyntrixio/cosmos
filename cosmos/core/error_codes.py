@@ -1,16 +1,14 @@
 import enum
 
-from typing import Optional
-
+from fastapi import status
 from fastapi.responses import UJSONResponse
 from pydantic import BaseModel
-from starlette import status
 
 
 class HttpErrorDetail(BaseModel):
     display_message: str
     code: str
-    fields: Optional[list[str]]
+    fields: list[str] | None = None
 
 
 class HttpError(BaseModel):
@@ -81,6 +79,27 @@ class ErrorCode(enum.Enum):
         detail=HttpErrorDetail(
             display_message="Request is invalid",
             code="INVALID_REQUEST",
+        ),
+    )
+    INVALID_STATUS_REQUESTED = HttpError(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=HttpErrorDetail(
+            display_message="The requested status change could not be performed.",
+            code="INVALID_STATUS_REQUESTED",
+        ),
+    )
+    MISSING_CAMPAIGN_COMPONENTS = HttpError(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=HttpErrorDetail(
+            display_message="the provided campaign could not be made active",
+            code="MISSING_CAMPAIGN_COMPONENTS",
+        ),
+    )
+    NO_CAMPAIGN_FOUND = HttpError(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=HttpErrorDetail(
+            display_message="Campaign not found for provided slug.",
+            code="NO_CAMPAIGN_FOUND",
         ),
     )
     # INVALID_RETAILER = "INVALID_RETAILER"

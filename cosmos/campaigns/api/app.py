@@ -6,7 +6,7 @@ from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, Pro
 from starlette.exceptions import HTTPException
 
 from cosmos.accounts.api import api_router
-from cosmos.core.exception_handlers import (
+from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     request_validation_handler,
     unexpected_exception_handler,
