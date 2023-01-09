@@ -18,7 +18,6 @@ from cosmos.accounts.api.schemas import (
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
-from cosmos.core.api.crud import commit  # , create_retry_task
 
 # from cosmos.core.api.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.core.api.exceptions import RequestPayloadValidationError
@@ -120,7 +119,7 @@ class AccountService(Service):
             result = "FIELD_VALIDATION_ERROR"
             return ServiceResult(error=RequestPayloadValidationError(validation_error=exc))
         else:
-            await commit(self.db_session)
+            await self.commit_db_changes()
             result = "Accepted"
             return ServiceResult({})
         finally:

@@ -1,10 +1,10 @@
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable, Generator, NamedTuple
 from uuid import uuid4
 
 import pytest
 
-from fastapi.testclient import TestClient
 from sqlalchemy_utils import create_database, database_exists, drop_database
 from testfixtures import LogCapture
 
@@ -13,14 +13,17 @@ from cosmos.db.models import (
     AccountHolder,
     AccountHolderProfile,
     Campaign,
+    CampaignBalance,
+    EarnRule,
     FetchType,
+    PendingReward,
     Retailer,
     RetailerFetchType,
     Reward,
     RewardConfig,
+    RewardRule,
 )
 from cosmos.db.session import SyncSessionMaker, sync_engine
-from cosmos.public_api.api.app import create_app
 from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
@@ -31,12 +34,6 @@ class SetupType(NamedTuple):
     db_session: "Session"
     retailer: Retailer
     account_holder: AccountHolder
-
-
-@pytest.fixture(scope="session")
-def test_client() -> TestClient:
-    app = create_app()
-    return TestClient(app)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -226,6 +223,27 @@ def campaign(setup: SetupType) -> Campaign:
 
 
 @pytest.fixture(scope="function")
+def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: RewardConfig) -> Campaign:
+    db_session = setup.db_session
+    db_session.add(
+        RewardRule(
+            reward_goal=100,
+            campaign_id=campaign.id,
+            reward_config_id=reward_config.id,
+        )
+    )
+    db_session.add(
+        EarnRule(
+            threshold=100,
+            increment=1,
+            campaign_id=campaign.id,
+        )
+    )
+    db_session.commit()
+    return campaign
+
+
+@pytest.fixture(scope="function")
 def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> Reward:
     now = datetime.now(tz=timezone.utc)
     db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
@@ -334,7 +352,7 @@ def pre_loaded_retailer_fetch_type(
 
 @pytest.fixture(scope="function")
 def create_reward_config(db_session: "Session", pre_loaded_retailer_fetch_type: RetailerFetchType) -> Callable:
-    def _create_reward_config(**reward_config_params: Any) -> RewardConfig:
+    def _create_reward_config(**reward_config_params: Any) -> RewardConfig:  # noqa: ANN401
         mock_reward_config_params = {
             "slug": "test-reward",
             "required_fields_values": "validity_days: 15",
@@ -363,3 +381,54 @@ def reward(db_session: "Session", reward_config: RewardConfig) -> Reward:
     db_session.add(rc)
     db_session.commit()
     return rc
+
+
+@pytest.fixture(scope="function")
+def create_mock_retailer(db_session: "Session", test_retailer: dict) -> Callable[..., Retailer]:
+    def _create_mock_retailer(**retailer_params: dict) -> Retailer:
+        """
+        Create a retailer in the test DB
+        :param retailer_params: override any values for the retailer, from what the mock_retailer fixture provides
+        :return: Callable function
+        """
+        mock_retailer_params = deepcopy(test_retailer)
+
+        mock_retailer_params.update(retailer_params)
+        rtl = Retailer(**mock_retailer_params)
+        db_session.add(rtl)
+        db_session.commit()
+
+        return rtl
+
+    return _create_mock_retailer
+
+
+@pytest.fixture(scope="function")
+def campaign_balance(setup: SetupType, campaign: Campaign) -> CampaignBalance:
+    db_session, _, account_holder = setup
+    cmp_bal = CampaignBalance(
+        account_holder_id=account_holder.id,
+        campaign_id=campaign.id,
+        balance=300,
+    )
+    db_session.add(cmp_bal)
+    db_session.commit()
+    return cmp_bal
+
+
+@pytest.fixture(scope="function")
+def pending_reward(setup: SetupType, campaign: Campaign) -> PendingReward:
+    db_session, _, account_holder = setup
+    pending_rwd = PendingReward(
+        account_holder_id=account_holder.id,
+        campaign_id=campaign.id,
+        pending_reward_uuid=uuid4(),
+        created_date=datetime(2022, 1, 1, 5, 0, tzinfo=timezone.utc),
+        conversion_date=datetime.now(tz=timezone.utc) + timedelta(days=15),
+        value=100,
+        count=2,
+        total_cost_to_user=300,
+    )
+    db_session.add(pending_rwd)
+    db_session.commit()
+    return pending_rwd

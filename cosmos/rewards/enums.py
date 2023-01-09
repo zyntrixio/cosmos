@@ -20,3 +20,8 @@ class RewardFetchType(Enum):
 class FileAgentType(Enum):
     IMPORT = "import"
     UPDATE = "update"
+
+
+class PendingRewardActions(Enum):
+    REMOVE = "remove"
+    CONVERT = "convert"

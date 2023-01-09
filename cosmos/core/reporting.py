@@ -6,7 +6,6 @@ from prettyprinter import cpprint
 
 
 class JSONFormatter(logging.Formatter):
-    # noinspection PyMissingConstructor
     def __init__(self) -> None:
         pass
 
@@ -29,7 +28,6 @@ class JSONFormatter(logging.Formatter):
 
 
 class ConsoleFormatter(logging.Formatter):
-    # noinspection PyMissingConstructor
     def __init__(self) -> None:
         pass
 

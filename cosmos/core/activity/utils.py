@@ -6,7 +6,7 @@ from cosmos.core.activity.tasks import async_send_activity
 
 from . import logger
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from enum import Enum
 
     from fastapi import BackgroundTasks
@@ -19,6 +19,7 @@ def pence_integer_to_currency_string(value: int, currency: str, currency_sign: b
     return format_currency(value / 100, currency, locale="en_GB", **extras)
 
 
+# TODO: add unittests (or functional tests) when we have an activity specific ticket
 async def format_and_send_activity_in_background(
     background_tasks: "BackgroundTasks",
     *,
@@ -34,7 +35,7 @@ async def format_and_send_activity_in_background(
 
         try:
             payload: Iterable[dict] | dict
-            if isinstance(formatter_kwargs, dict):  # noqa SIM108
+            if isinstance(formatter_kwargs, dict):
                 payload = payload_formatter_fn(**formatter_kwargs)
             else:
                 payload = (payload_formatter_fn(**instance_kwargs) for instance_kwargs in formatter_kwargs)

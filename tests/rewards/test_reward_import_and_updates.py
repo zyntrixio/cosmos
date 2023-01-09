@@ -37,10 +37,7 @@ if TYPE_CHECKING:
 
 
 def _get_reward_update_rows(db_session: "Session", reward_codes: list[str]) -> list[RewardUpdate]:
-    reward_updates = (
-        db_session.execute(select(RewardUpdate).join(Reward).where(Reward.code.in_(reward_codes))).scalars().all()
-    )
-    return reward_updates
+    return db_session.execute(select(RewardUpdate).join(Reward).where(Reward.code.in_(reward_codes))).scalars().all()
 
 
 def _get_reward_rows(db_session: "Session") -> list[Reward]:
@@ -65,9 +62,11 @@ def test_import_agent__process_csv(setup: SetupType, mocker: MockerFixture) -> N
     assert len(rewards) == 1
     assert rewards[0] == pre_existing_reward
 
-    blob_content = "\n".join(eligible_reward_codes + [pre_existing_reward.code])
-    blob_content += "\nthis,is,a,bad,line"  # this should be reported to sentry (line 5)
-    blob_content += "\nanother,bad,line"  # this should be reported to sentry (line 6)
+    blob_content = (
+        "\n".join(eligible_reward_codes + [pre_existing_reward.code])
+        + "\nthis,is,a,bad,line"  # this should be reported to sentry (line 5)
+        + "\nanother,bad,line"  # this should be reported to sentry (line 6)
+    )
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,

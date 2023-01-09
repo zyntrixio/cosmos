@@ -8,7 +8,6 @@ from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
-from cosmos.core.api.crud import commit
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
@@ -389,7 +388,7 @@ class TransactionService(Service):
             transaction_data=request_payload,
         )
         if not transaction.processed:
-            await commit(self.db_session)
+            await self.commit_db_changes()
             return ServiceResult(error=ServiceError(error_code=ErrorCode.DUPLICATE_TRANSACTION))
 
         campaigns = list(
@@ -403,6 +402,6 @@ class TransactionService(Service):
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
 
         adjustments = await self._process_adjustments(campaigns, transaction, account_holder.id)
-        await commit(self.db_session)
+        await self.commit_db_changes()
 
         return ServiceResult(_get_transaction_response(adjustments, transaction.amount < 0))

@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
-from cosmos.core.api.crud import commit, get_reward
-from cosmos.core.api.service import ServiceError, ServiceResult
+from cosmos.core.api.crud import get_reward
+from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.public_api.api import crud
 from cosmos.public_api.api.metrics import invalid_marketing_opt_out, microsite_reward_requests
@@ -31,7 +31,7 @@ RESPONSE_TEMPLATE = """
 """
 
 
-class PublicService:
+class PublicService(Service):
     def __init__(self, db_session: "AsyncSession", retailer_slug: str) -> None:
         self.db_session = db_session
         self.retailer_slug = retailer_slug
@@ -57,7 +57,7 @@ class PublicService:
                 updates = await crud.update_boolean_marketing_preferences(
                     self.db_session, account_holder_id=data.account_holder_id
                 )
-                await commit(self.db_session)
+                await self.commit_db_changes()
                 msg += f" for {data.retailer_name}"
 
                 for (pref_name, updated_at) in updates:
