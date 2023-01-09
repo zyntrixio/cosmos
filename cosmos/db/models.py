@@ -26,7 +26,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Index
 
@@ -169,7 +169,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
         return str(self.name)
 
     def is_activable(self) -> bool:
-        return self.status == CampaignStatuses.DRAFT and self.reward_rule is not None and len(self.earn_rules) >= 1
+        return self.status == CampaignStatuses.DRAFT and self.reward_rule and self.earn_rule
 
 
 class EarnRule(IdPkMixin, Base, TimestampMixin):
@@ -347,7 +347,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     __mapper_args__ = {"eager_defaults": True}
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<{self.__class__.__name__}> {self.id}"
+        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.code}, {self.status})"
 
 
 class RewardConfig(IdPkMixin, Base, TimestampMixin):

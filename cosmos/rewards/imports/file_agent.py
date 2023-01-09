@@ -5,7 +5,6 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from datetime import date, datetime, timezone
-from functools import lru_cache
 from io import StringIO
 from typing import TYPE_CHECKING, DefaultDict, NamedTuple
 
@@ -229,7 +228,6 @@ class RewardImportAgent(BlobFileAgent):
     def do_import(self) -> None:  # pragma: no cover
         super()._do_import()
 
-    @lru_cache  # noqa: B019
     def reward_configs_by_slug(self, retailer_id: int, db_session: "Session") -> dict[str, RewardConfig]:
         reward_configs = (
             db_session.execute(select(RewardConfig).where(RewardConfig.retailer_id == retailer_id)).scalars().all()
@@ -238,7 +236,7 @@ class RewardImportAgent(BlobFileAgent):
 
     @staticmethod
     def _get_expiry_date(sub_blob_name: str, blob_name: str) -> date | None:
-        if ".expires." in sub_blob_name:
+        if ".expires." in sub_blob_name:  # noqa: PLR2004
             try:
                 extracted_date = sub_blob_name.split(".expires.")[1].split(".")[0]
                 expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
@@ -322,8 +320,7 @@ class RewardImportAgent(BlobFileAgent):
             db_session, retailer=retailer, reward_config=reward_config, blob_name=blob_name, blob_content=blob_content
         )
 
-        pre_existing_reward_codes = list(set(db_reward_codes) & set(row_nums_by_code.keys()))
-        if pre_existing_reward_codes:
+        if pre_existing_reward_codes := list(set(db_reward_codes) & set(row_nums_by_code.keys())):
             self._report_pre_existing_codes(pre_existing_reward_codes, row_nums_by_code, blob_name)
             for pre_existing_code in pre_existing_reward_codes:
                 row_nums_by_code.pop(pre_existing_code)

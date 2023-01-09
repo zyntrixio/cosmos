@@ -5,13 +5,12 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from cosmos.core.config import settings
 from cosmos.db.models import Retailer
 from cosmos.db.session import AsyncSessionMaker
 from cosmos.retailers.crud import get_retailer_by_slug
 
 
-async def get_session() -> AsyncGenerator:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     session = AsyncSessionMaker()
     try:
         yield session
@@ -36,7 +35,7 @@ class RetailerDependency:
 def get_authorization_token(authorization: str = Header(None)) -> str:
     with suppress(ValueError, AttributeError):
         token_type, token_value = authorization.split(" ")
-        if token_type.lower() == "token":
+        if token_type.lower() == "token":  # noqa: PLR2004
             return token_value
 
     raise HTTPException(
@@ -49,15 +48,19 @@ def get_authorization_token(authorization: str = Header(None)) -> str:
 
 
 # user as in user of our api, not an account holder.
-def user_is_authorised(token: str = Depends(get_authorization_token)) -> None:
-    if token != settings.POLARIS_API_AUTH_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "display_message": "Supplied token is invalid.",
-                "code": "INVALID_TOKEN",
-            },
-        )
+class UserIsAuthorised:
+    def __init__(self, expected_token: str) -> None:
+        self.expected_token = expected_token
+
+    def __call__(self, token: str = Depends(get_authorization_token)) -> None:
+        if token != self.expected_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "display_message": "Supplied token is invalid.",
+                    "code": "INVALID_TOKEN",
+                },
+            )
 
 
 # check bpl-user-channel header is populated, for channel facing apis only.

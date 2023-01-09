@@ -1,14 +1,6 @@
 from enum import Enum, IntEnum, auto
 
 from fastapi import HTTPException, status
-from pydantic.dataclasses import dataclass
-
-
-@dataclass
-class ErrorDetail:
-    display_message: str
-    code: str
-    campaigns: list[str] | None = None
 
 
 class CampaignStatuses(Enum):
@@ -100,26 +92,6 @@ class HttpErrors(Enum):
         },
         status_code=status.HTTP_409_CONFLICT,
     )
-
-
-class ErrorTemplates(Enum):
-    INVALID_STATUS_REQUESTED = ErrorDetail(
-        display_message="The requested status change could not be performed.",
-        code="INVALID_STATUS_REQUESTED",
-    )
-
-    NO_CAMPAIGN_FOUND = ErrorDetail(
-        display_message="Campaign not found for provided slug.",
-        code="NO_CAMPAIGN_FOUND",
-    )
-    MISSING_CAMPAIGN_COMPONENTS = ErrorDetail(
-        display_message="the provided campaign(s) could not be made active",
-        code="MISSING_CAMPAIGN_COMPONENTS",
-    )
-
-    def value_with_slugs(self, campaign_slugs: list[str]) -> ErrorDetail:
-        self.value.campaigns = campaign_slugs
-        return self.value
 
 
 class RewardAdjustmentStatuses(Enum):

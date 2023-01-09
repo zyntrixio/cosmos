@@ -65,10 +65,7 @@ class Settings(BaseSettings):
     @classmethod
     def is_migration(cls, v: bool) -> bool:
         command = sys.argv[0]
-
-        if "alembic" in command:
-            return True
-        return v
+        return True if "alembic" in command else v
 
     PROJECT_NAME: str = "cosmos"
     ROOT_LOG_LEVEL: LogLevel | None = None
@@ -223,13 +220,13 @@ class Settings(BaseSettings):
     TX_HISTORY_ROUTING_KEY: str = "activity.vela.tx.processed"
     MESSAGE_QUEUE_NAME: str = "polaris-transaction-history"
 
-    VELA_API_AUTH_TOKEN: str | None = None
+    VELA_API_AUTH_TOKEN: str = ""
 
     # FIXME - cleanup
     @validator("VELA_API_AUTH_TOKEN")
     @classmethod
     def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
-        if isinstance(v, str) and not values["TESTING"]:
+        if v and not values["TESTING"]:
             return v
 
         if "KEY_VAULT_URI" in values:
@@ -240,12 +237,12 @@ class Settings(BaseSettings):
 
         raise KeyError("required var KEY_VAULT_URI is not set.")
 
-    POLARIS_API_AUTH_TOKEN: str | None = None
+    POLARIS_API_AUTH_TOKEN: str = ""
 
     @validator("POLARIS_API_AUTH_TOKEN")
     @classmethod
     def fetch_polaris_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
-        if isinstance(v, str) and not values["TESTING"]:
+        if v and not values["TESTING"]:
             return v
 
         if "KEY_VAULT_URI" in values:

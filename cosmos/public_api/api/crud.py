@@ -48,7 +48,7 @@ async def update_boolean_marketing_preferences(
             .where(
                 MarketingPreference.account_holder_id == account_holder_id,
                 MarketingPreference.value_type == MarketingPreferenceValueTypes.BOOLEAN,
-                MarketingPreference.value != "False",
+                MarketingPreference.value != "False",  # noqa: PLR2004
             )
             .values(value="False")
         )

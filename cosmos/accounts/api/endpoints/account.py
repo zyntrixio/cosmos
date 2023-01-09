@@ -9,13 +9,17 @@ from cosmos.accounts.api.schemas import (  # AccountHolderStatusResponseSchema,;
     GetAccountHolderByCredentials,
 )
 from cosmos.accounts.api.service import AccountService
-from cosmos.core.api.deps import RetailerDependency, bpl_channel_header_is_populated, get_session, user_is_authorised
+from cosmos.core.api.deps import RetailerDependency, UserIsAuthorised, bpl_channel_header_is_populated, get_session
 from cosmos.core.api.service import ServiceError
+from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
 if TYPE_CHECKING:
     from cosmos.db.models import AccountHolder
+
+get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
+user_is_authorised = UserIsAuthorised(expected_token=settings.POLARIS_API_AUTH_TOKEN)
 
 router = APIRouter(
     prefix="/loyalty",
@@ -25,8 +29,6 @@ bpl_operations_router = APIRouter(
     prefix="/loyalty",
     dependencies=[Depends(user_is_authorised), Depends(bpl_channel_header_is_populated)],
 )
-
-get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
 
 
 @router.post(

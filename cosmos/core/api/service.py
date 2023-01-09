@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
+from cosmos.core.api.crud import commit
 from cosmos.core.error_codes import ErrorCode
-from cosmos.db.base_class import async_run_query
 
 if TYPE_CHECKING:
 
@@ -45,10 +45,7 @@ class Service:
         self.retailer = retailer
 
     async def commit_db_changes(self) -> None:
-        async def _query() -> None:
-            await self.db_session.commit()
-
-        await async_run_query(_query, self.db_session, rollback_on_exc=False)
+        await commit(self.db_session)
 
 
 class ServiceError(Exception):
