@@ -5,7 +5,6 @@
 - `CREATE DATABASE cosmos;`
 - `poetry install`
 - create a `local.env` file in the root directory (below)
-- `poetry install`
 
 ### Example `local.env`
 

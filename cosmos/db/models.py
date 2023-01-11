@@ -145,43 +145,25 @@ class PendingReward(IdPkMixin, Base, TimestampMixin):
         self.total_cost_to_user = self.total_value + value
 
 
-class AccountHolderTransactionHistory(IdPkMixin, Base, TimestampMixin):
-    __tablename__ = "account_holder_transaction_history"
-
-    account_holder_id = Column(
-        BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True, nullable=False
-    )
-    transaction_id = Column(String, nullable=False, unique=True)
-    datetime = Column(DateTime, nullable=False)
-    amount = Column(String, nullable=False)
-    amount_currency = Column(String, nullable=False)
-    location_name = Column(String, nullable=False)
-    earned = Column(JSONB, nullable=False)
-
-    # account_holder = relationship("AccountHolder", back_populates="transaction_history")
-
-
 class Campaign(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "campaign"
 
     status = Column(Enum(CampaignStatuses), nullable=False, server_default="DRAFT")
     name = Column(String(), nullable=False)
     slug = Column(String(), index=True, unique=True, nullable=False)
-    reward_config_id = Column(BigInteger, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False, index=True)
     loyalty_type = Column(Enum(LoyaltyTypes), nullable=False, server_default="STAMPS")
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
 
-    reward_config = relationship("RewardConfig", back_populates="campaigns")
     retailer = relationship("Retailer", back_populates="campaigns")
     earn_rule = relationship("EarnRule", cascade="all,delete", back_populates="campaign", uselist=False)
     reward_rule = relationship("RewardRule", cascade="all,delete", back_populates="campaign", uselist=False)
     pending_rewards = relationship("PendingReward", back_populates="campaign")
     current_balances = relationship("CampaignBalance", back_populates="campaign")
     rewards = relationship("Reward", back_populates="campaign")
-    transactions = relationship("Transaction", secondary="transaction_campaign")
-    transaction_campaigns = relationship("TransactionCampaign", back_populates="campaign")
+    transactions = relationship("Transaction", secondary="transaction_campaign", back_populates="campaigns")
+    transaction_campaigns = relationship("TransactionCampaign", back_populates="campaign", overlaps="transactions")
 
     def __str__(self) -> str:  # pragma: no cover
         return str(self.name)
@@ -211,9 +193,9 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
         Enum(RewardCap, values_callable=lambda x: [str(e.value) for e in RewardCap]),
         nullable=True,
     )
-
     campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
     reward_config_id = Column(Integer, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
+
     campaign = relationship("Campaign", back_populates="reward_rule")
     reward_config = relationship("RewardConfig", back_populates="reward_rules")
 
@@ -320,7 +302,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     deleted = Column(Boolean, default=False, nullable=False)
 
     issued_date = Column(DateTime, nullable=True)
-    expiry_date = Column(DateTime, nullable=False)
+    expiry_date = Column(DateTime, nullable=True)
     redeemed_date = Column(DateTime, nullable=True)
     cancelled_date = Column(DateTime, nullable=True)
     associated_url = Column(String, nullable=False, server_default="")
@@ -328,7 +310,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     account_holder = relationship("AccountHolder", back_populates="rewards")
 
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
-    campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
+    campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=True)  # Set when issued
 
     reward_config = relationship("RewardConfig", back_populates="rewards")
     retailer = relationship("Retailer", back_populates="rewards")
@@ -344,14 +326,12 @@ class Reward(IdPkMixin, Base, TimestampMixin):
 
     @property
     def status(self) -> RewardStatuses:
-        if self.redeemed_date:
-            return self.RewardStatuses.REDEEMED
-
-        if self.cancelled_date:
-            return self.RewardStatuses.CANCELLED
-
-        if self.issued_date:
-            if datetime.now(tz=timezone.utc) >= self.expiry_date.replace(tzinfo=timezone.utc):
+        if self.account_holder_id:
+            if self.redeemed_date:
+                return self.RewardStatuses.REDEEMED
+            if self.cancelled_date:
+                return self.RewardStatuses.CANCELLED
+            if self.expiry_date and datetime.now(tz=timezone.utc) >= self.expiry_date.replace(tzinfo=timezone.utc):
                 return self.RewardStatuses.EXPIRED
             return self.RewardStatuses.ISSUED
         return self.RewardStatuses.UNALLOCATED
@@ -360,15 +340,14 @@ class Reward(IdPkMixin, Base, TimestampMixin):
         UniqueConstraint(
             "code",
             "retailer_id",
-            # "reward_config_id", # FIXME: We think this is not required?
-            # name="code_retailer_reward_config_unq", # TODO
-            name="code_retailer_unq",
+            "reward_config_id",  # https://hellobink.atlassian.net/browse/BPL-244 - check this requirement again
+            name="code_retailer_reward_config_unq",
         ),
     )
     __mapper_args__ = {"eager_defaults": True}
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.code}, {self.allocated})"
+        return f"<{self.__class__.__name__}> {self.id}"
 
 
 class RewardConfig(IdPkMixin, Base, TimestampMixin):
@@ -380,14 +359,12 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
     status = Column(Enum(RewardTypeStatuses), nullable=False, default=RewardTypeStatuses.ACTIVE)
     required_fields_values = Column(Text, nullable=True)
 
-    campaigns = relationship("Campaign", back_populates="reward_config")
     rewards = relationship("Reward", back_populates="reward_config")
     retailer = relationship("Retailer", back_populates="reward_configs")
     fetch_type = relationship("FetchType", back_populates="reward_configs")
     reward_rules = relationship("RewardRule", back_populates="reward_config")
 
     __mapper_args__ = {"eager_defaults": True}
-
     __table_args__ = (UniqueConstraint("slug", "retailer_id", name="slug_retailer_unq"),)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -455,8 +432,12 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
         primaryjoin="Transaction.mid==RetailerStore.mid",
         foreign_keys=mid,
     )
-    campaigns = relationship("Campaign", secondary="transaction_campaign")
-    transaction_campaigns = relationship("TransactionCampaign")
+    campaigns = relationship(
+        "Campaign", secondary="transaction_campaign", back_populates="transactions", overlaps="transaction_campaigns"
+    )
+    transaction_campaigns = relationship(
+        "TransactionCampaign", back_populates="transaction", overlaps="transactions,campaign"
+    )
 
     __table_args__ = (
         UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
@@ -473,8 +454,10 @@ class TransactionCampaign(Base, TimestampMixin):
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, primary_key=True)
     adjustment = Column(Integer, nullable=True)
 
-    campaign = relationship("Campaign", uselist=False, back_populates="transaction_campaigns")
-    transaction = relationship("Transaction")
+    campaign = relationship(
+        "Campaign", uselist=False, back_populates="transaction_campaigns", overlaps="campaigns,transactions"
+    )
+    transaction = relationship("Transaction", back_populates="transaction_campaigns", overlaps="campaigns,transactions")
 
 
 class Retailer(IdPkMixin, Base, TimestampMixin):

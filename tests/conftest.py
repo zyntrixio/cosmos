@@ -1,16 +1,27 @@
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable, Generator, NamedTuple
+from typing import TYPE_CHECKING, Any, Callable, Generator, NamedTuple
 from uuid import uuid4
 
 import pytest
 
 from fastapi.testclient import TestClient
 from sqlalchemy_utils import create_database, database_exists, drop_database
+from testfixtures import LogCapture
 
 from cosmos.db.base import Base
-from cosmos.db.models import AccountHolder, AccountHolderProfile, Campaign, FetchType, Retailer, Reward, RewardConfig
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderProfile,
+    Campaign,
+    FetchType,
+    Retailer,
+    RetailerFetchType,
+    Reward,
+    RewardConfig,
+)
 from cosmos.db.session import SyncSessionMaker, sync_engine
 from cosmos.public_api.api.app import create_app
+from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -70,6 +81,12 @@ def db_session(main_db_session: "Session") -> Generator["Session", None, None]:
     yield main_db_session
     main_db_session.rollback()
     main_db_session.expunge_all()
+
+
+@pytest.fixture(scope="function")
+def log_capture() -> Generator:
+    with LogCapture() as cpt:
+        yield cpt
 
 
 @pytest.fixture(scope="function")
@@ -155,25 +172,38 @@ def setup(db_session: "Session", retailer: Retailer, account_holder: AccountHold
 
 
 @pytest.fixture(scope="function")
-def fetch_type(setup: SetupType) -> FetchType:
-    db_session, _, _ = setup
-    mock_fetch_type = FetchType(
+def pre_loaded_fetch_type(db_session: "Session") -> FetchType:
+    ft = FetchType(
         name="PRE_LOADED",
-        path="TBC",
+        required_fields="validity_days: integer",
+        path="path.to.pre_loaded_agent",
     )
-    db_session.add(mock_fetch_type)
+    db_session.add(ft)
     db_session.commit()
-    return mock_fetch_type
+    return ft
 
 
 @pytest.fixture(scope="function")
-def reward_config(setup: SetupType, fetch_type: FetchType) -> RewardConfig:
+def jigsaw_fetch_type(db_session: "Session") -> FetchType:
+    ft = FetchType(
+        name="JIGSAW_EGIFT",
+        path="path.to.jigsaw_agent",
+        required_fields="transaction_value: integer",
+    )
+    db_session.add(ft)
+    db_session.commit()
+    return ft
+
+
+@pytest.fixture(scope="function")
+def reward_config(setup: SetupType, pre_loaded_fetch_type: FetchType) -> RewardConfig:
     db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
     mock_reward_config = RewardConfig(
         slug="test-reward-slug",
+        required_fields_values="validity_days: 15",
         retailer_id=retailer.id,
-        fetch_type_id=fetch_type.id,
-        status="ACTIVE",
+        fetch_type_id=pre_loaded_fetch_type.id,
+        status=RewardTypeStatuses.ACTIVE,
     )
     db_session.add(mock_reward_config)
     db_session.commit()
@@ -181,13 +211,12 @@ def reward_config(setup: SetupType, fetch_type: FetchType) -> RewardConfig:
 
 
 @pytest.fixture(scope="function")
-def campaign(setup: SetupType, reward_config: RewardConfig) -> Campaign:
+def campaign(setup: SetupType) -> Campaign:
     db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
     mock_campaign = Campaign(
         status="ACTIVE",
         name="test campaign",
         slug="test-campaign",
-        reward_config_id=reward_config.id,
         retailer_id=retailer.id,
         loyalty_type="ACCUMULATOR",
     )
@@ -274,3 +303,63 @@ def create_mock_account_holder(
         return acc_holder
 
     return _create_mock_account_holder
+
+
+@pytest.fixture(scope="function")
+def jigsaw_retailer_fetch_type(
+    db_session: "Session", retailer: Retailer, jigsaw_fetch_type: FetchType
+) -> RetailerFetchType:
+    rft = RetailerFetchType(
+        retailer_id=retailer.id,
+        fetch_type_id=jigsaw_fetch_type.id,
+        agent_config='base_url: "http://test.url"\n' "brand_id: 30\n" "fetch_reward: true\n" 'fetch_balance: false"',
+    )
+    db_session.add(rft)
+    db_session.commit()
+    return rft
+
+
+@pytest.fixture(scope="function")
+def pre_loaded_retailer_fetch_type(
+    db_session: "Session", retailer: Retailer, pre_loaded_fetch_type: FetchType
+) -> RetailerFetchType:
+    rft = RetailerFetchType(
+        retailer_id=retailer.id,
+        fetch_type_id=pre_loaded_fetch_type.id,
+    )
+    db_session.add(rft)
+    db_session.commit()
+    return rft
+
+
+@pytest.fixture(scope="function")
+def create_reward_config(db_session: "Session", pre_loaded_retailer_fetch_type: RetailerFetchType) -> Callable:
+    def _create_reward_config(**reward_config_params: Any) -> RewardConfig:
+        mock_reward_config_params = {
+            "slug": "test-reward",
+            "required_fields_values": "validity_days: 15",
+            "retailer_id": pre_loaded_retailer_fetch_type.retailer_id,
+            "fetch_type_id": pre_loaded_retailer_fetch_type.fetch_type_id,
+            "status": RewardTypeStatuses.ACTIVE,
+        }
+
+        mock_reward_config_params.update(reward_config_params)
+        reward_config = RewardConfig(**mock_reward_config_params)
+        db_session.add(reward_config)
+        db_session.commit()
+
+        return reward_config
+
+    return _create_reward_config
+
+
+@pytest.fixture(scope="function")
+def reward(db_session: "Session", reward_config: RewardConfig) -> Reward:
+    rc = Reward(
+        code="TSTCD1234",
+        retailer_id=reward_config.retailer_id,
+        reward_config=reward_config,
+    )
+    db_session.add(rc)
+    db_session.commit()
+    return rc
