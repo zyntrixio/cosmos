@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     SENTRY_DSN: HttpUrl | None = None
     SENTRY_ENV: str | None = None
     SENTRY_TRACES_SAMPLE_RATE: float = Field(0.0, ge=0.0, le=1.0)
+    # The prefix used on every Redis key.
+    REDIS_KEY_PREFIX = "cosmos:"
 
     @validator("SENTRY_DSN", pre=True)
     @classmethod
@@ -135,6 +137,13 @@ class Settings(BaseSettings):
     USE_CALLBACK_OAUTH2: bool = True
     AZURE_OAUTH2_TOKEN_URL: str = "http://169.254.169.254"
 
+    BLOB_STORAGE_DSN: str = ""
+    BLOB_IMPORT_CONTAINER = "carina-imports"
+    BLOB_ARCHIVE_CONTAINER = "carina-archive"
+    BLOB_ERROR_CONTAINER = "carina-errors"
+    BLOB_IMPORT_SCHEDULE = "*/5 * * * *"
+    BLOB_CLIENT_LEASE_SECONDS = 60
+    BLOB_IMPORT_LOGGING_LEVEL = logging.WARNING
     REDIS_URL: str
 
     @validator("REDIS_URL")
@@ -144,8 +153,6 @@ class Settings(BaseSettings):
             base_url, db_n = v.rsplit("/", 1)
             return f"{base_url}/{int(db_n) + 1}"
         return v
-
-    REDIS_KEY_PREFIX: str = "polaris:"
 
     ACCOUNT_HOLDER_ACTIVATION_TASK_NAME: str = "account-holder-activation"
     ENROLMENT_CALLBACK_TASK_NAME: str = "enrolment-callback"

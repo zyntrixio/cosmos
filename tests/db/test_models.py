@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from cosmos.db.models import Campaign, Reward, RewardConfig
+from cosmos.db.models import AccountHolder, Campaign, Reward, RewardConfig
 from tests.conftest import SetupType
 
 
@@ -11,13 +11,17 @@ def test_reward_status_prop_unallocated(setup: SetupType, reward_config: RewardC
     now = datetime.now(tz=timezone.utc)
 
     reward = Reward(
+        account_holder_id=None,
+        issued_date=None,
+        expiry_date=None,
+        cancelled_date=None,
+        redeemed_date=None,
         reward_uuid=uuid4(),
         code="TSTCD123456",
         reward_config_id=reward_config.id,
         retailer_id=retailer.id,
         campaign_id=campaign.id,
         deleted=False,
-        expiry_date=now + timedelta(days=10),
     )
     db_session.add(reward)
     db_session.commit()
@@ -26,11 +30,12 @@ def test_reward_status_prop_unallocated(setup: SetupType, reward_config: RewardC
 
 
 def test_reward_status_prop_issued(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
-    db_session, retailer, _ = setup
+    db_session, retailer, account_holder = setup
 
     now = datetime.now(tz=timezone.utc)
 
     reward = Reward(
+        account_holder_id=account_holder.id,
         reward_uuid=uuid4(),
         code="TSTCD123456",
         reward_config_id=reward_config.id,
@@ -49,11 +54,12 @@ def test_reward_status_prop_issued(setup: SetupType, reward_config: RewardConfig
 def test_reward_status_prop_issued_and_expired(
     setup: SetupType, reward_config: RewardConfig, campaign: Campaign
 ) -> None:
-    db_session, retailer, _ = setup
+    db_session, retailer, account_holder = setup
 
     now = datetime.now(tz=timezone.utc)
 
     reward = Reward(
+        account_holder_id=account_holder.id,
         reward_uuid=uuid4(),
         code="TSTCD123456",
         reward_config_id=reward_config.id,
@@ -70,11 +76,12 @@ def test_reward_status_prop_issued_and_expired(
 
 
 def test_reward_status_prop_redeemed(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
-    db_session, retailer, _ = setup
+    db_session, retailer, account_holder = setup
 
     now = datetime.now(tz=timezone.utc)
 
     reward = Reward(
+        account_holder_id=account_holder.id,
         reward_uuid=uuid4(),
         code="TSTCD123456",
         reward_config_id=reward_config.id,
@@ -92,11 +99,12 @@ def test_reward_status_prop_redeemed(setup: SetupType, reward_config: RewardConf
 
 
 def test_reward_status_prop_cancelled(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
-    db_session, retailer, _ = setup
+    db_session, retailer, account_holder = setup
 
     now = datetime.now(tz=timezone.utc)
 
     reward = Reward(
+        account_holder_id=account_holder.id,
         reward_uuid=uuid4(),
         code="TSTCD123456",
         reward_config_id=reward_config.id,

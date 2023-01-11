@@ -9,7 +9,6 @@ class RewardTypeStatuses(str, Enum):
 
 
 class RewardUpdateStatuses(Enum):
-    ISSUED = "issued"
     CANCELLED = "cancelled"
     REDEEMED = "redeemed"
 
