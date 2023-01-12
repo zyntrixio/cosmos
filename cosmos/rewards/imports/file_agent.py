@@ -81,8 +81,8 @@ class BlobFileAgent:
         return file_name is not None
 
     @staticmethod
-    def _log_and_capture_msg(msg: str, logging_fn: Callable = logger.error) -> None:
-        logging_fn(msg)
+    def _log_warn_and_alert(msg: str) -> None:
+        logger.warning(msg)
         sentry_sdk.capture_message(msg)
 
     @staticmethod
@@ -152,7 +152,7 @@ class BlobFileAgent:
             self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
             db_session.rollback()
         except RewardConfigNotActiveError as ex:
-            self._log_and_capture_msg(
+            logger.error(
                 (
                     f"Received invalid set of {retailer.slug} reward codes to import due to non-active reward "
                     f"type: {ex.slug}, moving to errors blob container for manual fix"
@@ -177,20 +177,16 @@ class BlobFileAgent:
                 lease = blob_client.acquire_lease(lease_duration=settings.BLOB_CLIENT_LEASE_SECONDS)
             except HttpResponseError:
                 msg = f"Skipping blob {blob.name} as we could not acquire a lease."
-                logger.warning(msg)
-                if settings.SENTRY_DSN:
-                    sentry_sdk.capture_message(msg)
+                self._log_warn_and_alert(msg)
                 continue
 
             if self._blob_name_is_duplicate(db_session, file_name=blob.name):
-                self._log_and_capture_msg(
-                    f"{blob.name} is a duplicate. Moving to {settings.BLOB_ERROR_CONTAINER} for checking"
-                )
+                logger.error(f"{blob.name} is a duplicate. Moving to {settings.BLOB_ERROR_CONTAINER} for checking")
                 self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
                 continue
 
             if not blob.name.endswith(".csv"):
-                self._log_and_capture_msg(
+                logger.error(
                     f"{blob.name} does not have .csv ext. Moving to {settings.BLOB_ERROR_CONTAINER} for checking"
                 )
                 self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
@@ -264,13 +260,12 @@ class RewardImportAgent(BlobFileAgent):
         msg = f"Pre-existing reward codes found in {blob_name}:\n" + "\n".join(
             [f"rows: {', '.join(map(str, row_nums_by_code[code]))}" for code in pre_existing_reward_codes]
         )
-        self._log_and_capture_msg(msg, logging_fn=logger.warning)
+        self._log_warn_and_alert(msg)
 
     def _report_invalid_rows(self, invalid_rows: list[int], blob_name: str) -> None:
         if invalid_rows:
-            self._log_and_capture_msg(
+            self._log_warn_and_alert(
                 f"Invalid rows found in {blob_name}:\nrows: {', '.join(map(str, sorted(invalid_rows)))}",
-                logging_fn=logger.warning,
             )
 
     def _get_reward_codes_and_report_invalid(
@@ -405,7 +400,7 @@ class RewardUpdatesAgent(BlobFileAgent):
             msg = f"Error validating RewardUpdate from CSV file {blob_name}:\n" + "\n".join(
                 [f"row {row_num}: {repr(e)}" for row_num, e in invalid_rows]
             )
-            self._log_and_capture_msg(msg, logging_fn=logger.warning)
+            self._log_warn_and_alert(msg)
 
         if not reward_update_rows_by_code:
             logger.warning(f"No relevant reward updates found in blob: {blob_name}")
@@ -430,7 +425,7 @@ class RewardUpdatesAgent(BlobFileAgent):
                 row_nums.extend([update_row.row_num for update_row in reward_update_row_datas])
 
             msg = f"Duplicate reward codes found while processing {blob_name}, rows: {', '.join(map(str, row_nums))}"
-            self._log_and_capture_msg(msg, logging_fn=logger.warning)
+            self._log_warn_and_alert(msg)
 
     def _report_unknown_codes(
         self,
@@ -447,7 +442,7 @@ class RewardUpdatesAgent(BlobFileAgent):
                 row_nums.extend([update_row.row_num for update_row in reward_update_row_datas])
 
             msg = f"Unknown reward codes found while processing {blob_name}, rows: {', '.join(map(str, row_nums))}"
-            self._log_and_capture_msg(msg, logging_fn=logger.warning)
+            self._log_warn_and_alert(msg)
 
     def _process_unallocated_codes(
         self,
@@ -481,7 +476,7 @@ class RewardUpdatesAgent(BlobFileAgent):
                     for row_data in update_rows
                 ]
             )
-            self._log_and_capture_msg(msg, logging_fn=logger.warning)
+            self._log_warn_and_alert(msg)
 
     def _process_updates(
         self,
