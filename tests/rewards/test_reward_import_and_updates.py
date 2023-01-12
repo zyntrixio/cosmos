@@ -757,9 +757,9 @@ def test_process_blobs_not_csv(setup: SetupType, mocker: MockerFixture) -> None:
     MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
-    from cosmos.rewards.imports.file_agent import sentry_sdk
+    from cosmos.rewards.imports.file_agent import logger
 
-    capture_message_spy = mocker.spy(sentry_sdk, "capture_message")
+    logger_error_spy = mocker.spy(logger, "error")
 
     reward_agent = RewardUpdatesAgent()
     mock_process_csv = mocker.patch.object(reward_agent, "process_csv")
@@ -775,10 +775,10 @@ def test_process_blobs_not_csv(setup: SetupType, mocker: MockerFixture) -> None:
     mock_settings.BLOB_ERROR_CONTAINER = "ERROR-CONTAINER"
 
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)
-    assert capture_message_spy.call_count == 1  # Errors should all be rolled up in to a single call
+    assert logger_error_spy.call_count == 1  # Errors should all be rolled up in to a single call
     assert (
         "re-test/rewards.update.update.docx does not have .csv ext. Moving to ERROR-CONTAINER for checking"
-        == capture_message_spy.call_args.args[0]
+        == logger_error_spy.call_args.args[0]
     )
     mock_move_blob.assert_called_once()
     assert mock_move_blob.call_args[0][0] == "ERROR-CONTAINER"
@@ -798,9 +798,9 @@ def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFix
     MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
-    from cosmos.rewards.imports.file_agent import sentry_sdk
+    from cosmos.rewards.imports.file_agent import logger
 
-    capture_message_spy = mocker.spy(sentry_sdk, "capture_message")
+    logger_error_spy = mocker.spy(logger, "error")
 
     reward_agent = RewardUpdatesAgent()
     mock_process_csv = mocker.patch.object(reward_agent, "process_csv")
@@ -816,10 +816,10 @@ def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFix
     mock_settings.BLOB_ERROR_CONTAINER = "ERROR-CONTAINER"
 
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)
-    assert capture_message_spy.call_count == 1  # Errors should all be rolled up in to a single call
+    assert logger_error_spy.call_count == 1  # Errors should all be rolled up in to a single call
     assert (
         "re-test/rewards.update.update.csv is a duplicate. Moving to ERROR-CONTAINER for checking"
-        == capture_message_spy.call_args.args[0]
+        == logger_error_spy.call_args.args[0]
     )
     mock_move_blob.assert_called_once()
     assert mock_move_blob.call_args[0][0] == "ERROR-CONTAINER"
