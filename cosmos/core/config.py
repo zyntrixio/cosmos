@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import sentry_sdk
 
-from pydantic import BaseSettings, Field, HttpUrl, PostgresDsn, validator
+from pydantic import AnyHttpUrl, BaseSettings, Field, HttpUrl, PostgresDsn, validator
 from pydantic.validators import str_validator
 from redis import Redis
 from retry_tasks_lib.settings import load_settings
@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     def is_migration(cls, v: bool) -> bool:
         command = sys.argv[0]
         return True if "alembic" in command else v
+
+    PUBLIC_URL: AnyHttpUrl | None = None
+
+    @validator("PUBLIC_URL")
+    @classmethod
+    def validate_polaris_public_url(cls, v: AnyHttpUrl) -> str:
+        if not v:
+            raise ValueError("PUBLIC_URL not set")
+        return str(v)
 
     PROJECT_NAME: str = "cosmos"
     ROOT_LOG_LEVEL: LogLevel | None = None

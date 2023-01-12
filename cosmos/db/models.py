@@ -2,7 +2,7 @@
 import enum
 import uuid
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
 import yaml
@@ -32,6 +32,7 @@ from sqlalchemy.schema import Index
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
+from cosmos.core.config import settings
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
@@ -64,12 +65,12 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     def __str__(self) -> str:
         return f"{self.id}: {self.email}"  # pragma: no cover
 
-    # @property
-    # def marketing_opt_out_link(self) -> str:
-    #     return (
-    #         f"{settings.POLARIS_PUBLIC_URL}{settings.API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe"
-    #         f"?u={self.opt_out_token}"
-    #     )
+    @property
+    def marketing_opt_out_link(self) -> str:
+        return (
+            f"{settings.PUBLIC_URL}{settings.API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe"
+            f"?u={self.opt_out_token}"
+        )
 
 
 class AccountHolderProfile(IdPkMixin, Base, TimestampMixin):
@@ -489,3 +490,9 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.slug})"
+
+    @property
+    def current_balance_reset_date(self) -> date | None:
+        if self.balance_lifespan:
+            return datetime.now(tz=timezone.utc).date() + timedelta(days=self.balance_lifespan)
+        return None
