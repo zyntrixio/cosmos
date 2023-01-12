@@ -143,14 +143,14 @@ class BlobFileAgent:
         except BlobProcessingError as ex:
             logger.error(f"Problem processing blob {blob.name} - {ex}. Moving to {settings.BLOB_ERROR_CONTAINER}")
             self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
-            sync_run_query(lambda: db_session.rollback(), db_session)  # pylint: disable=unnecessary-lambda
+            db_session.rollback()
         except UnicodeDecodeError as ex:
             logger.error(
                 f"Problem decoding blob {blob.name} (files should be utf-8 encoded) - {ex}. "
                 f"Moving to {settings.BLOB_ERROR_CONTAINER}"
             )
             self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
-            sync_run_query(lambda: db_session.rollback(), db_session)  # pylint: disable=unnecessary-lambda
+            db_session.rollback()
         except RewardConfigNotActiveError as ex:
             self._log_and_capture_msg(
                 (
@@ -159,20 +159,13 @@ class BlobFileAgent:
                 )
             )
             self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+            db_session.rollback()
         else:
             logger.debug(f"Archiving blob {blob.name}.")
             self.move_blob(settings.BLOB_ARCHIVE_CONTAINER, blob_client, lease)
-
-            def add_reward_file_log(blb: "BlobProperties") -> None:
-                db_session.add(
-                    RewardFileLog(
-                        file_name=blb.name,
-                        file_agent_type=self.file_agent_type,
-                    )
-                )
-                db_session.commit()
-
-            sync_run_query(add_reward_file_log, db_session, blb=blob)
+            db_session.add(RewardFileLog(file_name=blob.name, file_agent_type=self.file_agent_type))
+            # commit all or nothing
+            db_session.commit()
 
     def process_blobs(self, retailer: Retailer, db_session: "Session") -> None:
         for blob in self.container_client.list_blobs(
@@ -248,11 +241,8 @@ class RewardImportAgent(BlobFileAgent):
 
     @lru_cache()
     def reward_configs_by_slug(self, retailer_id: int, db_session: "Session") -> dict[str, RewardConfig]:
-        reward_configs = sync_run_query(
-            lambda: db_session.execute(select(RewardConfig).where(RewardConfig.retailer_id == retailer_id))
-            .scalars()
-            .all(),
-            db_session,
+        reward_configs = (
+            db_session.execute(select(RewardConfig).where(RewardConfig.retailer_id == retailer_id)).scalars().all()
         )
         return {reward_config.slug: reward_config for reward_config in reward_configs}
 
@@ -302,8 +292,8 @@ class RewardImportAgent(BlobFileAgent):
             elif code := row[0].strip():
                 row_nums_by_code[code].append(row_num)
 
-        db_reward_codes = sync_run_query(
-            lambda: db_session.execute(
+        db_reward_codes = (
+            db_session.execute(
                 select(Reward.code).where(
                     or_(
                         and_(
@@ -317,8 +307,7 @@ class RewardImportAgent(BlobFileAgent):
                 )
             )
             .scalars()
-            .all(),
-            db_session,
+            .all()
         )
 
         self._report_invalid_rows(invalid_rows, blob_name)
@@ -361,11 +350,7 @@ class RewardImportAgent(BlobFileAgent):
             if code  # caters for blank lines
         ]
 
-        def add_new_rewards() -> None:
-            db_session.add_all(new_rewards)
-            db_session.commit()
-
-        sync_run_query(add_new_rewards, db_session)
+        db_session.add_all(new_rewards)
 
 
 class RewardUpdatesAgent(BlobFileAgent):
@@ -508,15 +493,14 @@ class RewardUpdatesAgent(BlobFileAgent):
 
         reward_codes_in_file = list(reward_update_rows_by_code.keys())
 
-        reward_datas = sync_run_query(
-            lambda: db_session.execute(
+        reward_datas = (
+            db_session.execute(
                 select(Reward.id, Reward.code, Reward.account_holder_id).with_for_update()
                 # FIXME: should we filter on deleted=False?
                 .where(Reward.code.in_(reward_codes_in_file), Reward.retailer_id == retailer.id)
             )
             .mappings()
-            .all(),
-            db_session,
+            .all()
         )
         # Provides a dict in the following format:
         # {'<code>': {'id': 'f2c44cf7-9d0f-45d0-b199-44a3c8b72db3', 'allocated': True}}
@@ -539,9 +523,9 @@ class RewardUpdatesAgent(BlobFileAgent):
             reward_update_rows_by_code=reward_update_rows_by_code,
         )
         self._report_duplicates(reward_update_rows_by_code, blob_name)
-        self._persist_data(db_session, reward_update_rows_by_code, db_reward_data_by_code)
+        self._finalise_data(db_session, reward_update_rows_by_code, db_reward_data_by_code)
 
-    def _persist_data(
+    def _finalise_data(
         self,
         db_session: "Session",
         reward_update_rows_by_code: DefaultDict[str, list[RewardUpdateRow]],
@@ -560,37 +544,31 @@ class RewardUpdatesAgent(BlobFileAgent):
                 )
                 update_rows_by_status[row.data.status].append(row)
 
-        def _persist() -> None:
-            # Persist RewardUpdate object rows
-            db_session.add_all(reward_update_objs)
+        # Persist RewardUpdate object rows
+        db_session.add_all(reward_update_objs)
 
-            # Persist updates to the Reward objects themselves
-            # This code produces two "executemany" contexts for each status with the following rules:
-            #  * Unallocated rewards (i.e. account_holder_id == NULL) will be ignored
-            #  * CANCELLED rewards will be ignored if cancelled_date is not NULL (i.e. previously updated)
-            #  * REDEEMED rewards will be ignored if redeemed_date is not NULL (i.e. previously updated)
-            reward_table = Reward.__table__
+        # Persist updates to the Reward objects themselves
+        # This code produces two "executemany" contexts for each status with the following rules:
+        #  * Unallocated rewards (i.e. account_holder_id == NULL) will be ignored
+        #  * CANCELLED rewards will be ignored if cancelled_date is not NULL (i.e. previously updated)
+        #  * REDEEMED rewards will be ignored if redeemed_date is not NULL (i.e. previously updated)
+        reward_table = Reward.__table__
 
-            for status, update_rows in update_rows_by_status.items():
-                params = [{"reward_code": update.data.code, "date": update.data.date_} for update in update_rows]
-                if status == RewardUpdateStatuses.CANCELLED:
-                    values = {"cancelled_date": bindparam("date")}
-                    date_where = reward_table.c.cancelled_date.is_(None)
+        for status, update_rows in update_rows_by_status.items():
+            params = [{"reward_code": update.data.code, "date": update.data.date_} for update in update_rows]
+            if status == RewardUpdateStatuses.CANCELLED:
+                values = {"cancelled_date": bindparam("date")}
+                date_where = reward_table.c.cancelled_date.is_(None)
 
-                elif status == RewardUpdateStatuses.REDEEMED:
-                    values = {"redeemed_date": bindparam("date")}
-                    date_where = reward_table.c.redeemed_date.is_(None)
+            elif status == RewardUpdateStatuses.REDEEMED:
+                values = {"redeemed_date": bindparam("date")}
+                date_where = reward_table.c.redeemed_date.is_(None)
 
-                else:
-                    raise ValueError(f"Unknown status: {status}")
+            else:
+                raise ValueError(f"Unknown status: {status}")
 
-                wheres = [
-                    reward_table.c.account_holder_id.is_not(None),
-                    reward_table.c.code == bindparam("reward_code"),
-                ]
-                db_session.execute(reward_table.update().where(date_where, *wheres).values(**values), params)
-
-            # commit all or nothing
-            db_session.commit()
-
-        sync_run_query(_persist, db_session, rollback_on_exc=True)
+            wheres = [
+                reward_table.c.account_holder_id.is_not(None),
+                reward_table.c.code == bindparam("reward_code"),
+            ]
+            db_session.execute(reward_table.update().where(date_where, *wheres).values(**values), params)
