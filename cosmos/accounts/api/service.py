@@ -7,6 +7,7 @@ import yaml
 
 from pydantic import UUID4, ValidationError
 
+from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.accounts.api import crud
 from cosmos.accounts.api.schemas import (
     AccountHolderEnrolment,
@@ -16,15 +17,18 @@ from cosmos.accounts.api.schemas import (
     MarketingPreference,
 )
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.core.activity.enums import ActivityType
 from cosmos.core.activity.tasks import async_send_activity
+from cosmos.core.api.crud import create_retry_task
 
 # from cosmos.core.api.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
+from cosmos.core.api.tasks import enqueue_task
+from cosmos.core.config import settings
 
 # from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
+from cosmos.retailers.enums import EmailTemplateTypes
 
 # from cosmos.retailers.enums import EmailTemplateTypes
 from cosmos.retailers.schemas import (
@@ -75,7 +79,7 @@ class AccountService(Service):
 
             email = profile_data.pop("email").lower()
             try:
-                account_holder = await crud.create_account_holder(  # noqa: F841 # remove me
+                account_holder = await crud.create_account_holder(
                     self.db_session,
                     email=email,
                     retailer_id=self.retailer.id,
@@ -86,52 +90,58 @@ class AccountService(Service):
                 result = ErrorCode.ACCOUNT_EXISTS.name
                 return ServiceResult(error=ServiceError(error_code=ErrorCode.ACCOUNT_EXISTS))
 
-            # callback_task = await create_retry_task(
-            #     self.db_session,
-            #     task_type_name=settings.ENROLMENT_CALLBACK_TASK_NAME,
-            #     params={
-            #         "account_holder_id": account_holder.id,
-            #         "callback_url": request_payload.callback_url,
-            #         "third_party_identifier": request_payload.third_party_identifier,
-            #     },
-            # )
-            # welcome_email_task = await create_retry_task(
-            #     self.db_session,
-            #     task_type_name=settings.SEND_EMAIL_TASK_NAME,
-            #     params={
-            #         "account_holder_id": account_holder.id,
-            #         "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
-            #         "retailer_id": self.retailer.id,
-            #     },
-            # )
-            # welcome_email_task = await create_retry_task(
-            #     self.db_session,
-            #     task_type_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
-            #     params={
-            #         "account_holder_id": account_holder.id,
-            #         "callback_retry_task_id": callback_task.retry_task_id,
-            #         "welcome_email_retry_task_id": welcome_email_task.retry_task_id,
-            #         "third_party_identifier": request_payload.third_party_identifier,
-            #         "channel": channel,
-            #     },
-            # )
+            callback_task = await create_retry_task(
+                self.db_session,
+                task_type_name=settings.ENROLMENT_CALLBACK_TASK_NAME,
+                params={
+                    "account_holder_id": account_holder.id,
+                    "callback_url": request_payload.callback_url,
+                    "third_party_identifier": request_payload.third_party_identifier,
+                },
+            )
+            welcome_email_task = await create_retry_task(
+                self.db_session,
+                task_type_name=settings.SEND_EMAIL_TASK_NAME,
+                params={
+                    "account_holder_id": account_holder.id,
+                    "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
+                    "retailer_id": self.retailer.id,
+                },
+            )
+            activation_task = await create_retry_task(
+                self.db_session,
+                task_type_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+                params={
+                    "account_holder_id": account_holder.id,
+                    "callback_retry_task_id": callback_task.retry_task_id,
+                    "welcome_email_retry_task_id": welcome_email_task.retry_task_id,
+                    "third_party_identifier": request_payload.third_party_identifier,
+                    "channel": channel,
+                },
+            )
         except ValidationError as exc:
             result = "FIELD_VALIDATION_ERROR"
             return ServiceResult(error=RequestPayloadValidationError(validation_error=exc))
         else:
             await self.commit_db_changes()
             result = "Accepted"
+            asyncio.create_task(enqueue_task(retry_task_id=activation_task.retry_task_id))
             return ServiceResult({})
         finally:
-            activity_payload = ActivityType.get_account_request_activity_data(
-                activity_datetime=datetime.now(tz=timezone.utc),
-                retailer_slug=self.retailer.slug,
-                channel=channel,
-                result=result,
-                request_data=request_payload.dict(exclude_unset=True),
-                retailer_profile_config=retailer_profile_config,
+            account_request_activity_payload = {
+                "activity_datetime": datetime.now(tz=timezone.utc),
+                "retailer_slug": self.retailer.slug,
+                "channel": channel,
+                "result": result,
+                "request_data": request_payload.dict(exclude_unset=True),
+                "retailer_profile_config": retailer_profile_config,
+            }
+            await self.store_activity(
+                activity_type=AccountsActivityType.ACCOUNT_REQUEST,
+                payload_formatter_fn=AccountsActivityType.get_account_request_activity_data,
+                formatter_kwargs=account_request_activity_payload,
             )
-            asyncio.create_task(async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_REQUEST.value))
+            await self.format_and_send_stored_activities()
 
     async def handle_account_auth(
         self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None = 10, channel: str
@@ -151,14 +161,14 @@ class AccountService(Service):
         if account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
-        activity_payload = ActivityType.get_account_authentication_activity_data(
+        activity_payload = AccountsActivityType.get_account_authentication_activity_data(
             account_holder_uuid=account_holder.account_holder_uuid,
             activity_datetime=datetime.now(tz=timezone.utc),
             retailer_slug=self.retailer.slug,
             channel=channel,
         )
         asyncio.create_task(
-            async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_AUTHENTICATION.value)
+            async_send_activity(activity_payload, routing_key=AccountsActivityType.ACCOUNT_AUTHENTICATION.value)
         )
         setattr(account_holder, "retailer_status", self.retailer.status)  # noqa: B010
         return ServiceResult(account_holder)

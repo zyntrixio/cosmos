@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from pytest_mock import MockerFixture
 from sqlalchemy_utils import create_database, database_exists, drop_database
 from testfixtures import LogCapture
 
@@ -27,6 +28,8 @@ from cosmos.db.session import SyncSessionMaker, sync_engine
 from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
+    from unittest.mock import MagicMock
+
     from sqlalchemy.orm import Session
 
 
@@ -78,6 +81,11 @@ def db_session(main_db_session: "Session") -> Generator["Session", None, None]:
     yield main_db_session
     main_db_session.rollback()
     main_db_session.expunge_all()
+
+
+@pytest.fixture(scope="function")
+def mock_activity(mocker: MockerFixture) -> "MagicMock":
+    return mocker.patch("cosmos.core.api.service.format_and_send_activity_in_background")
 
 
 @pytest.fixture(scope="function")
@@ -222,7 +230,7 @@ def jigsaw_fetch_type(db_session: "Session") -> FetchType:
 
 @pytest.fixture(scope="function")
 def reward_config(setup: SetupType, pre_loaded_fetch_type: FetchType) -> RewardConfig:
-    db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
+    db_session, retailer, _ = setup
     mock_reward_config = RewardConfig(
         slug="test-reward-slug",
         required_fields_values="validity_days: 15",
@@ -237,7 +245,7 @@ def reward_config(setup: SetupType, pre_loaded_fetch_type: FetchType) -> RewardC
 
 @pytest.fixture(scope="function")
 def campaign(setup: SetupType) -> Campaign:
-    db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
+    db_session, retailer, _ = setup
     mock_campaign = Campaign(
         status="ACTIVE",
         name="test campaign",
@@ -317,7 +325,7 @@ def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: Rew
 @pytest.fixture(scope="function")
 def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> Reward:
     now = datetime.now(tz=timezone.utc)
-    db_session, retailer, _ = setup  # pylint: disable=redefined-outer-name
+    db_session, retailer, _ = setup
     mock_user_reward = Reward(
         reward_uuid=uuid4(),
         code="TSTCD123456",
@@ -547,3 +555,24 @@ def create_pending_reward(setup: SetupType, campaign: Campaign) -> Callable[...,
         return pending_reward
 
     return _create_pending_reward
+
+
+@pytest.fixture(scope="function")
+def create_mock_campaign(db_session: "Session", retailer: Retailer, mock_campaign: dict) -> Callable[..., Campaign]:
+    def _create_mock_campaign(**campaign_params: dict) -> Campaign:
+        """
+        Create a campaign in the test DB
+        :param campaign_params: override any values for the campaign, from what the mock_campaign fixture provides
+        :return: Callable function
+        """
+        mock_campaign_params = deepcopy(mock_campaign)
+        mock_campaign_params["retailer_id"] = retailer.id
+
+        mock_campaign_params.update(campaign_params)
+        cpn = Campaign(**mock_campaign_params)
+        db_session.add(cpn)
+        db_session.commit()
+
+        return cpn
+
+    return _create_mock_campaign

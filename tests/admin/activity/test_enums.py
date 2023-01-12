@@ -1,5 +1,3 @@
-# pylint: disable=too-many-lines
-
 import uuid
 
 from datetime import datetime, timedelta, timezone

@@ -10,31 +10,13 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 from alembic import op
+from cosmos.db.data import load_data
 
 # revision identifiers, used by Alembic.
 revision = "962cc8859572"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-
-def add_fetch_types(conn: sa.engine.Connection, metadata: sa.MetaData) -> None:
-    fetch_type = sa.Table("fetch_type", metadata, autoload_with=conn)
-    conn.execute(
-        fetch_type.insert(),
-        [
-            {
-                "name": "PRE_LOADED",
-                "required_fields": "validity_days: integer",
-                "path": "TBC",
-            },
-            {
-                "name": "JIGSAW_EGIFT",
-                "required_fields": "transaction_value: integer",
-                "path": "TBC",
-            },
-        ],
-    )
 
 
 def upgrade() -> None:
@@ -583,10 +565,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
 
-    # Init values
-    metadata = sa.MetaData()
-    conn = op.get_bind()
-    add_fetch_types(conn, metadata)
+    # load data into tables
+    load_data(op.get_bind(), sa.MetaData())
     # ### end Alembic commands ###
 
 

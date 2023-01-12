@@ -6,13 +6,13 @@ from uuid import UUID
 from fastapi import status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cosmos.core.activity.enums import ActivityType
+from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import get_reward
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
+from cosmos.core.prometheus import invalid_marketing_opt_out, microsite_reward_requests
 from cosmos.public_api.api import crud
-from cosmos.public_api.api.metrics import invalid_marketing_opt_out, microsite_reward_requests
 from cosmos.retailers.crud import get_retailer_by_slug
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ class PublicService(Service):
                 msg += f" for {data.retailer_name}"
 
                 for (pref_name, updated_at) in updates:
-                    activity_payload = ActivityType.get_marketing_preference_change_activity_data(
+                    activity_payload = AccountsActivityType.get_marketing_preference_change_activity_data(
                         account_holder_uuid=data.account_holder_uuid,
                         retailer_slug=data.retailer_slug,
                         field_name=pref_name,
@@ -72,7 +72,7 @@ class PublicService(Service):
                         new_value="False",
                     )
                     asyncio.create_task(
-                        async_send_activity(activity_payload, routing_key=ActivityType.ACCOUNT_CHANGE.value)
+                        async_send_activity(activity_payload, routing_key=AccountsActivityType.ACCOUNT_CHANGE.value)
                     )
 
         else:

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable
 from pytest_mock import MockerFixture
 from starlette import status
 
-from cosmos.core.activity.enums import ActivityType
+from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
 from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import AccountHolder, MarketingPreference, MarketingPreferenceValueTypes, Retailer, Reward
@@ -23,7 +23,7 @@ PUBLIC_API_PREFIX = f"{settings.API_PREFIX}/public"
 def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, test_client: "TestClient") -> None:
     db_session, retailer, account_holder = setup
     mock_get_marketing_preference_change_activity_data = mocker.patch(
-        "cosmos.core.activity.enums.ActivityType.get_marketing_preference_change_activity_data",
+        "cosmos.accounts.activity.enums.ActivityType.get_marketing_preference_change_activity_data",
         return_value={"mock": "payload"},
     )
     mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
@@ -75,7 +75,9 @@ def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, 
         retailer_slug="re-test",
         summary="Unsubscribed via marketing opt-out",
     )
-    mock_sync_send_activity.assert_called_once_with({"mock": "payload"}, routing_key=ActivityType.ACCOUNT_CHANGE.value)
+    mock_sync_send_activity.assert_called_once_with(
+        {"mock": "payload"}, routing_key=AccountActivityType.ACCOUNT_CHANGE.value
+    )
 
 
 def test_opt_out_marketing_preferences_wrong_retailer(
