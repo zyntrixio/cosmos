@@ -520,7 +520,7 @@ def upgrade() -> None:
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("campaign_id", sa.BigInteger(), nullable=True),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["reward_config_id"],
