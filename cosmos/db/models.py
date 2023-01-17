@@ -149,8 +149,8 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "campaign"
 
     status = Column(Enum(CampaignStatuses), nullable=False, server_default="DRAFT")
-    name = Column(String(), nullable=False)
-    slug = Column(String(), index=True, unique=True, nullable=False)
+    name = Column(String(128), nullable=False)
+    slug = Column(String(100), index=True, unique=True, nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False, index=True)
     loyalty_type = Column(Enum(LoyaltyTypes), nullable=False, server_default="STAMPS")
     start_date = Column(DateTime, nullable=True)

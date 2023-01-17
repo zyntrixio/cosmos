@@ -329,8 +329,8 @@ def upgrade() -> None:
             server_default="DRAFT",
             nullable=False,
         ),
-        sa.Column("name", sa.String(), nullable=False),
-        sa.Column("slug", sa.String(), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.Column("slug", sa.String(length=100), nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column(
             "loyalty_type",
