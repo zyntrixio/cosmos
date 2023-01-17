@@ -25,3 +25,9 @@ class FileAgentType(Enum):
 class PendingRewardActions(Enum):
     REMOVE = "remove"
     CONVERT = "convert"
+
+
+class PendingRewardMigrationActions(Enum):
+    REMOVE = "remove"
+    CONVERT = "convert"
+    TRANSFER = "transfer"

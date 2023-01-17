@@ -9,10 +9,11 @@ from cosmos.campaigns.api.endpoints import api_router
 from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     request_validation_handler,
-    service_exception_handler,
+    service_error_handler,
+    service_list_error_handler,
     unexpected_exception_handler,
 )
-from cosmos.core.api.service import ServiceError
+from cosmos.core.api.service import ServiceError, ServiceListError
 from cosmos.core.config import settings
 
 
@@ -22,7 +23,8 @@ def create_app() -> FastAPI:
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
-    fapi.add_exception_handler(ServiceError, service_exception_handler)
+    fapi.add_exception_handler(ServiceError, service_error_handler)
+    fapi.add_exception_handler(ServiceListError, service_list_error_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
     fapi.add_middleware(MetricsSecurityMiddleware)
     fapi.add_middleware(PrometheusMiddleware)

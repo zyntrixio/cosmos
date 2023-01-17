@@ -12,7 +12,7 @@ from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     payload_request_validation_error,
     request_validation_handler,
-    service_exception_handler,
+    service_error_handler,
     unexpected_exception_handler,
 )
 from cosmos.core.api.exceptions import RequestPayloadValidationError
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(RequestPayloadValidationError, payload_request_validation_error)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
-    fapi.add_exception_handler(ServiceError, service_exception_handler)
+    fapi.add_exception_handler(ServiceError, service_error_handler)
     fapi.add_exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR, unexpected_exception_handler)
 
     fapi.add_middleware(MetricsSecurityMiddleware)

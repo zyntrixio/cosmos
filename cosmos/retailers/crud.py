@@ -7,10 +7,13 @@ from cosmos.db.models import Campaign, Retailer
 
 
 async def get_retailer_by_slug(
-    db_session: AsyncSession, retailer_slug: str, with_campaign_data: bool = False
+    db_session: AsyncSession, retailer_slug: str, with_campaign_data: bool = False, lock_row: bool = False
 ) -> Retailer | None:
+
     stmt = select(Retailer).where(Retailer.slug == retailer_slug)
-    if with_campaign_data:
+    if lock_row:
+        stmt = stmt.with_for_update()
+    elif with_campaign_data:
         stmt = (
             stmt.outerjoin(Retailer.campaigns)
             .outerjoin(Retailer.stores)

@@ -16,28 +16,12 @@ from cosmos.db.models import CampaignBalance, PendingReward, Reward
 from cosmos.retailers.enums import RetailerStatuses
 from tests.conftest import SetupType
 
+from . import auth_headers, validate_error_response
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from requests import Response
 
     from cosmos.db.models import Campaign, Retailer
-
-
-auth_headers = {"Authorization": f"Token {settings.VELA_API_AUTH_TOKEN}", "Bpl-User-Channel": "channel"}
-
-
-@pytest.fixture(scope="function")
-def mock_activity(mocker: MockerFixture) -> mock.MagicMock:
-    return mocker.patch("cosmos.campaigns.api.service.format_and_send_activity_in_background")
-
-
-def validate_error_response(response: "Response", error: ErrorCode) -> None:
-    resp_json: dict = response.json()
-    error_detail: dict = error.value.detail.dict(exclude_unset=True)
-
-    assert response.status_code == error.value.status_code
-    assert resp_json["display_message"] == error_detail["display_message"]
-    assert resp_json["code"] == error_detail["code"]
 
 
 def test_status_change_mangled_json(test_client: "TestClient", setup: SetupType) -> None:

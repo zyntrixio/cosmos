@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from cosmos.db.models import Campaign, Retailer
 
-    class DeletePendingRewardsRes(NamedTuple):
+    class PendingRewardsRes(NamedTuple):
         pending_reward_uuid: UUID
         account_holder_uuid: UUID
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 async def delete_pending_rewards_for_campaign(
     db_session: "AsyncSession", *, retailer: "Retailer", campaign: "Campaign"
-) -> list["DeletePendingRewardsRes"]:
+) -> list["PendingRewardsRes"]:
     logger.info("Deleting pending rewards for campaign '%s'...", campaign.slug)
 
     async def _delete_pending_rewards(savepoint: "AsyncSessionTransaction") -> tuple[list["Row"], int]:
@@ -80,5 +80,25 @@ async def cancel_issued_rewards_for_campaign(
 
         await savepoint.commit()
         return updates
+
+    return await async_run_query(_query, db_session)
+
+
+async def transfer_pending_rewards(
+    db_session: "AsyncSession", *, from_campaign: "Campaign", to_campaign: "Campaign"
+) -> list["PendingRewardsRes"]:
+    async def _query(savepoint: "AsyncSessionTransaction") -> list["Row"]:
+        res = await db_session.execute(
+            PendingReward.__table__.update()
+            .values(campaign_id=to_campaign.id)
+            .where(
+                PendingReward.campaign_id == from_campaign.id,
+                # this is needed to return the account_holder_uuid
+                PendingReward.account_holder_id == AccountHolder.id,
+            )
+            .returning(PendingReward.pending_reward_uuid, AccountHolder.account_holder_uuid)
+        )
+        await savepoint.commit()
+        return res.all()
 
     return await async_run_query(_query, db_session)
