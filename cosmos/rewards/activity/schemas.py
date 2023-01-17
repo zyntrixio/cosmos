@@ -17,3 +17,8 @@ class RewardUpdateDataSchema(BaseModel):
 class TotalCostToUserDataSchema(RewardUpdateDataSchema):
     pending_reward_id: int
     pending_reward_uuid: UUID
+
+
+class RewardTransferActivityDataSchema(BaseModel):
+    new_campaign: str
+    old_campaign: str

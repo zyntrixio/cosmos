@@ -164,6 +164,34 @@ def account_holder(
 
 
 @pytest.fixture(scope="function")
+def create_account_holder(
+    db_session: "Session", retailer: Retailer, test_account_holder_activation_data: dict
+) -> Callable[..., AccountHolder]:
+
+    data = {
+        "email": test_account_holder_activation_data["email"],
+        "retailer_id": retailer.id,
+        "status": "ACTIVE",
+    }
+
+    def _create_account_holder(**params: str | int) -> AccountHolder:
+        data.update(params)
+        acc_holder = AccountHolder(**data)
+        db_session.add(acc_holder)
+        db_session.flush()
+
+        profile = AccountHolderProfile(
+            account_holder_id=acc_holder.id, **test_account_holder_activation_data["credentials"]
+        )
+        db_session.add(profile)
+        db_session.commit()
+
+        return acc_holder
+
+    return _create_account_holder
+
+
+@pytest.fixture(scope="function")
 def setup(db_session: "Session", retailer: Retailer, account_holder: AccountHolder) -> Generator[SetupType, None, None]:
     yield SetupType(db_session, retailer, account_holder)
 
@@ -223,11 +251,54 @@ def campaign(setup: SetupType) -> Campaign:
 
 
 @pytest.fixture(scope="function")
+def create_campaign(setup: SetupType, reward_config: RewardConfig) -> Callable[..., Campaign]:
+    db_session, retailer, _ = setup
+    data = {
+        "status": "ACTIVE",
+        "name": "test campaign",
+        "slug": "test-campaign",
+        "retailer_id": retailer.id,
+        "loyalty_type": "ACCUMULATOR",
+    }
+
+    def _create_campaign(**params: Any) -> Campaign:  # noqa: ANN401
+        """
+        Create a campaign in the test DB
+        :param params: override any values for campaign
+        :return: Campaign
+        """
+        data.update(params)
+        new_campaign = Campaign(**data)
+
+        db_session.add(new_campaign)
+        db_session.flush()
+        db_session.add(
+            RewardRule(
+                reward_goal=500,
+                campaign_id=new_campaign.id,
+                reward_config_id=reward_config.id,
+            )
+        )
+        db_session.add(
+            EarnRule(
+                threshold=100,
+                increment=1,
+                campaign_id=new_campaign.id,
+            )
+        )
+        db_session.commit()
+
+        return new_campaign
+
+    return _create_campaign
+
+
+@pytest.fixture(scope="function")
 def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: RewardConfig) -> Campaign:
     db_session = setup.db_session
     db_session.add(
         RewardRule(
-            reward_goal=100,
+            reward_goal=500,
             campaign_id=campaign.id,
             reward_config_id=reward_config.id,
         )
@@ -262,7 +333,7 @@ def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaig
     return mock_user_reward
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campaign: Campaign) -> Callable:
     reward = {
         "reward_uuid": None,
@@ -280,7 +351,7 @@ def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campa
         "updated_at": None,
     }
 
-    def _create_mock_reward(**reward_params: dict) -> Reward:
+    def _create_mock_reward(**reward_params: Any) -> Reward:  # noqa: ANN401
         """
         Create a reward in the test DB
         :param reward_params: override any values for reward
@@ -385,7 +456,7 @@ def reward(db_session: "Session", reward_config: RewardConfig) -> Reward:
 
 @pytest.fixture(scope="function")
 def create_mock_retailer(db_session: "Session", test_retailer: dict) -> Callable[..., Retailer]:
-    def _create_mock_retailer(**retailer_params: dict) -> Retailer:
+    def _create_mock_retailer(**retailer_params: Any) -> Retailer:  # noqa: ANN401
         """
         Create a retailer in the test DB
         :param retailer_params: override any values for the retailer, from what the mock_retailer fixture provides
@@ -417,6 +488,25 @@ def campaign_balance(setup: SetupType, campaign: Campaign) -> CampaignBalance:
 
 
 @pytest.fixture(scope="function")
+def create_balance(setup: SetupType, campaign: Campaign) -> Callable[..., CampaignBalance]:
+    db_session, _, account_holder = setup
+    data = {
+        "account_holder_id": account_holder.id,
+        "campaign_id": campaign.id,
+        "balance": 300,
+    }
+
+    def _create_balance(**params: Any) -> CampaignBalance:  # noqa: ANN401
+        data.update(params)
+        cmp_bal = CampaignBalance(**data)
+        db_session.add(cmp_bal)
+        db_session.commit()
+        return cmp_bal
+
+    return _create_balance
+
+
+@pytest.fixture(scope="function")
 def pending_reward(setup: SetupType, campaign: Campaign) -> PendingReward:
     db_session, _, account_holder = setup
     pending_rwd = PendingReward(
@@ -432,3 +522,28 @@ def pending_reward(setup: SetupType, campaign: Campaign) -> PendingReward:
     db_session.add(pending_rwd)
     db_session.commit()
     return pending_rwd
+
+
+@pytest.fixture(scope="function")
+def create_pending_reward(setup: SetupType, campaign: Campaign) -> Callable[..., PendingReward]:
+    db_session, _, account_holder = setup
+    data = {
+        "account_holder_id": account_holder.id,
+        "campaign_id": campaign.id,
+        "pending_reward_uuid": uuid4(),
+        "created_date": datetime(2022, 1, 1, 5, 0, tzinfo=timezone.utc),
+        "conversion_date": datetime.now(tz=timezone.utc) + timedelta(days=15),
+        "value": 100,
+        "count": 2,
+        "total_cost_to_user": 300,
+    }
+
+    def _create_pending_reward(**params: Any) -> PendingReward:  # noqa: ANN401
+        data.update(params)
+        pending_reward = PendingReward(**data)
+        db_session.add(pending_reward)
+        db_session.commit()
+
+        return pending_reward
+
+    return _create_pending_reward

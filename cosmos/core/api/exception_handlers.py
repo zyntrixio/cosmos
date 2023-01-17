@@ -2,14 +2,14 @@ import logging
 
 from typing import cast
 
-from fastapi import Request, Response
+from fastapi import Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_500_INTERNAL_SERVER_ERROR
 
-from cosmos.accounts.api.service import ServiceError
 from cosmos.core.api.exceptions import RequestPayloadValidationError
+from cosmos.core.api.service import ServiceError, ServiceListError
 from cosmos.core.error_codes import ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -37,11 +37,27 @@ def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | di
     return HTTP_422_UNPROCESSABLE_ENTITY, content
 
 
-async def service_exception_handler(
+async def service_error_handler(
     request: Request,  # noqa ARG001
     exc: ServiceError,
 ) -> UJSONResponse:
     return ErrorCode.http_exception_response(exc.error_code.name)
+
+
+async def service_list_error_handler(
+    request: Request,  # noqa ARG001
+    exc: ServiceListError,
+) -> UJSONResponse:
+    try:
+        return UJSONResponse(content=exc.error_details, status_code=exc.status_code)
+    except KeyError:
+        return UJSONResponse(
+            {
+                "display_message": "An unexpected system error occurred, please try again later.",
+                "code": "INTERNAL_ERROR",
+            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # customise Api HTTPException to remove "details" and handle manually raised ValidationErrors

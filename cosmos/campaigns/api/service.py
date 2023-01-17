@@ -1,22 +1,37 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from fastapi import status
+
 from cosmos.campaigns.activity.enums import ActivityType as CampaignActivityType
 from cosmos.campaigns.api import crud
-from cosmos.campaigns.api.schemas import CampaignsStatusChangeSchema
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.utils import format_and_send_activity_in_background
-from cosmos.core.api.service import Service, ServiceError, ServiceResult
-from cosmos.core.error_codes import ErrorCode
+from cosmos.core.api.service import Service, ServiceError, ServiceListError, ServiceResult
+from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
+from cosmos.db.base_class import async_run_query
 from cosmos.db.models import Campaign, Retailer
 from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
-from cosmos.rewards.crud import cancel_issued_rewards_for_campaign, delete_pending_rewards_for_campaign
-from cosmos.rewards.enums import PendingRewardActions
+from cosmos.rewards.crud import (
+    cancel_issued_rewards_for_campaign,
+    delete_pending_rewards_for_campaign,
+    transfer_pending_rewards,
+)
+from cosmos.rewards.enums import PendingRewardActions, PendingRewardMigrationActions
 
 if TYPE_CHECKING:  # pragma: no cover
     from fastapi import BackgroundTasks
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStatusChangeSchema
+
+
+@dataclass
+class MigrationCampaigns:
+    active: Campaign
+    draft: Campaign
 
 
 async def convert_pending_rewards_placeholder() -> None:  # pragma: no cover
@@ -162,7 +177,7 @@ class CampaignService(Service):
             "sso_username": sso_username,
         }
 
-    async def handle_status_change(self, payload: CampaignsStatusChangeSchema) -> ServiceResult[dict, ServiceError]:
+    async def handle_status_change(self, payload: "CampaignsStatusChangeSchema") -> ServiceResult[dict, ServiceError]:
 
         requested_status = payload.requested_status
         campaign = await crud.get_campaign_by_slug(
@@ -196,5 +211,204 @@ class CampaignService(Service):
             campaign_status_activity_payload=campaign_status_activity_payload,
             pr_delete_activity_payload=pr_delete_activity_payload,
             cancel_rewards_ap=cancel_rewards_ap,
+        )
+        return ServiceResult({})
+
+    async def _send_migration_activities(
+        self,
+        *,
+        activate_draft_ap: dict,
+        ending_active_ap: dict,
+        balance_transfer_ap: list[dict] | None,
+        pr_delete_ap: list[dict] | None,
+        pr_transfer_ap: list[dict] | None,
+    ) -> None:
+
+        for activity_payload in (activate_draft_ap, ending_active_ap):
+            await format_and_send_activity_in_background(
+                self.background_tasks,
+                activity_type=CampaignActivityType.CAMPAIGN,
+                payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
+                formatter_kwargs=activity_payload,
+            )
+
+        if balance_transfer_ap:
+            await format_and_send_activity_in_background(
+                self.background_tasks,
+                activity_type=CampaignActivityType.BALANCE_CHANGE,
+                payload_formatter_fn=CampaignActivityType.get_balance_change_activity_data,
+                formatter_kwargs=balance_transfer_ap,
+            )
+        if pr_delete_ap:
+            await format_and_send_activity_in_background(
+                self.background_tasks,
+                activity_type=RewardsActivityType.REWARD_STATUS,
+                payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
+                formatter_kwargs=pr_delete_ap,
+            )
+        if pr_transfer_ap:
+            await format_and_send_activity_in_background(
+                self.background_tasks,
+                activity_type=RewardsActivityType.REWARD_STATUS,
+                payload_formatter_fn=RewardsActivityType.get_pending_reward_transferred_activity_data,
+                formatter_kwargs=pr_transfer_ap,
+            )
+
+    async def _transfer_pending_rewards(self, *, from_campaign: Campaign, to_campaign: Campaign) -> list[dict]:
+        updated_rewards = await transfer_pending_rewards(
+            self.db_session, from_campaign=from_campaign, to_campaign=to_campaign
+        )
+        return [
+            {
+                "retailer_slug": self.retailer.slug,
+                "from_campaign_slug": from_campaign.slug,
+                "to_campaign_slug": to_campaign.slug,
+                "account_holder_uuid": ah_uuid,
+                "activity_datetime": to_campaign.start_date,
+                "pending_reward_uuid": pr_uuid,
+            }
+            for pr_uuid, ah_uuid in updated_rewards
+        ]
+
+    async def _transfer_balance(
+        self, *, payload: "CampaignsMigrationSchema", from_campaign: Campaign, to_campaign: Campaign
+    ) -> list[dict]:
+
+        updated_balances = await crud.transfer_balance(
+            self.db_session,
+            from_campaign=from_campaign,
+            to_campaign=to_campaign,
+            threshold=payload.balance_action.qualifying_threshold,
+            rate_percent=payload.balance_action.conversion_rate,
+        )
+        return [
+            {
+                "retailer_slug": self.retailer.slug,
+                "from_campaign_slug": from_campaign.slug,
+                "to_campaign_slug": to_campaign.slug,
+                "account_holder_uuid": ah_uuid,
+                "activity_datetime": to_campaign.start_date,
+                "new_balance": balance,
+                "loyalty_type": to_campaign.loyalty_type,
+            }
+            for ah_uuid, balance in updated_balances
+        ]
+
+    async def _fetch_campaigns(
+        self, from_campaign_slug: str, to_campaign_slug: str
+    ) -> MigrationCampaigns | ServiceListError:
+        from_campaign = await crud.get_campaign_by_slug(
+            db_session=self.db_session,
+            campaign_slug=from_campaign_slug,
+            retailer=self.retailer,
+            load_rules=True,
+            lock_row=False,
+        )
+        to_campaign = await crud.get_campaign_by_slug(
+            db_session=self.db_session,
+            campaign_slug=to_campaign_slug,
+            retailer=self.retailer,
+            load_rules=True,
+            lock_row=False,
+        )
+        if from_campaign and to_campaign:
+            return MigrationCampaigns(active=from_campaign, draft=to_campaign)
+
+        campaigns_not_found: list[str] = []
+        if not from_campaign:
+            campaigns_not_found.append(from_campaign_slug)
+
+        if not to_campaign:
+            campaigns_not_found.append(to_campaign_slug)
+
+        return ServiceListError(
+            error_details=[ErrorCodeDetails.NO_CAMPAIGN_FOUND.set_optional_fields(campaigns=campaigns_not_found)],
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    async def _check_campaigns_for_migration(
+        self, from_campaign: Campaign, to_campaign: Campaign
+    ) -> ServiceError | ServiceListError | None:
+
+        #  this is already checked in the Admin panel action and should not happen
+        if from_campaign.loyalty_type != to_campaign.loyalty_type:
+            return ServiceError(error_code=ErrorCode.INVALID_REQUEST)
+
+        invalid_campaigns: dict = {
+            ErrorCodeDetails.MISSING_CAMPAIGN_COMPONENTS: [],
+            ErrorCodeDetails.INVALID_STATUS_REQUESTED: [],
+        }
+
+        if not CampaignStatuses.ENDED.is_valid_status_transition(
+            current_status=from_campaign.status
+        ) or await self._check_remaining_active_campaigns(
+            db_session=self.db_session,
+            campaign_slug=from_campaign.slug,
+            retailer=self.retailer,
+        ):
+            invalid_campaigns[ErrorCodeDetails.INVALID_STATUS_REQUESTED].append(from_campaign.slug)
+
+        if not CampaignStatuses.ACTIVE.is_valid_status_transition(current_status=to_campaign.status):
+            invalid_campaigns[ErrorCodeDetails.INVALID_STATUS_REQUESTED].append(to_campaign.slug)
+        if not to_campaign.is_activable():
+            invalid_campaigns[ErrorCodeDetails.MISSING_CAMPAIGN_COMPONENTS].append(to_campaign.slug)
+
+        if error_details := [
+            ErrorCodeDetails(k).set_optional_fields(campaigns=v) for k, v in invalid_campaigns.items() if v
+        ]:
+            return ServiceListError(error_details=error_details, status_code=status.HTTP_409_CONFLICT)
+
+        return None
+
+    async def handle_migration(
+        self, payload: "CampaignsMigrationSchema"
+    ) -> ServiceResult[dict, ServiceError | ServiceListError]:
+
+        campaigns = await self._fetch_campaigns(
+            from_campaign_slug=payload.from_campaign, to_campaign_slug=payload.to_campaign
+        )
+        if isinstance(campaigns, ServiceListError):
+            return ServiceResult(error=campaigns)
+
+        if error := await self._check_campaigns_for_migration(
+            from_campaign=campaigns.active, to_campaign=campaigns.draft
+        ):
+            return ServiceResult(error=error)
+
+        activate_draft_ap = await self._change_campaign_status(
+            campaigns.draft, CampaignStatuses.ACTIVE, payload.activity_metadata.sso_username
+        )
+        await crud.create_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.draft)
+
+        balance_transfer_ap: list[dict] | None = None
+        if payload.balance_action.transfer:
+            await crud.lock_balances_for_campaign(self.db_session, campaign=campaigns.active)
+            balance_transfer_ap = await self._transfer_balance(
+                payload=payload, from_campaign=campaigns.active, to_campaign=campaigns.draft
+            )
+
+        pr_delete_ap: list[dict] | None = None
+        pr_transfer_ap: list[dict] | None = None
+        match payload.pending_rewards_action:  # noqa: E999
+            case PendingRewardMigrationActions.TRANSFER:
+                pr_transfer_ap = await self._transfer_pending_rewards(
+                    from_campaign=campaigns.active, to_campaign=campaigns.draft
+                )
+            case PendingRewardMigrationActions.CONVERT:
+                await convert_pending_rewards_placeholder()
+            case PendingRewardMigrationActions.REMOVE:
+                pr_delete_ap = await self._delete_pending_rewards_for_campaign(campaigns.active)
+
+        ending_active_ap = await self._change_campaign_status(
+            campaigns.active, CampaignStatuses.ENDED, payload.activity_metadata.sso_username
+        )
+        await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.active)
+        await self.commit_db_changes()
+        await self._send_migration_activities(
+            activate_draft_ap=activate_draft_ap,
+            ending_active_ap=ending_active_ap,
+            balance_transfer_ap=balance_transfer_ap,
+            pr_delete_ap=pr_delete_ap,
+            pr_transfer_ap=pr_transfer_ap,
         )
         return ServiceResult({})

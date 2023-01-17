@@ -9,11 +9,42 @@ class HttpErrorDetail(BaseModel):
     display_message: str
     code: str
     fields: list[str] | None = None
+    campaigns: list[str] | None = None
 
 
 class HttpError(BaseModel):
     status_code: int
     detail: HttpErrorDetail
+
+
+class ErrorCodeDetails(enum.Enum):
+    NO_ACTIVE_CAMPAIGNS = {
+        "code": "NO_ACTIVE_CAMPAIGNS",
+        "display_message": "No active campaigns found for retailer.",
+    }
+
+    INVALID_STATUS_REQUESTED = {
+        "display_message": "The requested status change(s) could not be performed.",
+        "code": "INVALID_STATUS_REQUESTED",
+    }
+    MISSING_CAMPAIGN_COMPONENTS = {
+        "display_message": "the provided campaign(s) could not be made active",
+        "code": "MISSING_CAMPAIGN_COMPONENTS",
+    }
+
+    NO_CAMPAIGN_FOUND = {
+        "display_message": "Campaign(s) not found for provided slug(s).",
+        "code": "NO_CAMPAIGN_FOUND",
+    }
+
+    def set_optional_fields(self, fields: list[str] | None = None, campaigns: list[str] | None = None) -> dict:
+        new_vals = {}
+        if fields:
+            new_vals["fields"] = fields
+        if campaigns:
+            new_vals["campaigns"] = campaigns
+
+        return HttpErrorDetail(**self.value, **new_vals).dict(exclude_unset=True)
 
 
 class ErrorCode(enum.Enum):

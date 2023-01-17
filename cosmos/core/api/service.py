@@ -51,3 +51,9 @@ class Service:
 class ServiceError(Exception):
     def __init__(self, error_code: ErrorCode) -> None:
         self.error_code = error_code
+
+
+class ServiceListError(Exception):
+    def __init__(self, error_details: list[dict], status_code: int) -> None:
+        self.error_details = error_details
+        self.status_code = status_code

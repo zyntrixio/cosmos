@@ -5,7 +5,11 @@ from uuid import UUID
 from cosmos.core.activity.enums import ActivityTypeMixin
 from cosmos.core.activity.utils import pence_integer_to_currency_string
 from cosmos.core.config import settings
-from cosmos.rewards.activity.schemas import RewardStatusDataSchema, RewardUpdateDataSchema
+from cosmos.rewards.activity.schemas import (
+    RewardStatusDataSchema,
+    RewardTransferActivityDataSchema,
+    RewardUpdateDataSchema,
+)
 
 
 class ActivityType(ActivityTypeMixin, Enum):
@@ -36,6 +40,34 @@ class ActivityType(ActivityTypeMixin, Enum):
                 new_status="deleted",
                 original_status="pending",
             ).dict(exclude_unset=True),
+        )
+
+    @classmethod
+    def get_pending_reward_transferred_activity_data(
+        cls,
+        *,
+        retailer_slug: str,
+        from_campaign_slug: str,
+        to_campaign_slug: str,
+        account_holder_uuid: str,
+        activity_datetime: datetime,
+        pending_reward_uuid: str,
+    ) -> dict:
+
+        return cls._assemble_payload(
+            activity_type=cls.REWARD_STATUS.name,
+            activity_datetime=activity_datetime,
+            summary=f"{retailer_slug} pending reward transferred from {from_campaign_slug} to {to_campaign_slug}",
+            reasons=["Pending reward transferred at campaign end"],
+            activity_identifier=pending_reward_uuid,
+            user_id=account_holder_uuid,
+            associated_value="N/A",
+            retailer_slug=retailer_slug,
+            campaigns=[from_campaign_slug, to_campaign_slug],
+            data=RewardTransferActivityDataSchema(
+                new_campaign=to_campaign_slug,
+                old_campaign=from_campaign_slug,
+            ).dict(),
         )
 
     @classmethod
