@@ -489,7 +489,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("reward_uuid", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("reward_uuid", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("reward_config_id", sa.BigInteger(), nullable=False),
         sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
         sa.Column("code", sa.String(), nullable=False),

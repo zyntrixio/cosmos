@@ -303,7 +303,7 @@ class RetailerFetchType(Base, TimestampMixin):
 class Reward(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "reward"
 
-    reward_uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
+    reward_uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     reward_config_id = Column(BigInteger, ForeignKey("reward_config.id"), nullable=False)
     account_holder_id = Column(
         BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), index=True, nullable=True
