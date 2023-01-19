@@ -16,7 +16,7 @@ user_is_authorised = UserIsAuthorised(expected_token=settings.VELA_API_AUTH_TOKE
 
 
 @api_router.post(
-    path="/{retailer_slug}/campaigns/status_change",
+    path="/{retailer_slug}/campaigns/status-change",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(user_is_authorised)],
 )
