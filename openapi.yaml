@@ -128,11 +128,11 @@ paths:
                   type: string 
                   description: the payment_transaction_id, this is the id that relates to the payment transaction that was received in Harmonia
                   example: 'BPL1234567890'
-  /api/campaigns/{retailer_slug}/status_change:
+  /api/campaigns/{retailer_slug}/status-change:
     post:
       tags: 
         - campaign_management
-      operationId: POST /api/campaigns/{retailer_slug}/status_change
+      operationId: POST /api/campaigns/{retailer_slug}/status-change
       description: used to update the status of campaign(s) and trigger the necessary calls to update rewards & balances
       parameters:
         - $ref: '#/components/parameters/RetailerSlug'
