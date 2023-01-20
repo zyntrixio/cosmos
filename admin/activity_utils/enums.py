@@ -24,8 +24,8 @@ from admin.activity_utils.schemas import (
     RewardRuleUpdatedActivitySchema,
     RewardStatusWholeActivitySchema,
 )
-from admin.activity_utils.utils import pence_integer_to_currency_string
 from cosmos.core.config import settings
+from cosmos.core.utils import pence_integer_to_currency_string
 
 
 class ActivityType(Enum):

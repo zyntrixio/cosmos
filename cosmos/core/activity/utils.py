@@ -2,8 +2,6 @@ import asyncio
 
 from typing import TYPE_CHECKING, Callable, Iterable, TypeVar
 
-from babel.numbers import format_currency
-
 from cosmos.core.activity.tasks import async_send_activity
 
 from . import logger
@@ -12,11 +10,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from enum import Enum
 
     ActivityEnumType = TypeVar("ActivityEnumType", bound="Enum")
-
-
-def pence_integer_to_currency_string(value: int, currency: str, currency_sign: bool = True) -> str:
-    extras = {} if currency_sign else {"format": "#,##0.##"}
-    return format_currency(value / 100, currency, locale="en_GB", **extras)
 
 
 # TODO: add unittests (or functional tests) when we have an activity specific ticket
