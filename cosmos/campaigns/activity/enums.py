@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 from cosmos.campaigns.activity.schemas import BalanceChangeActivityDataSchema, CampaignStatusChangeActivitySchema
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.activity.utils import pence_integer_to_currency_string
 from cosmos.core.config import settings
+from cosmos.core.utils import pence_integer_to_currency_string
 
 if TYPE_CHECKING:  # pragma: no cover
 

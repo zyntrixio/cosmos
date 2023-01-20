@@ -1,6 +1,8 @@
 # import logging
 import random
 
+from babel.numbers import format_currency
+
 # from uuid import uuid4
 
 # from retry_tasks_lib.db.models import RetryTask
@@ -23,6 +25,11 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
         raise ValueError(f"minimum card number length is {MINIMUM_ACCOUNT_NUMBER_LENGTH}")
     start, end = 1, (10**number_length) - 1
     return f"{prefix}{str(random.randint(start, end)).zfill(number_length)}"
+
+
+def pence_integer_to_currency_string(value: int, currency: str, currency_sign: bool = True) -> str:
+    extras = {} if currency_sign else {"format": "#,##0.##"}
+    return format_currency(value / 100, currency, locale="en_GB", **extras)
 
 
 # def enqueue_pending_rewards(
