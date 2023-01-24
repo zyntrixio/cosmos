@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStatusChangeSchema
@@ -21,11 +21,10 @@ get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.I
 )
 async def change_campaign_status(
     payload: CampaignsStatusChangeSchema,
-    background_tasks: BackgroundTasks,
     db_session: AsyncSession = Depends(get_session),
     retailer: Retailer = Depends(get_retailer),
 ) -> dict:
-    service = CampaignService(db_session=db_session, retailer=retailer, background_tasks=background_tasks)
+    service = CampaignService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_status_change(payload)
     return service_result.handle_service_result()
 
@@ -37,10 +36,9 @@ async def change_campaign_status(
 )
 async def campaign_migration(
     payload: CampaignsMigrationSchema,
-    background_tasks: BackgroundTasks,
     db_session: AsyncSession = Depends(get_session),
     retailer: Retailer = Depends(get_retailer),
 ) -> dict:
-    service = CampaignService(db_session=db_session, retailer=retailer, background_tasks=background_tasks)
+    service = CampaignService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_migration(payload)
     return service_result.handle_service_result()
