@@ -1,3 +1,5 @@
+import asyncio
+
 from typing import TYPE_CHECKING, Callable, Iterable, TypeVar
 
 from babel.numbers import format_currency
@@ -9,8 +11,6 @@ from . import logger
 if TYPE_CHECKING:  # pragma: no cover
     from enum import Enum
 
-    from fastapi import BackgroundTasks
-
     ActivityEnumType = TypeVar("ActivityEnumType", bound="Enum")
 
 
@@ -21,8 +21,6 @@ def pence_integer_to_currency_string(value: int, currency: str, currency_sign: b
 
 # TODO: add unittests (or functional tests) when we have an activity specific ticket
 async def format_and_send_activity_in_background(
-    background_tasks: "BackgroundTasks",
-    *,
     activity_type: "ActivityEnumType",
     payload_formatter_fn: Callable[..., dict],
     formatter_kwargs: list[dict] | dict,
@@ -47,4 +45,4 @@ async def format_and_send_activity_in_background(
                 "Failed to send %s activities for with provided kwargs:\n%s", activity_type.name, formatter_kwargs
             )
 
-    background_tasks.add_task(_background_task, activity_type, payload_formatter_fn, formatter_kwargs)
+    asyncio.create_task(_background_task(activity_type, payload_formatter_fn, formatter_kwargs))

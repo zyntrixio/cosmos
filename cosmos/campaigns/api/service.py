@@ -10,7 +10,6 @@ from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.utils import format_and_send_activity_in_background
 from cosmos.core.api.service import Service, ServiceError, ServiceListError, ServiceResult
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
-from cosmos.db.base_class import async_run_query
 from cosmos.db.models import Campaign, Retailer
 from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
@@ -22,7 +21,6 @@ from cosmos.rewards.crud import (
 from cosmos.rewards.enums import PendingRewardActions, PendingRewardMigrationActions
 
 if TYPE_CHECKING:  # pragma: no cover
-    from fastapi import BackgroundTasks
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStatusChangeSchema
@@ -40,10 +38,6 @@ async def convert_pending_rewards_placeholder() -> None:  # pragma: no cover
 
 
 class CampaignService(Service):
-    def __init__(self, db_session: "AsyncSession", retailer: "Retailer", background_tasks: "BackgroundTasks") -> None:
-        self.background_tasks = background_tasks
-        super().__init__(db_session, retailer)
-
     async def _check_valid_campaign(self, campaign: Campaign, requested_status: CampaignStatuses) -> ErrorCode | None:
 
         if requested_status.is_valid_status_transition(current_status=campaign.status):
@@ -76,21 +70,18 @@ class CampaignService(Service):
         cancel_rewards_ap: list[dict] | None,
     ) -> None:
         await format_and_send_activity_in_background(
-            self.background_tasks,
             activity_type=CampaignActivityType.CAMPAIGN,
             payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
             formatter_kwargs=campaign_status_activity_payload,
         )
         if pr_delete_activity_payload:
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=RewardsActivityType.REWARD_STATUS,
                 payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
                 formatter_kwargs=pr_delete_activity_payload,
             )
         if cancel_rewards_ap:
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=RewardsActivityType.REWARD_STATUS,
                 payload_formatter_fn=RewardsActivityType.get_reward_status_activity_data,
                 formatter_kwargs=cancel_rewards_ap,
@@ -226,7 +217,6 @@ class CampaignService(Service):
 
         for activity_payload in (activate_draft_ap, ending_active_ap):
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=CampaignActivityType.CAMPAIGN,
                 payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
                 formatter_kwargs=activity_payload,
@@ -234,21 +224,18 @@ class CampaignService(Service):
 
         if balance_transfer_ap:
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=CampaignActivityType.BALANCE_CHANGE,
                 payload_formatter_fn=CampaignActivityType.get_balance_change_activity_data,
                 formatter_kwargs=balance_transfer_ap,
             )
         if pr_delete_ap:
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=RewardsActivityType.REWARD_STATUS,
                 payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
                 formatter_kwargs=pr_delete_ap,
             )
         if pr_transfer_ap:
             await format_and_send_activity_in_background(
-                self.background_tasks,
                 activity_type=RewardsActivityType.REWARD_STATUS,
                 payload_formatter_fn=RewardsActivityType.get_pending_reward_transferred_activity_data,
                 formatter_kwargs=pr_transfer_ap,
