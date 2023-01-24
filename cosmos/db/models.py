@@ -182,6 +182,7 @@ class EarnRule(IdPkMixin, Base, TimestampMixin):
 
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
     campaign = relationship("Campaign", back_populates="earn_rule")
+    transaction_earns = relationship("TransactionEarn", back_populates="earn_rule")
 
 
 class RewardRule(IdPkMixin, Base, TimestampMixin):
@@ -432,12 +433,7 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
         primaryjoin="Transaction.mid==RetailerStore.mid",
         foreign_keys=mid,
     )
-    campaigns = relationship(
-        "Campaign", secondary="transaction_campaign", back_populates="transactions", overlaps="transaction_campaigns"
-    )
-    transaction_campaigns = relationship(
-        "TransactionCampaign", back_populates="transaction", overlaps="transactions,campaign"
-    )
+    transaction_earns = relationship("TransactionEarn", back_populates="transaction")
 
     __table_args__ = (
         UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
@@ -445,19 +441,18 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     __mapper_args__ = {"eager_defaults": True}
 
 
-class TransactionCampaign(Base, TimestampMixin):
-    __tablename__ = "transaction_campaign"
+class TransactionEarn(Base, TimestampMixin):
+    __tablename__ = "transaction_earn"
 
     transaction_id = Column(
         BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False, primary_key=True
     )
-    campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, primary_key=True)
-    adjustment = Column(Integer, nullable=True)
+    earn_rule_id = Column(BigInteger, ForeignKey("earn_rule.id", ondelete="SET NULL"), nullable=True, primary_key=True)
+    loyalty_type = Column(Enum(LoyaltyTypes), nullable=False)
+    earn_amount = Column(Integer, nullable=True)
 
-    campaign = relationship(
-        "Campaign", uselist=False, back_populates="transaction_campaigns", overlaps="campaigns,transactions"
-    )
-    transaction = relationship("Transaction", back_populates="transaction_campaigns", overlaps="campaigns,transactions")
+    earn_rule = relationship("EarnRule", uselist=False, back_populates="transaction_earns")
+    transaction = relationship("Transaction", uselist=False, back_populates="transaction_earns")
 
 
 class Retailer(IdPkMixin, Base, TimestampMixin):

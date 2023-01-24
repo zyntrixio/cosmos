@@ -18,7 +18,7 @@ from cosmos.db.models import (
     RetailerStore,
     Reward,
     Transaction,
-    TransactionCampaign,
+    TransactionEarn,
 )
 
 if TYPE_CHECKING:
@@ -129,12 +129,12 @@ async def get_account_holder(
                     RetailerStore.store_name,
                     RetailerStore.mid,
                 ),
-                joinedload(Transaction.transaction_campaigns)
+                joinedload(Transaction.transaction_earns)
                 .defer(
-                    TransactionCampaign.created_at,
-                    TransactionCampaign.updated_at,
+                    TransactionEarn.created_at,
+                    TransactionEarn.updated_at,
+                    TransactionEarn.earn_rule_id,
                 )
-                .joinedload(TransactionCampaign.campaign)
                 .load_only(
                     Campaign.slug,
                     Campaign.loyalty_type,
