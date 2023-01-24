@@ -162,9 +162,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     pending_rewards = relationship("PendingReward", back_populates="campaign")
     current_balances = relationship("CampaignBalance", back_populates="campaign")
     rewards = relationship("Reward", back_populates="campaign")
-    transactions = relationship("Transaction", secondary="transaction_campaign", back_populates="campaigns")
-    transaction_campaigns = relationship("TransactionCampaign", back_populates="campaign", overlaps="transactions")
-
+t
     def __str__(self) -> str:  # pragma: no cover
         return str(self.name)
 
