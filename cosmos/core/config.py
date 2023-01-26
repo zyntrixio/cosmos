@@ -65,14 +65,7 @@ class Settings(BaseSettings):
         command = sys.argv[0]
         return True if "alembic" in command else v
 
-    PUBLIC_URL: AnyHttpUrl | None = None
-
-    @validator("PUBLIC_URL")
-    @classmethod
-    def validate_polaris_public_url(cls, v: AnyHttpUrl) -> str:
-        if not v:
-            raise ValueError("PUBLIC_URL not set")
-        return str(v)
+    PUBLIC_URL: AnyHttpUrl
 
     PROJECT_NAME: str = "cosmos"
     ROOT_LOG_LEVEL: LogLevel | None = None

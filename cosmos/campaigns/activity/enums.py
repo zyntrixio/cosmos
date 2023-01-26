@@ -32,7 +32,7 @@ class ActivityType(ActivityTypeMixin, Enum):
 
         return cls._assemble_payload(
             ActivityType.CAMPAIGN.name,
-            activity_datetime=updated_at,
+            underlying_datetime=updated_at,
             summary=f"{campaign_name} {new_status.value}",
             reasons=[],
             activity_identifier=campaign_slug,
@@ -76,7 +76,7 @@ class ActivityType(ActivityTypeMixin, Enum):
 
         return cls._assemble_payload(
             activity_type=cls.BALANCE_CHANGE.name,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"{retailer_slug} {to_campaign_slug} Balance {associated_value}",
             reasons=[f"Migrated from ended campaign {from_campaign_slug}"],
             activity_identifier="N/A",

@@ -437,10 +437,7 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     account_holder = relationship("AccountHolder", back_populates="transactions")
     retailer = relationship("Retailer", back_populates="transactions")
     store = relationship(
-        "RetailerStore",
-        uselist=False,
-        primaryjoin="Transaction.mid==RetailerStore.mid",
-        foreign_keys=mid,
+        "RetailerStore", uselist=False, primaryjoin="Transaction.mid==RetailerStore.mid", foreign_keys=mid
     )
     transaction_earns = relationship("TransactionEarn", back_populates="transaction")
 

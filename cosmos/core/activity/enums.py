@@ -10,7 +10,7 @@ class ActivityTypeMixin:
         cls,
         activity_type: str,
         *,
-        activity_datetime: datetime,
+        underlying_datetime: datetime,
         summary: str,
         associated_value: str,
         retailer_slug: str,
@@ -23,7 +23,7 @@ class ActivityTypeMixin:
         return ActivitySchema(
             type=activity_type,
             datetime=datetime.now(tz=timezone.utc),
-            underlying_datetime=activity_datetime,
+            underlying_datetime=underlying_datetime,
             summary=summary,
             reasons=reasons or [],
             activity_identifier=activity_identifier or "N/A",

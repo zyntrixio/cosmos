@@ -11,14 +11,17 @@ from cosmos.core.api.exception_handlers import (
     service_error_handler,
     unexpected_exception_handler,
 )
+from cosmos.core.api.healthz import healthz_router
 from cosmos.core.api.service import ServiceError
-from cosmos.transactions.api.endpoints.transaction import router as transactions_router
+from cosmos.core.config import settings
+from cosmos.transactions.api.endpoints import api_router
 
 
 def create_app() -> FastAPI:
     fapi = FastAPI(title="Transactions API")
-    fapi.include_router(transactions_router, prefix="/retailers")
+    fapi.include_router(api_router, prefix=f"{settings.API_PREFIX}/transactions")
     fapi.include_router(metrics_router)
+    fapi.include_router(healthz_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
     fapi.add_exception_handler(ServiceError, service_error_handler)

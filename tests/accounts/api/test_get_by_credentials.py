@@ -116,7 +116,7 @@ def test_account_holder_get_by_credentials(
         amount_and_earned = f"{i*1000/100:.2f}"
         expected_transaction_history.append(
             {
-                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).timestamp()),
+                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
                 "amount": amount_and_earned,
                 "amount_currency": "GBP",
                 "location": store.store_name,

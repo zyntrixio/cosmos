@@ -330,6 +330,7 @@ def create_campaign(setup: SetupType, reward_config: RewardConfig) -> Callable[.
             )
         )
         db_session.commit()
+        db_session.refresh(new_campaign)
 
         return new_campaign
 
@@ -339,6 +340,7 @@ def create_campaign(setup: SetupType, reward_config: RewardConfig) -> Callable[.
 @pytest.fixture(scope="function")
 def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: RewardConfig) -> Campaign:
     db_session = setup.db_session
+    campaign.start_date = datetime.now(timezone.utc) - timedelta(days=20)
     db_session.add(
         RewardRule(
             reward_goal=500,
@@ -354,6 +356,7 @@ def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: Rew
         )
     )
     db_session.commit()
+    db_session.refresh(campaign)
     return campaign
 
 

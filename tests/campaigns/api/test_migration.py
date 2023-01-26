@@ -13,9 +13,10 @@ from sqlalchemy.future import select
 from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
 from cosmos.db.models import AccountHolder, CampaignBalance, PendingReward
-from tests.conftest import SetupType, account_holder
+from tests import validate_error_response
+from tests.conftest import SetupType
 
-from . import auth_headers, validate_error_response
+from . import auth_headers
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -105,7 +106,7 @@ def test_migration_invalid_retailer(test_client: "TestClient", campaign: "Campai
 
 
 @pytest.mark.parametrize(
-    "from_campaign,to_campaign",
+    ("from_campaign", "to_campaign"),
     (
         pytest.param("test-active-campaign", "WRONG-CAMPAIGN", id="draft not found"),
         pytest.param("WRONG-CAMPAIGN", "test-draft-campaign", id="active not found"),
@@ -157,7 +158,7 @@ def test_migration_campaigns_have_different_loyalty_types(
 
 
 @pytest.mark.parametrize(
-    "from_campaign_status,to_campaign_status,retailer_status",
+    ("from_campaign_status", "to_campaign_status", "retailer_status"),
     (
         pytest.param("DRAFT", "DRAFT", "TEST", id="from_campaign is not ACTIVE"),
         pytest.param("ACTIVE", "ACTIVE", "TEST", id="to_campaign is not DRAFT"),
@@ -244,7 +245,7 @@ def test_migration_missing_rules(
 
 
 @pytest.mark.parametrize(
-    "pending_rewards_action,conversion_rate,qualifying_threshold",
+    ("pending_rewards_action", "conversion_rate", "qualifying_threshold"),
     (
         pytest.param("remove", 100, 0, id=r"remove PRs, 100% conversion_rate, 0% qualifying_threshold"),
         pytest.param("convert", 80, 0, id=r"convert PRs, 80% conversion_rate, 0% qualifying_threshold"),
@@ -340,7 +341,7 @@ def test_migration_ok(
 
 
 @pytest.mark.parametrize(
-    "conversion_rate,qualifying_threshold",
+    ("conversion_rate", "qualifying_threshold"),
     (
         pytest.param(100, 0, id=r"100% conversion_rate, 0% qualifying_threshold"),
         pytest.param(80, 0, id=r"80% conversion_rate, 0% qualifying_threshold"),

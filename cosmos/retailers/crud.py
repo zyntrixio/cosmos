@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import contains_eager, joinedload
 
-from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.db.models import Campaign, Retailer
 
 
@@ -24,6 +23,5 @@ async def get_retailer_by_slug(
                     joinedload(Campaign.earn_rule),
                 ),
             )
-            .where(Campaign.status == CampaignStatuses.ACTIVE)
         )
     return (await db_session.execute(stmt)).unique().scalar_one_or_none()

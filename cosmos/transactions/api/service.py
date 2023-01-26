@@ -2,17 +2,30 @@ import logging
 import uuid
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
+from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
 from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
+from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
+from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
+from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
+from cosmos.transactions.activity.enums import ActivityType
 from cosmos.transactions.api import crud
 from cosmos.transactions.api.schemas import CreateTransactionSchema
+
+if TYPE_CHECKING:
+    from typing import TypeVar
+
+    from cosmos.db.models import AccountHolder
+
+    ServiceResultType = TypeVar("ServiceResultType")
 
 logger = logging.getLogger("transaction-service")
 
@@ -23,43 +36,50 @@ class RewardUpdateDataSchema(BaseModel):
 
 
 class TotalCostToUserDataSchema(RewardUpdateDataSchema):
-    pending_reward_id: int
     pending_reward_uuid: uuid.UUID
+    pending_reward_updated_at: datetime
 
 
 @dataclass
 class AdjustmentAmount:
-    type: LoyaltyTypes  # noqa: A003
+    loyalty_type: LoyaltyTypes
     amount: int
     threshold: int
     accepted: bool
 
 
-def _get_transaction_response(adjustments: list, is_refund: bool) -> str:
-    if adjustments:
-        return "Refund accepted" if is_refund else "Awarded"
-
-    return "Refunds not accepted" if is_refund else "Threshold not met"
+async def _allocate_reward_placeholder() -> None:
+    # TODO: complete this logic once Carina reward agents have been implemented
+    pass
 
 
 class TransactionService(Service):
+    @staticmethod
+    def _get_transaction_response(accepted_adjustments: bool, is_refund: bool) -> str:
+        if accepted_adjustments:
+            return "Refund accepted" if is_refund else "Awarded"
+
+        return "Refunds not accepted" if is_refund else "Threshold not met"
+
     def _adjustment_amount_for_earn_rule(
         self, tx_amount: int, loyalty_type: LoyaltyTypes, earn_rule: EarnRule, allocation_window: int
     ) -> int | None:
 
         if loyalty_type == LoyaltyTypes.ACCUMULATOR:
-            adjustment_amount = self._calculate_amount_for_accumulator(tx_amount, earn_rule, allocation_window)
+            return self._calculate_amount_for_accumulator(tx_amount, earn_rule, allocation_window)
 
-        elif loyalty_type == LoyaltyTypes.STAMPS and tx_amount >= earn_rule.threshold:
-            adjustment_amount = earn_rule.increment * earn_rule.increment_multiplier
+        if loyalty_type == LoyaltyTypes.STAMPS:
+            return (
+                int(earn_rule.increment * earn_rule.increment_multiplier) if tx_amount >= earn_rule.threshold else None
+            )
 
-        return adjustment_amount
+        raise ValueError(f"Invalid Loyalty Type {loyalty_type}")
 
     def _calculate_amount_for_accumulator(
         self, tx_amount: int, earn_rule: EarnRule, allocation_window: int
     ) -> int | None:
         is_acceptable_refund = bool(tx_amount < 0 and allocation_window)
-        adjustment_amount = None
+        adjustment_amount: int | None = None
 
         if earn_rule.max_amount and abs(tx_amount) > earn_rule.max_amount:
             if is_acceptable_refund:
@@ -68,8 +88,8 @@ class TransactionService(Service):
                 adjustment_amount = earn_rule.max_amount
         elif is_acceptable_refund or tx_amount >= earn_rule.threshold:
             # FIXME - increment multiplier could be 1.25 e.g. 399 * 1.25 = 498.75. What do we do?
-            # This will round to the nearest whole number
-            adjustment_amount = round(tx_amount * earn_rule.increment_multiplier)
+            # This will truncate the decimals.
+            adjustment_amount = int(tx_amount * earn_rule.increment_multiplier)
 
         return adjustment_amount
 
@@ -87,94 +107,177 @@ class TransactionService(Service):
 
         return n_reward_achieved, trc_reached
 
-    # async def _emit_events(self, account_holder, total_costs, deleted_count_by_uuid, amount_not_recouped):
-    #     if amount_not_recouped > 0:
-    #         activity_payload = ActivityType.get_refund_not_recouped_activity_data(
-    #             account_holder_uuid=account_holder.account_holder_uuid,
-    #             retailer_slug=self.retailer.slug,
-    #             adjustment=adjustment,
-    #             amount_recouped=abs(adjustment) - amount_not_recouped,
-    #             amount_not_recouped=amount_not_recouped,
-    #             campaigns=[campaign_slug],
-    #             activity_datetime=activity_metadata["transaction_datetime"],
-    #             transaction_id=transaction_id,
-    #         )
-    #         asyncio_create_task(
-    #             async_send_activity(activity_payload, routing_key=ActivityType.REFUND_NOT_RECOUPED.value)
-    #         )
-    #     if current_balance_obj.balance != original_balance:
-    #         activity_payload = ActivityType.get_balance_change_activity_data(
-    #             account_holder_uuid=account_holder.account_holder_uuid,
-    #             retailer_slug=retailer.slug,
-    #             summary=f"{retailer.name} {campaign_slug} Balance {adjustment}",
-    #             original_balance=original_balance,
-    #             new_balance=current_balance_obj.balance,
-    #             campaigns=[campaign_slug],
-    #             activity_datetime=activity_metadata.get("transaction_datetime", datetime.now(tz=timezone.utc)),
-    #             reason=activity_metadata["reason"],
-    #         )
-    #         asyncio_create_task(
-    #             async_send_activity(activity_payload, routing_key=ActivityType.BALANCE_CHANGE.value)
-    #         )
-    #     for pending_reward_uuid, count in deleted_count_by_uuid.items():
-    #         # Asynchronously send reward activity for all pending rewards deleted
-    #         activity_payload = ActivityType.get_reward_status_activity_data(
-    #             account_holder_uuid=account_holder.account_holder_uuid,
-    #             retailer_slug=retailer.slug,
-    #             summary=f"{retailer.slug} Pending reward deleted for {campaign_slug}",
-    #             reason="Pending Reward removed due to refund",
-    #             original_status="pending",
-    #             new_status="deleted",
-    #             campaigns=[campaign_slug],
-    #             activity_datetime=activity_metadata["transaction_datetime"],
-    #             activity_identifier=str(pending_reward_uuid),
-    #             count=count,
-    #         )
-    #         asyncio_create_task(async_send_activity(activity_payload, routing_key=ActivityType.REWARD_STATUS.value))
-    #     if total_costs:
-    #         await _process_total_costs(
-    #             db_session=db_session,
-    #             total_costs=total_costs,
-    #             deleted_count_by_uuid=deleted_count_by_uuid,
-    #             account_holder_uuid=account_holder.account_holder_uuid,
-    #             retailer_slug=retailer.slug,
-    #             campaign_slug=campaign_slug,
-    #         )
+    async def _generate_balance_adjustment_activities(
+        self,
+        *,
+        amount_not_recouped: int,
+        adjustment_amount: int,
+        new_balance: int,
+        original_balance: int,
+        campaign: Campaign,
+        transaction: Transaction,
+        account_holder_uuid: uuid.UUID,
+        reason_prefix: str,
+        deleted_count_by_uuid: dict,
+        total_costs: list[TotalCostToUserDataSchema],
+    ) -> None:
+        if amount_not_recouped > 0:
+            await self.store_activity(
+                activity_type=ActivityType.REFUND_NOT_RECOUPED,
+                payload_formatter_fn=ActivityType.get_refund_not_recouped_activity_data,
+                formatter_kwargs={
+                    "account_holder_uuid": account_holder_uuid,
+                    "retailer": self.retailer,
+                    "adjustment": adjustment_amount,
+                    "amount_recouped": abs(amount_not_recouped) - amount_not_recouped,
+                    "amount_not_recouped": amount_not_recouped,
+                    "campaigns": [campaign.slug],
+                    "activity_datetime": transaction.datetime,
+                    "transaction_id": transaction.transaction_id,
+                },
+            )
+
+        if new_balance != original_balance:
+            await self.store_activity(
+                activity_type=AccountActivityType.BALANCE_CHANGE,
+                payload_formatter_fn=AccountActivityType.get_balance_change_activity_data,
+                formatter_kwargs={
+                    "account_holder_uuid": account_holder_uuid,
+                    "retailer_slug": self.retailer.slug,
+                    "summary": await self._get_summary_for_balance_change(
+                        campaign, adjustment_amount, original_balance, new_balance
+                    ),
+                    "original_balance": original_balance,
+                    "new_balance": new_balance,
+                    "campaigns": [campaign.slug],
+                    "activity_datetime": transaction.datetime,
+                    "reason": f"{reason_prefix} transaction id: {transaction.transaction_id}",
+                },
+            )
+
+        if deleted_count_by_uuid:
+            await self.store_activity(
+                activity_type=RewardsActivityType.REWARD_STATUS,
+                payload_formatter_fn=RewardsActivityType.get_reward_status_activity_data,
+                formatter_kwargs=[
+                    {
+                        "account_holder_uuid": account_holder_uuid,
+                        "retailer_slug": self.retailer.slug,
+                        "summary": f"{self.retailer.name} Pending reward deleted for {campaign.name}",
+                        "reason": "Pending Reward removed due to refund",
+                        "original_status": "pending",
+                        "new_status": "deleted",
+                        "campaigns": [campaign.slug],
+                        "activity_datetime": transaction.datetime,
+                        "activity_identifier": str(pending_reward_uuid),
+                        "count": count,
+                    }
+                    for pending_reward_uuid, count in deleted_count_by_uuid.items()
+                ],
+            )
+
+        if updated_rewards_total_costs := [
+            total_cost for total_cost in total_costs if str(total_cost.pending_reward_uuid) not in deleted_count_by_uuid
+        ]:
+            await self.store_activity(
+                activity_type=RewardsActivityType.REWARD_UPDATE,
+                payload_formatter_fn=RewardsActivityType.get_reward_update_activity_data,
+                formatter_kwargs=[
+                    {
+                        "account_holder_uuid": account_holder_uuid,
+                        "retailer_slug": self.retailer.slug,
+                        "summary": r"Pending Reward Record's total cost to user updated",
+                        "campaigns": [campaign.slug],
+                        "reason": "Pending Reward updated due to refund",
+                        "activity_datetime": total_cost.pending_reward_updated_at,
+                        "activity_identifier": str(total_cost.pending_reward_uuid),
+                        "reward_update_data": {
+                            "new_total_cost_to_user": total_cost.new_total_cost_to_user,
+                            "original_total_cost_to_user": total_cost.original_total_cost_to_user,
+                        },
+                    }
+                    for total_cost in updated_rewards_total_costs
+                ],
+            )
 
     async def _adjust_balance(
-        self, campaign: Campaign, campaign_balance: CampaignBalance, transaction: Transaction
-    ) -> int | None:
-        adjustment = self._adjustment_amount_for_earn_rule(
+        self,
+        campaign: Campaign,
+        campaign_balance: CampaignBalance,
+        transaction: Transaction,
+        account_holder_uuid: uuid.UUID,
+    ) -> AdjustmentAmount:
+        adjustment_amount = self._adjustment_amount_for_earn_rule(
             transaction.amount, campaign.loyalty_type, campaign.earn_rule, campaign.reward_rule.allocation_window
         )
 
-        if adjustment is not None:
-            total_costs: list[TotalCostToUserDataSchema]
-            if adjustment < 0:
-                pending_rewards = await crud.get_pending_rewards_for_update(
-                    self.db_session,
-                    account_holder_id=campaign_balance.account_holder_id,
-                    campaign_id=campaign_balance.campaign_id,
-                )
-                (
-                    campaign_balance.balance,
-                    deleted_count_by_uuid,
-                    amount_not_recouped,
-                    total_costs,
-                ) = await self._process_refund(
-                    shortfall=abs(adjustment), current_balance=campaign_balance.balance, pending_rewards=pending_rewards
-                )
-            else:
-                campaign_balance.balance += adjustment
-                deleted_count_by_uuid = {}  # noqa: F841 # remove me
-                total_costs = []  # noqa: F841 # remove me
-                amount_not_recouped = 0  # noqa: F841 # remove me
+        if not adjustment_amount:
+            return AdjustmentAmount(
+                loyalty_type=campaign.loyalty_type,
+                amount=0,
+                threshold=campaign.earn_rule.threshold,
+                accepted=False,
+            )
 
-            # try:
-            #     await self._emit_events(total_costs, deleted_count_by_uuid, amount_not_recouped)
-            # except Exception as exc:
-            #     pass
-        return adjustment
+        original_balance = campaign_balance.balance
+        deleted_count_by_uuid: dict = {}
+        amount_not_recouped = 0
+        total_costs: list[TotalCostToUserDataSchema] = []
+        if adjustment_amount < 0:
+            reason_prefix = "Refund"
+            pending_rewards = await crud.get_pending_rewards_for_update(
+                self.db_session,
+                account_holder_id=campaign_balance.account_holder_id,
+                campaign_id=campaign_balance.campaign_id,
+            )
+
+            (
+                campaign_balance.balance,
+                deleted_count_by_uuid,
+                amount_not_recouped,
+                total_costs,
+            ) = await self._process_refund(
+                shortfall=abs(adjustment_amount),
+                current_balance=campaign_balance.balance,
+                pending_rewards=pending_rewards,
+            )
+        else:
+            reason_prefix = "Purchase"
+            campaign_balance.balance += adjustment_amount
+
+        await self._generate_balance_adjustment_activities(
+            amount_not_recouped=amount_not_recouped,
+            adjustment_amount=adjustment_amount,
+            new_balance=campaign_balance.balance,
+            original_balance=original_balance,
+            campaign=campaign,
+            transaction=transaction,
+            account_holder_uuid=account_holder_uuid,
+            reason_prefix=reason_prefix,
+            deleted_count_by_uuid=deleted_count_by_uuid,
+            total_costs=total_costs,
+        )
+
+        return AdjustmentAmount(
+            loyalty_type=campaign.loyalty_type,
+            amount=adjustment_amount or 0,
+            threshold=campaign.earn_rule.threshold,
+            accepted=adjustment_amount is not None,
+        )
+
+    async def _get_summary_for_balance_change(
+        self, campaign: Campaign, adjustment: int, original_balance: int, current_balance: int
+    ) -> str:
+        tx_type = "+" if current_balance > original_balance else ""
+        if campaign.loyalty_type == LoyaltyTypes.ACCUMULATOR:
+            return (
+                f"{self.retailer.name} - {campaign.name}: "
+                f"{tx_type}{pence_integer_to_currency_string(adjustment, 'GBP')}"
+            )
+
+        stamps_amount = adjustment // 100
+        plural_stamps = "s" if abs(stamps_amount) != 1 else ""
+        return f"{self.retailer.name} - {campaign.name}: {tx_type}{stamps_amount} stamp{plural_stamps}"
 
     async def _process_refund(
         self,
@@ -204,6 +307,8 @@ class TransactionService(Service):
         NB: this is meant to be called from within a async_run_query that commits the changes.
         """
 
+        # asyncpg cant convert timezone aware to naive, remove this once we move to psycopg3
+        pending_rewards_updated_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         deleted_count_by_uuid: dict = {}
         total_costs: list[TotalCostToUserDataSchema] = []
 
@@ -211,12 +316,13 @@ class TransactionService(Service):
         if prr_with_slush_ge_shortfall := next((prr for prr in pending_rewards if prr.slush >= shortfall), None):
             original_total_cost_to_user = prr_with_slush_ge_shortfall.total_cost_to_user
             prr_with_slush_ge_shortfall.slush -= shortfall
+            prr_with_slush_ge_shortfall.updated_at = pending_rewards_updated_at
             total_costs.append(
                 TotalCostToUserDataSchema(
                     new_total_cost_to_user=prr_with_slush_ge_shortfall.total_cost_to_user,
                     original_total_cost_to_user=original_total_cost_to_user,
-                    pending_reward_id=prr_with_slush_ge_shortfall.id,
                     pending_reward_uuid=prr_with_slush_ge_shortfall.pending_reward_uuid,
+                    pending_reward_updated_at=prr_with_slush_ge_shortfall.updated_at,
                 )
             )
             shortfall = 0
@@ -224,6 +330,7 @@ class TransactionService(Service):
 
         # try to use collective slush of all available prrs to absorb shortfall
         for pending_reward in [prr for prr in pending_rewards if prr.slush > 0]:
+            pending_reward.updated_at = pending_rewards_updated_at
 
             if pending_reward.slush >= shortfall:
                 original_total_cost_to_user = pending_reward.total_cost_to_user
@@ -232,8 +339,8 @@ class TransactionService(Service):
                     TotalCostToUserDataSchema(
                         new_total_cost_to_user=pending_reward.total_cost_to_user,
                         original_total_cost_to_user=original_total_cost_to_user,
-                        pending_reward_id=pending_reward.id,
                         pending_reward_uuid=pending_reward.pending_reward_uuid,
+                        pending_reward_updated_at=pending_reward.updated_at,
                     )
                 )
                 shortfall = 0
@@ -246,8 +353,8 @@ class TransactionService(Service):
                 TotalCostToUserDataSchema(
                     new_total_cost_to_user=pending_reward.total_cost_to_user,
                     original_total_cost_to_user=original_total_cost_to_user,
-                    pending_reward_id=pending_reward.id,
                     pending_reward_uuid=pending_reward.pending_reward_uuid,
+                    pending_reward_updated_at=pending_reward.updated_at,
                 )
             )
             pending_reward.slush = 0
@@ -300,22 +407,49 @@ class TransactionService(Service):
 
         return current_balance, deleted_count_by_uuid, shortfall
 
-    async def _allocate_reward(self) -> None:
-        pass
+    async def allocate_pending_reward(
+        self, transaction: Transaction, campaign: Campaign, count: int, total_cost_to_user: int
+    ) -> None:
+        pending_reward = await crud.create_pending_reward(
+            self.db_session,
+            account_holder_id=transaction.account_holder_id,
+            campaign_id=campaign.id,
+            allocation_window=campaign.reward_rule.allocation_window,
+            value=campaign.reward_rule.reward_goal,
+            count=count,
+            total_cost_to_user=total_cost_to_user,
+        )
+        await self.store_activity(
+            activity_type=RewardsActivityType.REWARD_STATUS,
+            payload_formatter_fn=RewardsActivityType.get_reward_status_activity_data,
+            formatter_kwargs={
+                "account_holder_uuid": transaction.account_holder.account_holder_uuid,
+                "retailer_slug": self.retailer.slug,
+                "campaigns": [campaign.slug],
+                "summary": f"{self.retailer.name} Pending reward issued for {campaign.name}",
+                "new_status": "pending",
+                "activity_datetime": pending_reward.created_date,
+                "activity_identifier": str(pending_reward.pending_reward_uuid),
+                "count": count,
+            },
+        )
 
     async def _process_rewards(
         self, transaction: Transaction, campaign: Campaign, campaign_balance_amount: int, adjustment: int
-    ) -> None:
+    ) -> tuple[int, str] | None:
         log_suffix = f"(tx_id: {transaction.transaction_id})"
         rewards_achieved_n, trc_reached = self._rewards_achieved(campaign, campaign_balance_amount, adjustment)
         if rewards_achieved_n > 0:
             if trc_reached:
                 tot_cost_to_user = adjustment
                 logger.info("Transaction reward cap '%s' reached %s", campaign.reward_rule.reward_cap, log_suffix)
-                post_msg = "Transaction reward cap reached, decreasing balance by original adjustment amount (%s) %s"
+                post_msg = (
+                    "Transaction reward cap reached, "
+                    f"decreasing balance by original adjustment amount (%s) {log_suffix}"
+                )
 
             else:
-                tot_cost_to_user = rewards_achieved_n * campaign.reward_rule.reward_goal
+                tot_cost_to_user = int(rewards_achieved_n * campaign.reward_rule.reward_goal)
                 logger.info(
                     "Reward goal (%d) met %d time%s %s",
                     campaign.reward_rule.reward_goal,
@@ -323,55 +457,84 @@ class TransactionService(Service):
                     "s" if rewards_achieved_n > 1 else "",
                     log_suffix,
                 )
-                post_msg = "Decreasing balance by total rewards value (%s) %s"  # noqa: F841 # remove me
+                post_msg = f"Decreasing balance by total rewards value (%s) {log_suffix}"
 
             if campaign.reward_rule.allocation_window > 0:
-                await crud.create_pending_reward(
-                    self.db_session,
-                    account_holder_id=transaction.account_holder_id,
-                    campaign_id=campaign.id,
-                    conversion_date=(
-                        datetime.now(tz=timezone.utc) + timedelta(days=campaign.reward_rule.allocation_window)
-                    ).date(),
-                    value=campaign.reward_rule.reward_goal,
+                await self.allocate_pending_reward(
+                    transaction=transaction,
+                    campaign=campaign,
                     count=rewards_achieved_n,
                     total_cost_to_user=tot_cost_to_user,
                 )
-            else:
-                await self._allocate_reward()
 
-    # FIXME: check function name
-    async def _process_adjustments(
-        self, campaigns: list[Campaign], transaction: Transaction, account_holder_id: int
-    ) -> list[int]:
+            else:
+                await _allocate_reward_placeholder()
+
+            return tot_cost_to_user, post_msg
+
+        return None
+
+    async def _process_balance_adjustments(
+        self, campaigns: list[Campaign], transaction: Transaction, account_holder: "AccountHolder"
+    ) -> dict[str, AdjustmentAmount]:
         locked_balances = await crud.get_balances_for_update(
-            self.db_session, account_holder_id=account_holder_id, campaigns=campaigns
+            self.db_session, account_holder_id=account_holder.id, campaigns=campaigns
         )
         balances_by_campaign_id = {balance.campaign_id: balance for balance in locked_balances}
 
-        adjustments: list[int] = []
+        adjustments: dict[str, AdjustmentAmount] = {}
         for campaign in campaigns:
             campaign_balance = balances_by_campaign_id[campaign.id]
             adjustment = await self._adjust_balance(
-                campaign=campaign, campaign_balance=campaign_balance, transaction=transaction
+                campaign=campaign,
+                campaign_balance=campaign_balance,
+                transaction=transaction,
+                account_holder_uuid=account_holder.account_holder_uuid,
             )
-            await crud.associate_campaign_to_transaction(self.db_session, campaign.id, transaction.id, adjustment)
-            if adjustment:
-                adjustments.append(adjustment)
-                if adjustment > 0:
-                    await self._process_rewards(
-                        transaction=transaction,
-                        campaign=campaign,
-                        campaign_balance_amount=campaign_balance.balance,
-                        adjustment=adjustment,
-                    )
+
+            adjustments[campaign.slug] = adjustment
+            await crud.record_earn(
+                self.db_session,
+                campaign.loyalty_type,
+                campaign.earn_rule.id,
+                transaction.id,
+                adjustment.amount if adjustment.accepted else None,
+            )
+            if adjustment.accepted and adjustment.amount > 0:
+                processed_rewards_adjustment_data = await self._process_rewards(
+                    transaction=transaction,
+                    campaign=campaign,
+                    campaign_balance_amount=campaign_balance.balance,
+                    adjustment=adjustment.amount,
+                )
+                if processed_rewards_adjustment_data:
+                    tot_cost_to_user, post_msg = processed_rewards_adjustment_data
+                    campaign_balance.balance -= tot_cost_to_user
+                    logger.info(post_msg, tot_cost_to_user)
 
         return adjustments
 
-    async def handle_incoming_transaction(
-        self, request_payload: CreateTransactionSchema
+    async def update_payload_and_store_activity(self, activity_data: dict, updated_payload_data: dict) -> None:
+        activity_data["formatter_kwargs"].update(updated_payload_data)
+        await self.store_activity(**activity_data)
+
+    async def get_active_campaigns(self, transaction_datetime: datetime) -> list[Campaign]:
+        # database DateTimes are naive
+        transaction_datetime = transaction_datetime.replace(tzinfo=None)
+        return [
+            campaign
+            for campaign in cast(list[Campaign], self.retailer.campaigns)
+            if campaign.status == CampaignStatuses.ACTIVE
+            and campaign.start_date <= transaction_datetime
+            and (campaign.end_date is None or campaign.end_date > transaction_datetime)
+        ]
+
+    async def get_transaction_store_name(self, transaction_mid: str) -> str:
+        return await crud.get_store_name_by_mid(self.db_session, mid=transaction_mid) or "N/A"
+
+    async def _handle_incoming_transaction(
+        self, request_payload: CreateTransactionSchema, tx_import_activity_data: dict
     ) -> ServiceResult[str, ServiceError]:
-        """Main handler for incoming transactions"""
 
         account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
@@ -380,6 +543,11 @@ class TransactionService(Service):
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_FOUND))
         if account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
+
+        if not (active_campaigns := await self.get_active_campaigns(request_payload.transaction_datetime)):
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
+
+        tx_import_activity_data["campaign_slugs"] = [cmp.slug for cmp in active_campaigns]
 
         transaction = await crud.create_transaction(
             self.db_session,
@@ -391,17 +559,54 @@ class TransactionService(Service):
             await self.commit_db_changes()
             return ServiceResult(error=ServiceError(error_code=ErrorCode.DUPLICATE_TRANSACTION))
 
-        campaigns = list(
-            filter(
-                lambda campaign: campaign.start_date <= transaction.datetime
-                and (campaign.end_date is None or campaign.end_date > transaction.datetime),
-                self.retailer.campaigns,
-            )
+        adjustment_amounts = await self._process_balance_adjustments(active_campaigns, transaction, account_holder)
+        await self.store_activity(
+            activity_type=ActivityType.TX_HISTORY,
+            payload_formatter_fn=ActivityType.get_processed_tx_activity_data,
+            formatter_kwargs={
+                "processed_tx": transaction,
+                "retailer": self.retailer,
+                "adjustment_amounts": adjustment_amounts,
+                "store_name": await self.get_transaction_store_name(transaction.mid),
+            },
+            prepend=True,
         )
-        if not campaigns:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
 
-        adjustments = await self._process_adjustments(campaigns, transaction, account_holder.id)
+        is_refund = transaction.amount < 0
+        accepted_adjustments = any(adjustment.accepted for adjustment in adjustment_amounts.values())
+        tx_import_activity_data["valid_refund"] = accepted_adjustments or not is_refund
+
         await self.commit_db_changes()
+        return ServiceResult(self._get_transaction_response(accepted_adjustments, is_refund))
 
-        return ServiceResult(_get_transaction_response(adjustments, transaction.amount < 0))
+    async def handle_incoming_transaction(
+        self, request_payload: CreateTransactionSchema
+    ) -> ServiceResult[str, ServiceError]:
+        """Main handler for incoming transactions"""
+
+        try:
+            tx_import_activity_data = {
+                "retailer_name": self.retailer.name,
+                "retailer_slug": self.retailer.slug,
+                "campaign_slugs": [],
+                "valid_refund": False,
+            }
+            service_result = await self._handle_incoming_transaction(request_payload, tx_import_activity_data)
+            tx_import_activity_data["error"] = service_result.error.error_code.name if service_result.error else None
+
+        except Exception as exc:
+            await self.clear_stored_activities()
+            tx_import_activity_data["error"] = exc.__class__.__name__
+            raise
+
+        finally:
+            tx_import_activity_data["request_payload"] = request_payload.dict()
+            await self.store_activity(
+                activity_type=ActivityType.TX_IMPORT,
+                payload_formatter_fn=ActivityType.get_tx_import_activity_data,
+                formatter_kwargs=tx_import_activity_data,
+                prepend=True,
+            )
+            await self.format_and_send_stored_activities()
+
+        return service_result
