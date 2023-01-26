@@ -62,69 +62,52 @@ class CampaignService(Service):
 
         return ErrorCode.INVALID_STATUS_REQUESTED if error else None
 
-    async def _send_status_change_activities(
-        self,
-        *,
-        campaign_status_activity_payload: dict,
-        pr_delete_activity_payload: list[dict] | None,
-        cancel_rewards_ap: list[dict] | None,
-    ) -> None:
-        await format_and_send_activity_in_background(
-            activity_type=CampaignActivityType.CAMPAIGN,
-            payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
-            formatter_kwargs=campaign_status_activity_payload,
-        )
-        if pr_delete_activity_payload:
-            await format_and_send_activity_in_background(
-                activity_type=RewardsActivityType.REWARD_STATUS,
-                payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
-                formatter_kwargs=pr_delete_activity_payload,
-            )
-        if cancel_rewards_ap:
-            await format_and_send_activity_in_background(
-                activity_type=RewardsActivityType.REWARD_STATUS,
-                payload_formatter_fn=RewardsActivityType.get_reward_status_activity_data,
-                formatter_kwargs=cancel_rewards_ap,
-            )
-
-    async def _delete_pending_rewards_for_campaign(self, campaign: Campaign) -> list[dict]:
-        """Executes crud method delete_pending_rewards_for_campaign and returns required data for this activity"""
+    async def _delete_pending_rewards_for_campaign(self, campaign: Campaign) -> None:
+        """Executes crud method delete_pending_rewards_for_campaign and stores required data for this activity"""
         now = datetime.now(tz=timezone.utc)
         del_data = await delete_pending_rewards_for_campaign(self.db_session, retailer=self.retailer, campaign=campaign)
-        return [
-            {
-                "activity_datetime": now,
-                "retailer_slug": self.retailer.slug,
-                "campaign_slug": campaign.slug,
-                "account_holder_uuid": account_holder_uuid,
-                "pending_reward_uuid": pending_reward_uuid,
-            }
-            for pending_reward_uuid, account_holder_uuid in del_data
-        ]
+        await self.store_activity(
+            activity_type=RewardsActivityType.REWARD_STATUS,
+            payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
+            formatter_kwargs=[
+                {
+                    "activity_datetime": now,
+                    "retailer_slug": self.retailer.slug,
+                    "campaign_slug": campaign.slug,
+                    "account_holder_uuid": account_holder_uuid,
+                    "pending_reward_uuid": pending_reward_uuid,
+                }
+                for pending_reward_uuid, account_holder_uuid in del_data
+            ],
+        )
 
-    async def _cancel_issued_rewards_for_campaign(self, campaign: Campaign) -> list[dict]:
-        """Executes crud method cancel_issued_rewards_for_campaign and returns required data for this activity"""
+    async def _cancel_issued_rewards_for_campaign(self, campaign: Campaign) -> None:
+        """Executes crud method cancel_issued_rewards_for_campaign and stores required data for this activity"""
 
         rewards_cancelled_data = await cancel_issued_rewards_for_campaign(self.db_session, campaign=campaign)
-        return [
-            {
-                "account_holder_uuid": account_holder_uuid,
-                "retailer_slug": self.retailer.slug,
-                "campaigns": [campaign.slug],
-                "reason": "Reward cancelled due to campaign cancellation",
-                "summary": f"{self.retailer.slug} Reward cancelled",
-                "original_status": "issued",
-                "new_status": "cancelled",
-                "activity_datetime": cancelled_date,
-                "activity_identifier": str(reward_uuid),
-            }
-            for cancelled_date, reward_uuid, account_holder_uuid in rewards_cancelled_data
-        ]
+        await self.store_activity(
+            activity_type=RewardsActivityType.REWARD_STATUS,
+            payload_formatter_fn=RewardsActivityType.get_reward_status_activity_data,
+            formatter_kwargs=[
+                {
+                    "account_holder_uuid": account_holder_uuid,
+                    "retailer_slug": self.retailer.slug,
+                    "campaigns": [campaign.slug],
+                    "reason": "Reward cancelled due to campaign cancellation",
+                    "summary": f"{self.retailer.slug} Reward cancelled",
+                    "original_status": "issued",
+                    "new_status": "cancelled",
+                    "activity_datetime": cancelled_date,
+                    "activity_identifier": str(reward_uuid),
+                }
+                for cancelled_date, reward_uuid, account_holder_uuid in rewards_cancelled_data
+            ],
+        )
 
     async def _handle_pending_rewards(
         self, campaign: "Campaign", pending_rewards_action: PendingRewardActions, requested_status: CampaignStatuses
-    ) -> list[dict] | None:
-        pr_delete_activity_payload: list[dict] | None = None
+    ) -> None:
+
         if campaign.reward_rule.allocation_window > 0 and requested_status in (
             CampaignStatuses.ENDED,
             CampaignStatuses.CANCELLED,
@@ -134,39 +117,40 @@ class CampaignService(Service):
             elif (
                 pending_rewards_action == PendingRewardActions.REMOVE or requested_status == CampaignStatuses.CANCELLED
             ):
-                pr_delete_activity_payload = await self._delete_pending_rewards_for_campaign(campaign)
+                await self._delete_pending_rewards_for_campaign(campaign)
 
-        return pr_delete_activity_payload
-
-    async def _handle_balances(self, campaign: "Campaign", requested_status: CampaignStatuses) -> list[dict] | None:
+    async def _handle_balances(self, campaign: "Campaign", requested_status: CampaignStatuses) -> None:
         if requested_status == CampaignStatuses.ACTIVE:
             await crud.create_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaign)
         elif requested_status in (CampaignStatuses.ENDED, CampaignStatuses.CANCELLED):
             await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaign)
 
         if requested_status == CampaignStatuses.CANCELLED:
-            return await self._cancel_issued_rewards_for_campaign(campaign)
-
-        return None
+            await self._cancel_issued_rewards_for_campaign(campaign)
 
     async def _change_campaign_status(
         self, campaign: Campaign, requested_status: CampaignStatuses, sso_username: str
-    ) -> dict:
-        """Executes crud method campaign_status_change and returns required data for this activity"""
+    ) -> None:
+        """Executes crud method campaign_status_change and stores required data for this activity"""
 
         original_status = campaign.status
         updated_campaign_values = await crud.campaign_status_change(
             db_session=self.db_session, campaign=campaign, requested_status=requested_status
         )
-        return {
-            "updated_at": updated_campaign_values.updated_at,
-            "campaign_name": campaign.name,
-            "campaign_slug": campaign.slug,
-            "retailer_slug": self.retailer.slug,
-            "original_status": original_status,
-            "new_status": updated_campaign_values.status,
-            "sso_username": sso_username,
-        }
+
+        await self.store_activity(
+            activity_type=CampaignActivityType.CAMPAIGN,
+            payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
+            formatter_kwargs={
+                "updated_at": updated_campaign_values.updated_at,
+                "campaign_name": campaign.name,
+                "campaign_slug": campaign.slug,
+                "retailer_slug": self.retailer.slug,
+                "original_status": original_status,
+                "new_status": updated_campaign_values.status,
+                "sso_username": sso_username,
+            },
+        )
 
     async def handle_status_change(self, payload: "CampaignsStatusChangeSchema") -> ServiceResult[dict, ServiceError]:
 
@@ -187,79 +171,41 @@ class CampaignService(Service):
         ):
             return ServiceResult(error=ServiceError(error_code=error_code))
 
-        pr_delete_activity_payload = await self._handle_pending_rewards(
-            campaign, payload.pending_rewards_action, requested_status
-        )
-        campaign_status_activity_payload = await self._change_campaign_status(
+        await self._handle_pending_rewards(campaign, payload.pending_rewards_action, requested_status)
+        await self._change_campaign_status(
             campaign=campaign,
             requested_status=requested_status,
             sso_username=payload.activity_metadata.sso_username,
         )
-        cancel_rewards_ap = await self._handle_balances(campaign, requested_status)
+        await self._handle_balances(campaign, requested_status)
 
         await self.commit_db_changes()
-        await self._send_status_change_activities(
-            campaign_status_activity_payload=campaign_status_activity_payload,
-            pr_delete_activity_payload=pr_delete_activity_payload,
-            cancel_rewards_ap=cancel_rewards_ap,
-        )
+        await self.format_and_send_stored_activities()
         return ServiceResult({})
 
-    async def _send_migration_activities(
-        self,
-        *,
-        activate_draft_ap: dict,
-        ending_active_ap: dict,
-        balance_transfer_ap: list[dict] | None,
-        pr_delete_ap: list[dict] | None,
-        pr_transfer_ap: list[dict] | None,
-    ) -> None:
-
-        for activity_payload in (activate_draft_ap, ending_active_ap):
-            await format_and_send_activity_in_background(
-                activity_type=CampaignActivityType.CAMPAIGN,
-                payload_formatter_fn=CampaignActivityType.get_campaign_status_change_activity_data,
-                formatter_kwargs=activity_payload,
-            )
-
-        if balance_transfer_ap:
-            await format_and_send_activity_in_background(
-                activity_type=CampaignActivityType.BALANCE_CHANGE,
-                payload_formatter_fn=CampaignActivityType.get_balance_change_activity_data,
-                formatter_kwargs=balance_transfer_ap,
-            )
-        if pr_delete_ap:
-            await format_and_send_activity_in_background(
-                activity_type=RewardsActivityType.REWARD_STATUS,
-                payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
-                formatter_kwargs=pr_delete_ap,
-            )
-        if pr_transfer_ap:
-            await format_and_send_activity_in_background(
-                activity_type=RewardsActivityType.REWARD_STATUS,
-                payload_formatter_fn=RewardsActivityType.get_pending_reward_transferred_activity_data,
-                formatter_kwargs=pr_transfer_ap,
-            )
-
-    async def _transfer_pending_rewards(self, *, from_campaign: Campaign, to_campaign: Campaign) -> list[dict]:
+    async def _transfer_pending_rewards(self, *, from_campaign: Campaign, to_campaign: Campaign) -> None:
         updated_rewards = await transfer_pending_rewards(
             self.db_session, from_campaign=from_campaign, to_campaign=to_campaign
         )
-        return [
-            {
-                "retailer_slug": self.retailer.slug,
-                "from_campaign_slug": from_campaign.slug,
-                "to_campaign_slug": to_campaign.slug,
-                "account_holder_uuid": ah_uuid,
-                "activity_datetime": to_campaign.start_date,
-                "pending_reward_uuid": pr_uuid,
-            }
-            for pr_uuid, ah_uuid in updated_rewards
-        ]
+        await self.store_activity(
+            activity_type=RewardsActivityType.REWARD_STATUS,
+            payload_formatter_fn=RewardsActivityType.get_pending_reward_transferred_activity_data,
+            formatter_kwargs=[
+                {
+                    "retailer_slug": self.retailer.slug,
+                    "from_campaign_slug": from_campaign.slug,
+                    "to_campaign_slug": to_campaign.slug,
+                    "account_holder_uuid": ah_uuid,
+                    "activity_datetime": to_campaign.start_date,
+                    "pending_reward_uuid": pr_uuid,
+                }
+                for pr_uuid, ah_uuid in updated_rewards
+            ],
+        )
 
     async def _transfer_balance(
         self, *, payload: "CampaignsMigrationSchema", from_campaign: Campaign, to_campaign: Campaign
-    ) -> list[dict]:
+    ) -> None:
 
         updated_balances = await crud.transfer_balance(
             self.db_session,
@@ -268,18 +214,22 @@ class CampaignService(Service):
             threshold=payload.balance_action.qualifying_threshold,
             rate_percent=payload.balance_action.conversion_rate,
         )
-        return [
-            {
-                "retailer_slug": self.retailer.slug,
-                "from_campaign_slug": from_campaign.slug,
-                "to_campaign_slug": to_campaign.slug,
-                "account_holder_uuid": ah_uuid,
-                "activity_datetime": to_campaign.start_date,
-                "new_balance": balance,
-                "loyalty_type": to_campaign.loyalty_type,
-            }
-            for ah_uuid, balance in updated_balances
-        ]
+        await self.store_activity(
+            activity_type=CampaignActivityType.BALANCE_CHANGE,
+            payload_formatter_fn=CampaignActivityType.get_balance_change_activity_data,
+            formatter_kwargs=[
+                {
+                    "retailer_slug": self.retailer.slug,
+                    "from_campaign_slug": from_campaign.slug,
+                    "to_campaign_slug": to_campaign.slug,
+                    "account_holder_uuid": ah_uuid,
+                    "activity_datetime": to_campaign.start_date,
+                    "new_balance": balance,
+                    "loyalty_type": to_campaign.loyalty_type,
+                }
+                for ah_uuid, balance in updated_balances
+            ],
+        )
 
     async def _fetch_campaigns(
         self, from_campaign_slug: str, to_campaign_slug: str
@@ -362,40 +312,27 @@ class CampaignService(Service):
         ):
             return ServiceResult(error=error)
 
-        activate_draft_ap = await self._change_campaign_status(
+        await self._change_campaign_status(
             campaigns.draft, CampaignStatuses.ACTIVE, payload.activity_metadata.sso_username
         )
         await crud.create_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.draft)
 
-        balance_transfer_ap: list[dict] | None = None
         if payload.balance_action.transfer:
             await crud.lock_balances_for_campaign(self.db_session, campaign=campaigns.active)
-            balance_transfer_ap = await self._transfer_balance(
-                payload=payload, from_campaign=campaigns.active, to_campaign=campaigns.draft
-            )
+            await self._transfer_balance(payload=payload, from_campaign=campaigns.active, to_campaign=campaigns.draft)
 
-        pr_delete_ap: list[dict] | None = None
-        pr_transfer_ap: list[dict] | None = None
         match payload.pending_rewards_action:  # noqa: E999
             case PendingRewardMigrationActions.TRANSFER:
-                pr_transfer_ap = await self._transfer_pending_rewards(
-                    from_campaign=campaigns.active, to_campaign=campaigns.draft
-                )
+                await self._transfer_pending_rewards(from_campaign=campaigns.active, to_campaign=campaigns.draft)
             case PendingRewardMigrationActions.CONVERT:
                 await convert_pending_rewards_placeholder()
             case PendingRewardMigrationActions.REMOVE:
-                pr_delete_ap = await self._delete_pending_rewards_for_campaign(campaigns.active)
+                await self._delete_pending_rewards_for_campaign(campaigns.active)
 
-        ending_active_ap = await self._change_campaign_status(
+        await self._change_campaign_status(
             campaigns.active, CampaignStatuses.ENDED, payload.activity_metadata.sso_username
         )
         await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.active)
         await self.commit_db_changes()
-        await self._send_migration_activities(
-            activate_draft_ap=activate_draft_ap,
-            ending_active_ap=ending_active_ap,
-            balance_transfer_ap=balance_transfer_ap,
-            pr_delete_ap=pr_delete_ap,
-            pr_transfer_ap=pr_transfer_ap,
-        )
+        await self.format_and_send_stored_activities()
         return ServiceResult({})

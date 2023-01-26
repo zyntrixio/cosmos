@@ -18,4 +18,4 @@ def test_client() -> TestClient:
 
 @pytest.fixture(scope="function")
 def mock_activity(mocker: MockerFixture) -> "MagicMock":
-    return mocker.patch("cosmos.campaigns.api.service.format_and_send_activity_in_background")
+    return mocker.patch("cosmos.core.api.service.format_and_send_activity_in_background")
