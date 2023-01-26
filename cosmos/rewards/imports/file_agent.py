@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, DefaultDict, NamedTuple
 import sentry_sdk
 
 from azure.core.exceptions import HttpResponseError, ResourceExistsError
-from azure.storage.blob import BlobClient, BlobLeaseClient, BlobServiceClient  # pylint: disable=unused-import
+from azure.storage.blob import BlobClient, BlobLeaseClient, BlobServiceClient
 from pydantic import ValidationError
 from sqlalchemy import bindparam, update
 from sqlalchemy.future import select

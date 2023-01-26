@@ -164,7 +164,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     rewards = relationship("Reward", back_populates="campaign")
 
     def __str__(self) -> str:  # pragma: no cover
-        return str(self.name)
+        return f"{self.name} ({self.slug})"
 
     def is_activable(self) -> bool:
         return self.status == CampaignStatuses.DRAFT and self.reward_rule and self.earn_rule
@@ -263,8 +263,17 @@ class FetchType(IdPkMixin, Base, TimestampMixin):
     required_fields = Column(Text, nullable=True)
     path = Column(String, nullable=False)
 
-    retailer = relationship("Retailer", back_populates="fetch_types", secondary="retailer_fetch_type")
-    reward_configs = relationship("RewardConfig", back_populates="fetch_type")
+    retailer = relationship(
+        "Retailer",
+        back_populates="fetch_types",
+        secondary="retailer_fetch_type",
+        uselist=False,
+    )
+    reward_configs = relationship(
+        "RewardConfig",
+        back_populates="fetch_type",
+    )
+    retailer_fetch_type = relationship("RetailerFetchType", back_populates="fetch_type")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}: ({self.id}) {self.name}"
@@ -277,6 +286,7 @@ class RetailerFetchType(Base, TimestampMixin):
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     agent_config = Column(Text, nullable=True)
 
+    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type")
     __table_args__ = (PrimaryKeyConstraint("retailer_id", "fetch_type_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -346,7 +356,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
     __mapper_args__ = {"eager_defaults": True}
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.code}, {self.status})"
+        return f"{self.__class__.__name__}({self.retailer.slug}, " f"{self.code}, {self.status.value})"
 
 
 class RewardConfig(IdPkMixin, Base, TimestampMixin):
@@ -478,4 +488,4 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     __mapper_args__ = {"eager_defaults": True}
 
     def __str__(self) -> str:
-        return str(self.name)  # pragma: no cover
+        return f"{self.name} ({self.slug})"

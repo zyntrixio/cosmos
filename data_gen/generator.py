@@ -49,6 +49,7 @@ def _generate_account_holders_and_rewards_data(
             unallocated_rewards_to_create=unallocated_rewards_to_create,
             batch_reward_salt=str(uuid4()),
             campaign=campaign,
+            reward_config=reward_config,
         )
         db_session.bulk_save_objects(unallocated_rewards_batch)
         db_session.commit()
@@ -76,6 +77,7 @@ def _generate_account_holders_and_rewards_data(
                     refund_window=refund_window,
                     tx_history=tx_history,
                     reward_goal=reward_rule.reward_goal,
+                    reward_config=reward_config,
                 )
                 batch_start = batch_end
 

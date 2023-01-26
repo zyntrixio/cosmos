@@ -69,7 +69,7 @@ def get_reward_config_and_retailer(db_session: "Session", retailer_slug: str) ->
 
 
 def create_unallocated_rewards(
-    unallocated_rewards_to_create: int, batch_reward_salt: str, campaign: Campaign
+    unallocated_rewards_to_create: int, batch_reward_salt: str, campaign: Campaign, reward_config: RewardConfig
 ) -> list[Reward]:
     hashids = Hashids(batch_reward_salt, min_length=15)
     unallocated_rewards = []
@@ -79,7 +79,7 @@ def create_unallocated_rewards(
         unallocated_rewards.append(
             Reward(
                 code=code,
-                reward_config_id=campaign.reward_config.id,
+                reward_config_id=reward_config.id,
                 retailer_id=campaign.retailer_id,
                 deleted=False,
                 issued_date=now,
@@ -121,6 +121,7 @@ def batch_create_account_holders_and_rewards(
     refund_window: int | None,
     tx_history: bool,
     reward_goal: int,
+    reward_config: RewardConfig,
 ) -> int:
     if refund_window is None:
         refund_window = 0
@@ -159,6 +160,7 @@ def batch_create_account_holders_and_rewards(
             account_holder,
             account_holder_type_reward_code_salt,
             active_campaigns,
+            reward_config,
         )
         account_holder_rewards_batch.extend(account_holder_rewards)
         if refund_window > 0:
@@ -184,6 +186,7 @@ def _generate_allocated_rewards(
     account_holder: AccountHolder,
     batch_reward_salt: str,
     active_campaigns: list[Campaign],
+    reward_config: RewardConfig,
 ) -> list[Reward]:
     hashids = Hashids(batch_reward_salt, min_length=15)
 
@@ -204,7 +207,7 @@ def _generate_allocated_rewards(
                                 campaign_id=campaign.id,
                                 reward_uuid=reward_uuid,
                                 reward_code=reward_code,
-                                reward_config_id=campaign.reward_config.id,
+                                reward_config_id=reward_config.id,
                                 reward_status=reward_status,
                             )
                         )
@@ -347,7 +350,7 @@ def setup_retailer(
     db_session.flush()
     if loyalty_type == "STAMPS":
         refund_window = None
-    campaign = Campaign(**campaign_payload(retailer.id, campaign_slug, loyalty_type, reward_config.id))
+    campaign = Campaign(**campaign_payload(retailer.id, campaign_slug, loyalty_type))
     db_session.add(campaign)
     db_session.flush()
     db_session.add(RewardRule(**reward_rule_payload(campaign.id, reward_config.id, refund_window)))

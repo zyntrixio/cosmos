@@ -89,6 +89,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "cosmos"
+    ACTIVITY_DB: str = "hubble"
     SQLALCHEMY_DATABASE_URI: str = ""
     SQLALCHEMY_DATABASE_URI_ASYNC: str = ""
     DB_CONNECTION_RETRY_TIMES: int = 3
@@ -250,6 +251,58 @@ class Settings(BaseSettings):
                 values["KEY_VAULT_URI"],
                 values["TESTING"] or values["MIGRATING"],
             ).get_secret("bpl-polaris-api-auth-token")
+
+        raise KeyError("required var KEY_VAULT_URI is not set.")
+
+    # ADMIN PANEL SETTINGS
+    ADMIN_PROJECT_NAME: str = "cosmos-admin"
+    ADMIN_ROUTE_BASE: str = "/admin"
+    ACCOUNTS_MENU_PREFIX: str = "accounts"
+    RETAILER_MENU_PREFIX: str = "retailers"
+    CAMPAIGN_AND_REWARD_MENU_PREFIX: str = "campaign-and-reward"
+    TRANSACTIONS_MENU_PREFIX: str = "transactions"
+    ACTIVITY_MENU_PREFIX: str = "hubble"
+    FLASK_ADMIN_SWATCH: str = "simplex"
+    FLASK_DEBUG: bool = False
+    ADMIN_QUERY_LOG_LEVEL: str | int = "WARN"
+    FLASK_DEV_PORT: int = 5000
+    SECRET_KEY: str = ""
+    REQUEST_TIMEOUT: int = 2
+
+    @validator("SECRET_KEY")
+    @classmethod
+    def fetch_admin_secret_key(cls, v: str | None, values: dict[str, Any]) -> str:
+        if v and not values["TESTING"]:
+            return v
+
+        if "KEY_VAULT_URI" in values:
+            return KeyVault(
+                values["KEY_VAULT_URI"],
+                values["TESTING"],
+            ).get_secret("bpl-event-horizon-secret-key")
+
+        raise KeyError("required var KEY_VAULT_URI is not set.")
+
+    ## AAD SSO
+    OAUTH_REDIRECT_URI: str | None = None
+    AZURE_TENANT_ID: str = "a6e2367a-92ea-4e5a-b565-723830bcc095"
+    OAUTH_SERVER_METADATA_URL: str = (
+        f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/v2.0/.well-known/openid-configuration"
+    )
+    EVENT_HORIZON_CLIENT_ID: str = ""
+    EVENT_HORIZON_CLIENT_SECRET: str = ""
+
+    @validator("EVENT_HORIZON_CLIENT_SECRET")
+    @classmethod
+    def fetch_admin_client_secret(cls, v: str | None, values: dict[str, Any]) -> str:
+        if v and not values["TESTING"]:
+            return v
+
+        if "KEY_VAULT_URI" in values:
+            return KeyVault(
+                values["KEY_VAULT_URI"],
+                values["TESTING"],
+            ).get_secret("bpl-event-horizon-sso-client-secret")
 
         raise KeyError("required var KEY_VAULT_URI is not set.")
 

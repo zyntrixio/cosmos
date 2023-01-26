@@ -283,7 +283,7 @@ def retailer_data(retailer_slug: str) -> dict:
     }
 
 
-def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str, reward_config_id: int) -> dict:
+def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str) -> dict:
     return {
         "retailer_id": retailer_id,
         "status": "ACTIVE",
@@ -291,7 +291,6 @@ def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str, re
         "slug": campaign_slug,
         "start_date": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
         "loyalty_type": loyalty_type,
-        "reward_config_id": reward_config_id,
     }
 
 

@@ -1,0 +1,158 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<h1>Cosmos Admin</h1>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <div class="row">
+
+        <p class="lead">Welcome to the admin site for the <strong>Bink Provided Loyalty (BPL)</strong>
+          project.</p>
+        <p>This is a <a href="https://flask-admin.readthedocs.io/en/latest/" target="_blank">Flask-Admin</a> project
+          incorporating views upon the data of the two primary BPL projects:</p>
+        <ul>
+          <li><strong><a href="https://github.com/binkhq/cosmos">Cosmos</a></strong> - Core BPL system</li>
+          <li><strong><a href="https://github.com/binkhq/hubble">Hubble</a></strong> - Activity</li>
+        </ul>
+
+      </div>
+    </div>
+    <div class="col-md-4">
+      <h3>Documentation</h3>
+      <ul>
+        <!-- <li><a href="https://hellobink.atlassian.net/wiki/spaces/BPL/pages/2435482196/Event+Horizon"
+            target="_blank">Confluence documentation</a></li> -->
+        <li><a href="https://hellobink.atlassian.net/browse/BPL" target="_blank">JIRA project</a></li>
+        <li><a href="https://hellobink.atlassian.net/wiki/spaces/BPL/pages/2089680945/Proposed+Data+Entities"
+            target="_blank">Data entities</a></li>
+        <li><a
+            href="https://hellobink.atlassian.net/wiki/spaces/BPL/pages/2058518610/POST+MVP+High+level+Solution+Brain+Dump"
+            target="_blank">High level MVP</a></li>
+      </ul>
+    </div>
+  </div>
+
+
+  <div class="col-md-12 row" style="padding: 0;">
+
+    <h4>Data Tables</h4>
+
+    <div class="col-md-3">
+      <table class="table table-condensed">
+        <tr>
+          <th>Customer Management Tables</th>
+        </tr>
+        <tr>
+          <td><a href="accounts/account-holders/">Account Holders</a></td>
+        </tr>
+        <tr>
+          <td><a href="accounts/profiles/">Profiles</a></td>
+        </tr>
+        <tr>
+          <td><a href="accounts/campaign-balances/">Campaign Balances</a></td>
+        </tr>
+        <tr>
+          <td><a href="accounts/marketing-preferences/">Marketing Preferences</a></td>
+        </tr>
+        <tr>
+          <td><a href="accounts/pending-rewards/">Pending Rewards</a></td>
+        </tr>
+      </table>
+    </div>
+    <div class="col-md-3">
+      <table class="table table-condensed">
+        <tr>
+          <th>Retailer Management Tables</th>
+        </tr>
+        <tr>
+          <td><a href="retailers/retailer/">Retailers</a></td>
+        </tr>
+        <tr>
+          <td><a href="retailers/retailer-stores/">Retailer's Stores</a></td>
+        </tr>
+        <tr>
+          <td><a href="retailers/retailer-fetch-types/">Retailer's Fetch Types</a></td>
+        </tr>
+        <tr>
+          <td><a href="retailers/email-templates/">Email Templates</a></td>
+        </tr>
+        <tr>
+          <td><a href="retailers/email-template-keys/">Email Template Keys</a></td>
+        </tr>
+      </table>
+    </div>
+    <div class="col-md-3">
+      <table class="table table-condensed">
+        <tr>
+          <th>Camapign and Reward Tables</th>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/campaigns/">Campaigns</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/earn-rules/">Earn Rules</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/reward-rules/">Reward Rules</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/reward-configs/">Reward Configurations</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/rewards/">Rewards</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/fetch-types/">Fetch Types</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/reward-updates/">Reward Updates</a></td>
+        </tr>
+        <tr>
+          <td><a href="campaign-and-reward/reward-file-log/">Reward File Log</a></td>
+        </tr>
+      </table>
+    </div>
+    <div class="col-md-3">
+      <table class="table table-condensed">
+        <tr>
+          <th>Transactions</th>
+        </tr>
+        <tr>
+          <td><a href="transactions/transactions/">Transactions</a></td>
+        </tr>
+      </table>
+    </div>
+    <div class="col-md-3">
+      <table class="table table-condensed">
+        <tr>
+          <th>Activity Tables</th>
+        </tr>
+        <tr>
+          <td><a href="hubble/activity/">Activity</a></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-md-8 row" style="padding: 0;">
+
+
+    <h3>Where does BPL fit?</h3>
+    <img
+      src="https://confluence-connect.gliffy.net/embed/image/bc3f1871-a428-4d35-9861-780854e69956.png?utm_medium=live&utm_source=custom"
+      style="width:100%" class="img-fluid" />
+
+
+  </div>
+
+
+</div>
+
+
+</div>
+
+
+
+{% endblock %}
