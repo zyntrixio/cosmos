@@ -27,7 +27,7 @@ from cosmos.db.models import (
     RewardConfig,
     RewardRule,
     Transaction,
-    TransactionCampaign,
+    TransactionEarn,
 )
 
 from .enums import AccountHolderRewardStatuses, AccountHolderTypes, FetchTypesEnum
@@ -253,7 +253,7 @@ def _generate_account_holder_transaction_history(
     retailer: Retailer,
     reward_goal: int,
     active_campaigns: list[Campaign],
-) -> list[Transaction | TransactionCampaign]:
+) -> list[Transaction | TransactionEarn]:
     account_holder_transaction_history: list[Transaction] = []
     how_many = randint(1, 10)
     tx_history_rows = generate_tx_rows(reward_goal, retailer=retailer)
@@ -278,7 +278,7 @@ def _generate_account_holder_transaction_history(
             else:
                 adjustment = tx_history.tx_amount
             account_holder_transaction_history.append(
-                TransactionCampaign(campaign_id=campaign.id, transaction_id=transaction.id, adjustment=adjustment)
+                TransactionEarn(campaign_id=campaign.id, transaction_id=transaction.id, adjustment=adjustment)
             )
 
     return account_holder_transaction_history

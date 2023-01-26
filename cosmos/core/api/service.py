@@ -1,5 +1,6 @@
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Callable, Generic, TypeVar, cast
 
+from cosmos.core.activity.utils import format_and_send_activity_in_background
 from cosmos.core.api.crud import commit
 from cosmos.core.error_codes import ErrorCode
 
@@ -7,6 +8,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from cosmos.core.activity.utils import ActivityEnumType
     from cosmos.db.models import Retailer
 
 
@@ -43,9 +45,28 @@ class Service:
     def __init__(self, db_session: "AsyncSession", retailer: "Retailer") -> None:
         self.db_session = db_session
         self.retailer = retailer
+        self._stored_activities: list[dict] = []
 
     async def commit_db_changes(self) -> None:
         await commit(self.db_session)
+
+    async def store_activity(
+        self,
+        activity_type: "ActivityEnumType",
+        payload_formatter_fn: Callable[..., dict],
+        formatter_kwargs: list[dict] | dict,
+    ) -> None:
+        self._stored_activities.append(
+            {
+                "activity_type": activity_type,
+                "payload_formatter_fn": payload_formatter_fn,
+                "formatter_kwargs": formatter_kwargs,
+            }
+        )
+
+    async def format_and_send_stored_activities(self) -> None:
+        for stored_activity in self._stored_activities:
+            await format_and_send_activity_in_background(**stored_activity)
 
 
 class ServiceError(Exception):

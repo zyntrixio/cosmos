@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import noload
 
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import CampaignBalance, PendingReward, Transaction, TransactionCampaign
+from cosmos.db.models import CampaignBalance, PendingReward, Transaction, TransactionEarn
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
@@ -106,9 +106,9 @@ async def create_transaction(
 
 async def associate_campaign_to_transaction(
     db_session: "AsyncSession", campaign_id: int, transaction_id: int, adjustment: int | None
-) -> TransactionCampaign:
-    async def _query(savepoint: "AsyncSessionTransaction") -> TransactionCampaign:
-        transaction_campaign = TransactionCampaign(
+) -> TransactionEarn:
+    async def _query(savepoint: "AsyncSessionTransaction") -> TransactionEarn:
+        transaction_campaign = TransactionEarn(
             campaign_id=campaign_id, transaction_id=transaction_id, adjustment=adjustment
         )
         db_session.add(transaction_campaign)
