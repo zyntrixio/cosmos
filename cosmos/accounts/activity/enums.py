@@ -47,7 +47,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.ACCOUNT_REQUEST.name,
             user_id=str(request_data["third_party_identifier"]),
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"Enrolment Requested for {email}",
             associated_value=email,
             retailer_slug=retailer_slug,
@@ -67,7 +67,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.ACCOUNT_VIEW.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary="Account viewed",
             reasons=["/accounts call made"],
             associated_value=channel,
@@ -88,7 +88,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.ACCOUNT_AUTHENTICATION.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"Account added to {channel}",
             associated_value=channel,
             retailer_slug=retailer_slug,
@@ -108,7 +108,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.ACCOUNT_ENROLMENT.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"Joined via {channel}; Account activated",
             reasons=[f"Third Party Identifier: {third_party_identifier}"],
             activity_identifier=third_party_identifier,
@@ -132,7 +132,7 @@ class ActivityType(ActivityTypeMixin, Enum):
     ) -> dict:
         return cls._assemble_payload(
             ActivityType.ACCOUNT_CHANGE.name,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             user_id=account_holder_uuid,
             retailer_slug=retailer_slug,
             summary=summary,
@@ -159,7 +159,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.BALANCE_CHANGE.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             activity_identifier="N/A",
             summary=summary,
             reasons=[reason],
@@ -186,7 +186,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             ActivityType.REFUND_NOT_RECOUPED.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"{retailer_slug} Refund transaction caused an account shortfall",
             reasons=["Account Holder Balance and/or Pending Rewards did not cover the refund"],
             associated_value=pence_integer_to_currency_string(adjustment, "GBP"),

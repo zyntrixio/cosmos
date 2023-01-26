@@ -50,19 +50,25 @@ class Service:
     async def commit_db_changes(self) -> None:
         await commit(self.db_session)
 
+    async def clear_stored_activities(self) -> None:
+        self._stored_activities = []
+
     async def store_activity(
         self,
         activity_type: "ActivityEnumType",
         payload_formatter_fn: Callable[..., dict],
         formatter_kwargs: list[dict] | dict,
+        prepend: bool = False,
     ) -> None:
-        self._stored_activities.append(
-            {
-                "activity_type": activity_type,
-                "payload_formatter_fn": payload_formatter_fn,
-                "formatter_kwargs": formatter_kwargs,
-            }
-        )
+        data = {
+            "activity_type": activity_type,
+            "payload_formatter_fn": payload_formatter_fn,
+            "formatter_kwargs": formatter_kwargs,
+        }
+        if prepend:
+            self._stored_activities.insert(0, data)
+        else:
+            self._stored_activities.append(data)
 
     async def format_and_send_stored_activities(self) -> None:
         for stored_activity in self._stored_activities:

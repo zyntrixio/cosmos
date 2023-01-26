@@ -28,7 +28,7 @@ class ActivityType(ActivityTypeMixin, Enum):
     ) -> dict:
         return cls._assemble_payload(
             activity_type=cls.REWARD_STATUS.name,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"{retailer_slug} Pending Reward removed for {campaign_slug}",
             reasons=["Pending Reward removed due to campaign end/cancellation"],
             user_id=account_holder_uuid,
@@ -56,7 +56,7 @@ class ActivityType(ActivityTypeMixin, Enum):
 
         return cls._assemble_payload(
             activity_type=cls.REWARD_STATUS.name,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             summary=f"{retailer_slug} pending reward transferred from {from_campaign_slug} to {to_campaign_slug}",
             reasons=["Pending reward transferred at campaign end"],
             activity_identifier=pending_reward_uuid,
@@ -85,24 +85,26 @@ class ActivityType(ActivityTypeMixin, Enum):
         activity_identifier: str | None = None,
         count: int | None = None,
     ) -> dict:
-        data_kwargs = {"new_status": new_status, "count": count}
+        data_kwargs: dict[str, str | int] = {"new_status": new_status}
         if original_status:
             data_kwargs["original_status"] = original_status
-
         if count:
             data_kwargs["count"] = count
 
         return cls._assemble_payload(
             cls.REWARD_STATUS.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             activity_identifier=activity_identifier,
             summary=summary,
             reasons=[reason] if reason else None,
             associated_value=new_status,
             retailer_slug=retailer_slug,
             campaigns=campaigns,
-            data=RewardStatusDataSchema(**data_kwargs).dict(exclude_unset=True),
+            data=RewardStatusDataSchema(**data_kwargs).dict(
+                exclude_unset=True,
+                exclude_none=True,
+            ),
         )
 
     @classmethod
@@ -121,7 +123,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         return cls._assemble_payload(
             cls.REWARD_UPDATE.name,
             user_id=account_holder_uuid,
-            activity_datetime=activity_datetime,
+            underlying_datetime=activity_datetime,
             activity_identifier=activity_identifier,
             summary=summary,
             reasons=[reason] if reason else None,

@@ -58,10 +58,8 @@ cryptography = { version = "^38.0.3", optional = true }
 admin = [
     "Flask", 
     "Flask-Admin", 
-    "Authlib", 
-    "requests", 
-    "sentry-sdk[flask]", 
-    "gunicorn", 
+    "Authlib",
+    "sentry-sdk[flask]",
     "Flask-WTF", 
     "cryptography",
 ]

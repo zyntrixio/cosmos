@@ -10,7 +10,7 @@ from cosmos.transactions.api.schemas import CreateTransactionSchema
 from cosmos.transactions.api.service import TransactionService
 
 user_is_authorised = UserIsAuthorised(expected_token=settings.VELA_API_AUTH_TOKEN)
-router = APIRouter(dependencies=[Depends(user_is_authorised)])
+api_router = APIRouter(dependencies=[Depends(user_is_authorised)])
 
 
 get_retailer = RetailerDependency(
@@ -19,8 +19,8 @@ get_retailer = RetailerDependency(
 )
 
 
-@router.post(
-    path="/{retailer_slug}/transaction",
+@api_router.post(
+    path="/{retailer_slug}",
     response_model=str,
 )
 async def process_transaction(

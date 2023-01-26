@@ -1,27 +1,32 @@
-from datetime import datetime as dt
-from datetime import timezone
+from datetime import datetime, timezone
+from typing import Generator
 
-from pydantic import BaseModel, Field, StrictInt, constr, validator
+from pydantic import BaseModel, Field, StrictInt
 from pydantic.types import UUID4
+from pydantic.validators import float_validator
 
 
-# I pass in an empty string for any of these fields: id, datetime, MID or loyalty_id
+class DateTime(datetime):
+    @classmethod
+    def __get_validators__(cls) -> Generator:
+        yield float_validator
+        yield cls.convert_float_to_datetime
+
+    @classmethod
+    def convert_float_to_datetime(cls, value: float) -> datetime:
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc)
+        except TypeError as ex:
+            raise ValueError("invalid datetime") from ex
+
+
 class CreateTransactionSchema(BaseModel):  # pragma: no cover
-    transaction_id: constr(strip_whitespace=True, min_length=1) = Field(..., alias="id")  # type: ignore [valid-type]
-    payment_transaction_id: constr(strip_whitespace=True, min_length=1) = Field(  # type: ignore [valid-type]
-        ..., alias="transaction_id"
-    )
+    transaction_id: str = Field(..., min_length=1, alias="id")
+    payment_transaction_id: str = Field(..., min_length=1, alias="transaction_id")
     amount: StrictInt = Field(..., alias="transaction_total")
-    datetime: float
-    mid: constr(strip_whitespace=True, min_length=1) = Field(..., alias="MID")  # type: ignore [valid-type]
+    transaction_datetime: DateTime = Field(..., alias="datetime")
+    mid: str = Field(..., min_length=1, alias="MID")
     account_holder_uuid: UUID4 = Field(..., alias="loyalty_id")
 
-    @validator("datetime")
-    @classmethod
-    def get_datetime_from_timestamp(cls, v: float) -> dt:
-        try:
-            processed_datetime = dt.fromtimestamp(v, tz=timezone.utc)
-        except TypeError as e:
-            raise ValueError("invalid datetime") from e
-
-        return processed_datetime
+    class Config:
+        anystr_strip_whitespace = True

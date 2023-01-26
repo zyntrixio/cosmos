@@ -14,9 +14,10 @@ from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import CampaignBalance, PendingReward, Reward
 from cosmos.retailers.enums import RetailerStatuses
+from tests import validate_error_response
 from tests.conftest import SetupType
 
-from . import auth_headers, validate_error_response
+from . import auth_headers
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -342,7 +343,7 @@ def test_status_change_activating_a_campaign_ok(
     mock_activity.assert_called_once()
 
 
-@pytest.mark.parametrize("missing_rule", ["earn_rule", "reward_rule"])
+@pytest.mark.parametrize("missing_rule", ("earn_rule", "reward_rule"))
 def test_activating_a_campaign_with_missing_rule(
     missing_rule: str, test_client: "TestClient", setup: SetupType, campaign_with_rules: "Campaign"
 ) -> None:
@@ -370,7 +371,7 @@ def test_activating_a_campaign_with_missing_rule(
     assert campaign_with_rules.status == CampaignStatuses.DRAFT
 
 
-@pytest.mark.parametrize("pending_rewards_action", ["remove", "convert"])
+@pytest.mark.parametrize("pending_rewards_action", ("remove", "convert"))
 def test_status_change_ending_campaign_ok(
     pending_rewards_action: str,
     test_client: "TestClient",
@@ -422,7 +423,7 @@ def test_status_change_ending_campaign_ok(
     mock_activity.assert_called()
 
 
-@pytest.mark.parametrize("pending_rewards_action", ["remove", "convert"])
+@pytest.mark.parametrize("pending_rewards_action", ("remove", "convert"))
 def test_status_change_cancel_campaign_ok(
     pending_rewards_action: str,
     test_client: "TestClient",
