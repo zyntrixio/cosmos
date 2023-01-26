@@ -4,6 +4,9 @@
 
 - `CREATE DATABASE cosmos;`
 - `poetry install`
+- To include admin dependencies, `poetry install -E admin`
+- To include all dependencies (including admin, dev, test):
+  - `poetry install -E admin --with dev --with pytest --sync`
 - create a `local.env` file in the root directory (below)
 
 ### Example `local.env`
@@ -26,6 +29,11 @@
 ### Transactions API
 
 `poetry run cosmos api --port 8000 --reload transactions`
+
+
+### Admin Panel
+
+`poetry run python admin/wsgi.py`
 
 
 

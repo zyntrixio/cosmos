@@ -1,0 +1,57 @@
+{% extends admin_base_template %} {% block body %}
+
+<section class="container">
+    <div class="row">
+        <div class="col-md-6 panel-group">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">Rows affected by deletion of retailer '{{ retailer_name }}'</h4>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            <strong>Account Holders:</strong> {{account_holders_count}}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Issued Rewards:</strong> {{rewards_count}}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <form method="POST" class="form-group" name="deleteRetailerForm">
+                        {{ form.csrf_token()|safe }}
+                        <div class="form-check">
+                            {{ form.acceptance()|safe }} {{ form.acceptance.label }}
+                        </div>
+                        <br />
+                        <button class="btn btn-default" type="submit">
+                            Submit
+                        </button>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 panel-group">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">Active Campaigns</h4>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group">
+                        {% for campaign_slug in campaign_slugs %}
+                        <li class="list-group-item">
+                            {{ campaign_slug }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

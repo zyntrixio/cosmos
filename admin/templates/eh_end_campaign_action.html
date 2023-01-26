@@ -1,0 +1,96 @@
+{% extends admin_base_template %} {% block body %}
+
+{% macro render_field(field) %}
+{% if field.type == "BooleanField" %}
+<div class="form-check">
+    {{ field(**kwargs)|safe }}
+    {{ field.label }}
+</div>
+{% elif field.type == "CSRFTokenField" %}
+{{ field(**kwargs)|safe }}
+{% else %}
+<div class="form-group">
+    {{ field.label }}
+    {{ field(**kwargs)|safe }}
+    {% if field.description %}
+    <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+    {% if field.errors %}
+    <ul>
+        {% for error in field.errors %}
+        <li class="text-danger">{{ error }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+<section class="container">
+    <div class="col-md-8 panel-group">
+        <div class="col-md-8 panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">Selected Campaigns</h4>
+            </div>
+            <div class="panel-body">
+                <span>
+                    <strong>active:</strong>
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            {{ active_campaign.slug }} (id: {{ active_campaign.id }}) {{ active_campaign.type }}
+                        </li>
+                    </ul>
+                </span>
+                {% if draft_campaign %}
+                <div>
+                    <strong>draft:</strong>
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            {{ draft_campaign.slug }} (id: {{ draft_campaign.id }}) {{ draft_campaign.type }}
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-8 panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">Campaign End Action Configuration</h4>
+            </div>
+            <div class="panel-body">
+                <form method="POST" class="form-group" name="endCampaignForm">
+                    {% for field in form %}
+                    {{ render_field(field) }}
+                    {% endfor %}
+                </form>
+                <div>
+                    <button class="btn btn-default" type="submit" onClick='confirmAction();'>
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% if easter_egg %}
+        <div class="col-md-4 panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">{{ easter_egg.greet }}</h4>
+            </div>
+            <div class="panel-body">
+                {{ easter_egg.content|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+
+    </div>
+</section>
+<script>
+    function confirmAction() {
+        const msg = "Are you confident that this will not cause major disruptions, chaos, and death?";
+        if (confirm(msg)) {
+            document.endCampaignForm.submit();
+        };
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}
+BPL -  {{ super() }}
+{% endblock %}
+
+{% block brand %}
+<a href="{{ admin_view.admin.url }}"><img src="{{ url_for('eh.static', filename='img/bink_icon_blue_transparent.png') }}" height="40" width="40" alt="Bink logo"></a>
+{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+<style>
+    body {
+        padding-top: 0px !important;
+    }
+</style>
+{% endblock %}
+
+{% block page_body %}
+{% if config.get('SENTRY_ENV') == 'production' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: red;">PRODUCTION</p>
+{% elif config.get('SENTRY_ENV') == 'sandbox' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: lightskyblue;">PERFORMANCE</p>
+{% elif config.get('SENTRY_ENV') == 'staging' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: orange;">STAGING</p>
+{% else %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: green;">DEVELOPMENT</p>
+{% endif %}
+{{ super() }}
+{% endblock %}
