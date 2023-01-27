@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Bink Provided Loyalty"
 authors = ["Stewart Perrygrove <sperrygrove@bink.com>"]
 readme = "README.md"
+packages = [{include = "cosmos"}, {include = "admin"}]
 
 [[tool.poetry.source]]
 name = "bink-pypi"
