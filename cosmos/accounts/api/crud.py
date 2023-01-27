@@ -15,6 +15,7 @@ from cosmos.db.models import (
     CampaignBalance,
     MarketingPreference,
     PendingReward,
+    Retailer,
     RetailerStore,
     Reward,
     Transaction,
@@ -81,7 +82,11 @@ async def get_account_holder(
     using the relevant flags/params.
     """
     account_holder_alias = aliased(AccountHolder, name="account_holder_alias")
-    stmt = select(account_holder_alias).filter_by(retailer_id=retailer_id, **account_holder_query_params)
+    stmt = (
+        select(account_holder_alias)
+        .filter_by(retailer_id=retailer_id, **account_holder_query_params)
+        .options(joinedload(account_holder_alias.retailer).load_only(Retailer.status))
+    )
     if fetch_rewards:
         stmt = stmt.options(
             joinedload(account_holder_alias.rewards)
@@ -91,6 +96,7 @@ async def get_account_holder(
                 Reward.expiry_date,
                 Reward.redeemed_date,
                 Reward.cancelled_date,
+                Reward.account_holder_id,
             )
             .joinedload(Reward.campaign)
             .load_only(Campaign.slug),
@@ -98,6 +104,7 @@ async def get_account_holder(
             .load_only(
                 PendingReward.created_date,
                 PendingReward.conversion_date,
+                PendingReward.count,
             )
             .joinedload(PendingReward.campaign)
             .load_only(Campaign.slug),
@@ -123,21 +130,17 @@ async def get_account_holder(
             .limit(tx_qty)
             .cte("latest_tx_subq")
         )
+
         stmt = stmt.outerjoin(cte, cte.c.account_holder_id == account_holder_alias.id).options(
             contains_eager(account_holder_alias.transactions, alias=cte).options(
                 joinedload(Transaction.store).load_only(
                     RetailerStore.store_name,
                     RetailerStore.mid,
                 ),
-                joinedload(Transaction.transaction_earns)
-                .defer(
-                    TransactionEarn.created_at,
-                    TransactionEarn.updated_at,
-                    TransactionEarn.earn_rule_id,
-                )
-                .load_only(
-                    Campaign.slug,
-                    Campaign.loyalty_type,
+                joinedload(Transaction.transaction_earns).load_only(
+                    TransactionEarn.earn_amount,
+                    TransactionEarn.loyalty_type,
+                    TransactionEarn.transaction_id,
                 ),
             )
         )

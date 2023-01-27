@@ -28,7 +28,7 @@ class MarketingPreferenceValueTypes(Enum):
 
     def convert_value(self, v: str) -> Any:  # noqa: ANN401
         if self.value == bool:
-            return v.lower() in ("true", "1", "t", "yes", "y")
+            return v.lower() in {"true", "1", "t", "yes", "y"}
 
         if self.value == list:
             return v.split(", ")

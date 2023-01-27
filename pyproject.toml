@@ -29,8 +29,6 @@ redis = "^4.3.4"
 python-dotenv = "^0.21.0"
 psycopg2-binary = "^2.9.5"
 babel = "^2.11.0"
-retry-tasks-lib = {version = "^2.0.0", source = "bink-pypi"}
-cosmos-message-lib = {version = "^1.3.0", source = "bink-pypi"}
 uvicorn = {version = "^0.19.0", extras = ["standard"]}
 alembic = "^1.8.1"
 azure-storage-blob = "^12.14.1"
@@ -41,22 +39,24 @@ typer = "^0.7.0"
 prometheus-client = "0.12.0"
 ujson = "^5.5.0"
 hiredis = "^2.1.0"
-fastapi-prometheus-metrics = {version = "^0.2.3", source = "bink-pypi"}
 apscheduler = "^3.9.1.post1"
 gunicorn = "^20.1.0"
 tenacity = "^8.1.0"
 deepdiff = "^6.2.3"
 httpretty = "^1.1.4"
+requests = "^2.28.2"
+retry-tasks-lib = {version = "^2.0.0", source = "bink-pypi"}
+cosmos-message-lib = {version = "^1.3.0", source = "bink-pypi"}
+fastapi-prometheus-metrics = {version = "^0.2.3", source = "bink-pypi"}
 # ADMIN DEPENDENCIES
 Flask = { version = "^2.2.2", optional = true }
 Flask-Admin = { version = "^1.6.0", optional = true }
 Authlib = { version = "^1.1.0", optional = true }
-requests = { version = "^2.28.1", optional = true }
 Flask-WTF = { version = "^1.0.1", optional = true }
 cryptography = { version = "^38.0.3", optional = true }
 
 [tool.poetry.extras]
-admin = ["Flask", "Flask-Admin", "Authlib", "requests", "sentry-sdk[flask]", "Flask-WTF", "cryptography"]
+admin = ["Flask", "Flask-Admin", "Authlib", "sentry-sdk[flask]", "Flask-WTF", "cryptography"]
 
 [tool.poetry.group.dev]
 optional = true

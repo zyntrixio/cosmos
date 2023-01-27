@@ -16,7 +16,7 @@ INVALID_RETAILER = {
 }
 ACCOUNT_EXISTS = {
     "detail": {
-        "display_message": "It appears this account already exists",
+        "display_message": "It appears this account already exists.",
         "code": "ACCOUNT_EXISTS",
         "fields": ["email"],
     },
@@ -66,7 +66,7 @@ NO_REWARD_FOUND = {
 NO_REWARD_SLUG_FOUND = {
     "status_code": status.HTTP_404_NOT_FOUND,
     "detail": {
-        "display_message": "Reward slug not found",
+        "display_message": "Reward slug not found.",
         "code": "NO_REWARD_SLUG_FOUND",
     },
 }

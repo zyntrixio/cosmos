@@ -3,6 +3,8 @@ import random
 
 from babel.numbers import format_currency
 
+from cosmos.campaigns.enums import LoyaltyTypes
+
 # from uuid import uuid4
 
 # from retry_tasks_lib.db.models import RetryTask
@@ -30,6 +32,42 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
 def pence_integer_to_currency_string(value: int, currency: str, currency_sign: bool = True) -> str:
     extras = {} if currency_sign else {"format": "#,##0.##"}
     return format_currency(value / 100, currency, locale="en_GB", **extras)
+
+
+def build_tx_history_reasons(tx_amount: int, adjustments: dict, is_refund: bool, currency: str) -> list[str]:
+    reasons = []
+    for v in adjustments.values():
+
+        amount = pence_integer_to_currency_string(abs(tx_amount), currency)
+        threshold = pence_integer_to_currency_string(v["threshold"], currency)
+
+        if v["accepted"]:
+            if is_refund:
+                reasons.append(f"refund of {amount} accepted")
+            else:
+                reasons.append(f"transaction amount {amount} meets the required threshold {threshold}")
+        elif is_refund:
+            reasons.append(f"refund of {amount} not accepted")
+        else:
+            reasons.append(f"transaction amount {amount} does no meet the required threshold {threshold}")
+
+    return reasons
+
+
+def humanize_earn_amount(amount: int, loyalty_type: LoyaltyTypes, currency: str, currency_sign: bool = True) -> str:
+    if loyalty_type == LoyaltyTypes.ACCUMULATOR:
+        val = pence_integer_to_currency_string(amount, currency, currency_sign=currency_sign)
+    elif loyalty_type == LoyaltyTypes.STAMPS:
+        val = str(amount // 100)
+    return val
+
+
+def build_tx_history_earns(adjustments: dict, currency: str) -> list[dict[str, str]]:
+    earns = []
+    for v in adjustments.values():
+        amount = humanize_earn_amount(v["amount"], v["type"], currency, currency_sign=True)
+        earns.append({"value": amount, "type": v["type"]})
+    return earns
 
 
 # def enqueue_pending_rewards(

@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import yaml
 
-# from cosmos.core.config import settings
 from pydantic import PositiveInt
 from sqlalchemy import (
     BigInteger,
@@ -33,6 +32,7 @@ from sqlalchemy.schema import Index
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
 from cosmos.core.config import settings
+from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
@@ -274,7 +274,7 @@ class FetchType(IdPkMixin, Base, TimestampMixin):
         "RewardConfig",
         back_populates="fetch_type",
     )
-    retailer_fetch_type = relationship("RetailerFetchType", back_populates="fetch_type")
+    retailer_fetch_type = relationship("RetailerFetchType", back_populates="fetch_type", viewonly=True)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}: ({self.id}) {self.name}"
@@ -287,7 +287,7 @@ class RetailerFetchType(Base, TimestampMixin):
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     agent_config = Column(Text, nullable=True)
 
-    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type")
+    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type", viewonly=True)
     __table_args__ = (PrimaryKeyConstraint("retailer_id", "fetch_type_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -449,6 +449,9 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     )
     __mapper_args__ = {"eager_defaults": True}
 
+    def humanized_transaction_amount(self, currency_sign: bool = False) -> str:
+        return pence_integer_to_currency_string(self.amount, "GBP", currency_sign=currency_sign)
+
 
 class TransactionEarn(Base, TimestampMixin):
     __tablename__ = "transaction_earn"
@@ -462,6 +465,13 @@ class TransactionEarn(Base, TimestampMixin):
 
     earn_rule = relationship("EarnRule", uselist=False, back_populates="transaction_earns")
     transaction = relationship("Transaction", uselist=False, back_populates="transaction_earns")
+
+    def humanized_earn_amount(self, currency_sign: bool = False) -> str:
+        return (
+            pence_integer_to_currency_string(self.earn_amount, "GBP", currency_sign=currency_sign)
+            if self.loyalty_type == LoyaltyTypes.ACCUMULATOR
+            else str(self.earn_amount)
+        )
 
 
 class Retailer(IdPkMixin, Base, TimestampMixin):
@@ -483,7 +493,7 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     transactions = relationship("Transaction", back_populates="retailer")
     stores = relationship("RetailerStore", back_populates="retailer")
     email_templates = relationship("EmailTemplate", back_populates="retailer")
-    fetch_types = relationship("FetchType", secondary="retailer_fetch_type", back_populates="retailer")
+    fetch_types = relationship("FetchType", secondary="retailer_fetch_type", back_populates="retailer", viewonly=True)
     rewards = relationship("Reward", back_populates="retailer")
 
     __mapper_args__ = {"eager_defaults": True}

@@ -9,6 +9,9 @@ from pytest_mock import MockerFixture
 from sqlalchemy_utils import create_database, database_exists, drop_database
 from testfixtures import LogCapture
 
+from cosmos.accounts.enums import AccountHolderStatuses
+from cosmos.campaigns.enums import LoyaltyTypes
+from cosmos.core.config import redis
 from cosmos.db.base import Base
 from cosmos.db.models import (
     AccountHolder,
@@ -20,11 +23,15 @@ from cosmos.db.models import (
     PendingReward,
     Retailer,
     RetailerFetchType,
+    RetailerStore,
     Reward,
     RewardConfig,
     RewardRule,
+    Transaction,
+    TransactionEarn,
 )
 from cosmos.db.session import SyncSessionMaker, sync_engine
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
@@ -83,6 +90,15 @@ def db_session(main_db_session: "Session") -> Generator["Session", None, None]:
     main_db_session.expunge_all()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def setup_redis() -> Generator:
+
+    yield
+
+    # At end of all tests, delete the tasks from the queue
+    redis.flushdb()
+
+
 @pytest.fixture(scope="function")
 def mock_activity(mocker: MockerFixture) -> "MagicMock":
     return mocker.patch("cosmos.core.api.service.format_and_send_activity_in_background")
@@ -99,7 +115,7 @@ def test_retailer() -> dict:
     return {
         "name": "Test Retailer",
         "slug": "re-test",
-        "status": "TEST",
+        "status": RetailerStatuses.TEST,
         "account_number_prefix": "RTST",
         "profile_config": (
             "email:"
@@ -158,7 +174,12 @@ def account_holder(
     retailer: Retailer,
     test_account_holder_activation_data: dict,
 ) -> AccountHolder:
-    acc_holder = AccountHolder(email=test_account_holder_activation_data["email"], retailer_id=retailer.id)
+    acc_holder = AccountHolder(
+        email=test_account_holder_activation_data["email"],
+        account_number=None,
+        retailer_id=retailer.id,
+        status=AccountHolderStatuses.PENDING,
+    )
     db_session.add(acc_holder)
     db_session.flush()
 
@@ -243,19 +264,34 @@ def reward_config(setup: SetupType, pre_loaded_fetch_type: FetchType) -> RewardC
     return mock_reward_config
 
 
+@pytest.fixture()
+def mock_campaign_balance_data() -> list[dict]:
+    return [
+        {"value": 0.0, "campaign_slug": "test-campaign"},
+    ]
+
+
 @pytest.fixture(scope="function")
-def campaign(setup: SetupType) -> Campaign:
+def campaigns(setup: SetupType, mock_campaign_balance_data: dict) -> list[Campaign]:
     db_session, retailer, _ = setup
-    mock_campaign = Campaign(
-        status="ACTIVE",
-        name="test campaign",
-        slug="test-campaign",
-        retailer_id=retailer.id,
-        loyalty_type="ACCUMULATOR",
-    )
-    db_session.add(mock_campaign)
+    campaigns = []
+    for balance_data in mock_campaign_balance_data:
+        mock_campaign = Campaign(
+            status="ACTIVE",
+            name=balance_data["campaign_slug"],
+            slug=balance_data["campaign_slug"],
+            retailer_id=retailer.id,
+            loyalty_type="ACCUMULATOR",
+        )
+        db_session.add(mock_campaign)
+        campaigns.append(mock_campaign)
     db_session.commit()
-    return mock_campaign
+    return campaigns
+
+
+@pytest.fixture(scope="function")
+def campaign(campaigns: list[Campaign]) -> Campaign:
+    return campaigns[0]
 
 
 @pytest.fixture(scope="function")
@@ -323,6 +359,20 @@ def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: Rew
 
 
 @pytest.fixture(scope="function")
+def account_holder_campaign_balances(setup: SetupType, campaigns: list[Campaign]) -> None:
+    db_session, _, account_holder = setup
+    for campaign in campaigns:
+        db_session.add(
+            CampaignBalance(
+                account_holder_id=account_holder.id,
+                campaign_id=campaign.id,
+                balance=0,
+            )
+        )
+    db_session.commit()
+
+
+@pytest.fixture(scope="function")
 def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> Reward:
     now = datetime.now(tz=timezone.utc)
     db_session, retailer, _ = setup
@@ -345,6 +395,7 @@ def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaig
 def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campaign: Campaign) -> Callable:
     reward = {
         "reward_uuid": None,
+        "account_holder_id": None,
         "reward_config_id": reward_config.id,
         "code": "test_reward_code",
         "deleted": False,
@@ -352,9 +403,8 @@ def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campa
         "expiry_date": datetime(2121, 6, 25, 14, 30, 00, tzinfo=timezone.utc),
         "redeemed_date": None,
         "cancelled_date": None,
-        "account_holder": None,  # Pass this in as an account_holder obj
         "retailer_id": None,
-        "campaign_id": campaign.id,
+        "campaign_id": None,
         "created_at": datetime.now(tz=timezone.utc),
         "updated_at": None,
     }
@@ -365,7 +415,6 @@ def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campa
         :param reward_params: override any values for reward
         :return: Callable function
         """
-        assert reward_params["account_holder"]
         reward.update(reward_params)
         mock_reward = Reward(**reward)
 
@@ -576,3 +625,55 @@ def create_mock_campaign(db_session: "Session", retailer: Retailer, mock_campaig
         return cpn
 
     return _create_mock_campaign
+
+
+@pytest.fixture
+def create_retailer_store(db_session: "Session") -> Callable:
+    def _create_retailer_store(retailer_id: int, mid: str, store_name: str) -> RetailerStore:
+        store = RetailerStore(retailer_id=retailer_id, mid=mid, store_name=store_name)
+        db_session.add(store)
+        db_session.commit()
+        return store
+
+    return _create_retailer_store
+
+
+@pytest.fixture()
+def create_transaction(db_session: "Session") -> Callable:
+    def _create_transaction(account_holder: AccountHolder, **transaction_params: dict) -> Transaction:
+        """
+        :param transaction_params: transaction object values
+        :return: Callable function
+        """
+        assert transaction_params["transaction_id"]
+        transaction_data = {
+            "account_holder_id": account_holder.id,
+            "retailer_id": account_holder.retailer_id,
+            "datetime": transaction_params.get("datetime", datetime(2022, 6, 1, 14, 30, 00, tzinfo=timezone.utc)),
+            "transaction_id": transaction_params["transaction_id"],
+            "amount": 1000,
+            "processed": True,
+        }
+        transaction_data.update(transaction_params)
+        transaction = Transaction(**transaction_data)
+        db_session.add(transaction)
+        db_session.commit()
+
+        return transaction
+
+    return _create_transaction
+
+
+@pytest.fixture
+def create_transaction_earn(db_session: "Session") -> Callable:
+    def _create_transaction_earn(
+        transaction: Transaction, earn_amount: str, loyalty_type: LoyaltyTypes, earn_rule: EarnRule
+    ) -> TransactionEarn:
+        te = TransactionEarn(
+            transaction_id=transaction.id, earn_amount=earn_amount, loyalty_type=loyalty_type, earn_rule_id=earn_rule.id
+        )
+        db_session.add(te)
+        db_session.commit()
+        return te
+
+    return _create_transaction_earn

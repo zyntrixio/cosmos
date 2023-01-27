@@ -1,5 +1,6 @@
-from cosmos_message_lib.schemas import utc_datetime
 from pydantic import BaseModel, Field, NonNegativeInt
+
+from cosmos.accounts.api.schemas.utils import UTCDatetime
 
 
 class EarnedSchema(BaseModel):
@@ -9,7 +10,7 @@ class EarnedSchema(BaseModel):
 
 class TransactionHistorySchema(BaseModel):
     transaction_id: str
-    datetime: utc_datetime
+    datetime: UTCDatetime
     amount: str
     amount_currency: str
     location_name: str = Field(..., alias="store_name")
@@ -18,7 +19,7 @@ class TransactionHistorySchema(BaseModel):
 
 class AccountEventSchema(BaseModel):
     channel: str
-    datetime: utc_datetime
+    datetime: UTCDatetime
 
 
 class AccountRequestSchema(AccountEventSchema):
@@ -38,7 +39,7 @@ class BalanceChangeDataSchema(BaseModel):
 
 
 class RefundNotRecoupedDataSchema(BaseModel):
-    datetime: utc_datetime
+    datetime: UTCDatetime
     amount: int
     amount_recouped: int
     amount_not_recouped: NonNegativeInt
