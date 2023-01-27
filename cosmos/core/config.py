@@ -55,9 +55,7 @@ class Settings(BaseSettings):
         command = sys.argv[0]
         args = sys.argv[1:] if len(sys.argv) > 1 else []
 
-        if "pytest" in command or any("test" in arg for arg in args):
-            return True
-        return v
+        return True if "pytest" in command or any("test" in arg for arg in args) else v
 
     MIGRATING: bool = False
 

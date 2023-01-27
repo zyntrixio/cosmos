@@ -18,8 +18,9 @@ from cosmos.core.utils import pence_integer_to_currency_string
 
 class ActivityType(ActivityTypeMixin, Enum):
     ACCOUNT_REQUEST = f"activity.{settings.PROJECT_NAME}.account.request"
-    ACCOUNT_ENROLMENT = f"activity.{settings.PROJECT_NAME}.account.enrolment"
+    ACCOUNT_VIEW = f"activity.{settings.PROJECT_NAME}.account.view"
     ACCOUNT_AUTHENTICATION = f"activity.{settings.PROJECT_NAME}.account.authentication"
+    ACCOUNT_ENROLMENT = f"activity.{settings.PROJECT_NAME}.account.enrolment"
     ACCOUNT_CHANGE = f"activity.{settings.PROJECT_NAME}.account.change"
     BALANCE_CHANGE = f"activity.{settings.PROJECT_NAME}.balance.change"
     REFUND_NOT_RECOUPED = f"activity.{settings.PROJECT_NAME}.refund.not.recouped"
@@ -40,8 +41,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             for k, v in request_data["credentials"].items()
             if k in retailer_profile_config
         ]
-        marketing_prefs: list[dict] = request_data.get("marketing_preferences", [])
-        if marketing_prefs:
+        if marketing_prefs := request_data.get("marketing_preferences", []):
             fields.extend([{"field_name": pref["key"], "value": pref["value"]} for pref in marketing_prefs])
         email = request_data["credentials"]["email"]
         return cls._assemble_payload(
@@ -55,7 +55,29 @@ class ActivityType(ActivityTypeMixin, Enum):
         )
 
     @classmethod
-    def get_account_authentication_activity_data(
+    def get_account_activity_data(
+        cls,
+        *,
+        account_holder_uuid: UUID | str,
+        activity_datetime: datetime,
+        retailer_slug: str,
+        channel: str,
+        campaign_slugs: list[str],
+    ) -> dict:
+        return cls._assemble_payload(
+            ActivityType.ACCOUNT_VIEW.name,
+            user_id=account_holder_uuid,
+            activity_datetime=activity_datetime,
+            summary="Account viewed",
+            reasons=["/accounts call made"],
+            associated_value=channel,
+            retailer_slug=retailer_slug,
+            campaigns=campaign_slugs,
+            data={},
+        )
+
+    @classmethod
+    def get_account_auth_activity_data(
         cls,
         *,
         account_holder_uuid: UUID | str,

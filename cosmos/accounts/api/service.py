@@ -12,32 +12,26 @@ from cosmos.accounts.api import crud
 from cosmos.accounts.api.schemas import (
     AccountHolderEnrolment,
     AccountHolderStatuses,
-    AccountHolderUpdateStatusSchema,
     GetAccountHolderByCredentials,
     MarketingPreference,
 )
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import create_retry_task
-
-# from cosmos.core.api.exception_handlers import FIELD_VALIDATION_ERROR
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_task
 from cosmos.core.config import settings
-
-# from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.retailers.enums import EmailTemplateTypes
-
-# from cosmos.retailers.enums import EmailTemplateTypes
 from cosmos.retailers.schemas import (
     retailer_marketing_info_validation_factory,
     retailer_profile_info_validation_factory,
 )
 
 if TYPE_CHECKING:
-    from cosmos.db.models import AccountHolder
+    from fastapi import Request
+
+    from cosmos.db.models import AccountHolder, Retailer
 
 
 class AccountService(Service):
@@ -144,7 +138,7 @@ class AccountService(Service):
             await self.format_and_send_stored_activities()
 
     async def handle_account_auth(
-        self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int | None = 10, channel: str
+        self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int, channel: str
     ) -> ServiceResult["AccountHolder", ServiceError]:
         """Main handler for account auth"""
         account_holder = await crud.get_account_holder(
@@ -156,69 +150,53 @@ class AccountService(Service):
             email=request_payload.email,
             account_number=request_payload.account_number,
         )
-        if not account_holder:
+        if not account_holder or account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
-        if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
-        activity_payload = AccountsActivityType.get_account_authentication_activity_data(
-            account_holder_uuid=account_holder.account_holder_uuid,
-            activity_datetime=datetime.now(tz=timezone.utc),
-            retailer_slug=self.retailer.slug,
-            channel=channel,
+        await self.store_activity(
+            activity_type=AccountsActivityType.ACCOUNT_AUTHENTICATION,
+            payload_formatter_fn=AccountsActivityType.get_account_auth_activity_data,
+            formatter_kwargs={
+                "account_holder_uuid": str(account_holder.account_holder_uuid),
+                "activity_datetime": datetime.now(tz=timezone.utc),
+                "retailer_slug": self.retailer.slug,
+                "channel": channel,
+            },
         )
-        asyncio.create_task(
-            async_send_activity(activity_payload, routing_key=AccountsActivityType.ACCOUNT_AUTHENTICATION.value)
-        )
-        setattr(account_holder, "retailer_status", self.retailer.status)  # noqa: B010
+        await self.format_and_send_stored_activities()
         return ServiceResult(account_holder)
 
     async def handle_get_account(
-        self, *, account_holder_uuid: str | UUID4, tx_qty: int | None = 10, is_status_request: bool
-    ) -> ServiceResult["AccountHolder", ServiceError]:
-        """Main handler for account data"""
-
-        fetch_extras = not is_status_request
-        account_holder = await crud.get_account_holder(
-            self.db_session,
-            retailer_id=self.retailer.id,
-            fetch_rewards=fetch_extras,
-            fetch_balances=fetch_extras,
-            tx_qty=tx_qty if fetch_extras else None,
-            account_holder_uuid=account_holder_uuid,
-        )
-        if not account_holder:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
-        if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
-
-        return ServiceResult(account_holder)
-
-    async def handle_update_account_holder_status(
         self,
         *,
         account_holder_uuid: str | UUID4,
-        request_payload: AccountHolderUpdateStatusSchema,  # noqa ARG002
-    ) -> ServiceResult[dict, ServiceError]:
-        """Handler for account holder status update"""
+        retailer: "Retailer",
+        request: "Request",
+        tx_qty: int,
+    ) -> ServiceResult["AccountHolder", ServiceError]:
+        """Main handler for account data"""
+
         account_holder = await crud.get_account_holder(
             self.db_session,
             retailer_id=self.retailer.id,
+            fetch_rewards=True,
+            fetch_balances=True,
+            tx_qty=tx_qty,
             account_holder_uuid=account_holder_uuid,
         )
-
-        if not account_holder:
+        if not account_holder or account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACCOUNT_FOUND))
-        if account_holder.status == AccountHolderStatuses.INACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
 
-        # TODO/FIXME: Needs implementation
-        # account_anonymisation_retry_task = await crud.update_account_holder_status(
-        #     self.db_session,
-        #     account_holder=account_holder,
-        #     retailer_id=self.retailer.id,
-        #     status=request_payload.status,
-        # )
-        # asyncio.create_task(enqueue_task(account_anonymisation_retry_task.retry_task_id))
-
-        return ServiceResult({})
+        await self.store_activity(
+            activity_type=AccountsActivityType.ACCOUNT_VIEW,
+            payload_formatter_fn=AccountsActivityType.get_account_activity_data,
+            formatter_kwargs={
+                "account_holder_uuid": str(account_holder_uuid),
+                "activity_datetime": datetime.now(tz=timezone.utc),
+                "retailer_slug": retailer.slug,
+                "channel": request.headers.get("bpl-user-channel"),
+                "campaign_slugs": {balance.campaign.slug for balance in account_holder.current_balances},
+            },
+        )
+        await self.format_and_send_stored_activities()
+        return ServiceResult(account_holder)

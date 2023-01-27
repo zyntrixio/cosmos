@@ -52,14 +52,14 @@ class ErrorCode(enum.Enum):
         status_code=status.HTTP_404_NOT_FOUND,
         detail=HttpErrorDetail(
             code="NO_ACCOUNT_FOUND",
-            display_message="Account not found for provided credentials",
+            display_message="Account not found for provided credentials.",
         ),
     )
     ACCOUNT_EXISTS = HttpError(
         status_code=status.HTTP_409_CONFLICT,
         detail=HttpErrorDetail(
             code="ACCOUNT_EXISTS",
-            display_message="It appears this account already exists",
+            display_message="It appears this account already exists.",
             fields=["email"],
         ),
     )
@@ -67,14 +67,14 @@ class ErrorCode(enum.Enum):
         status_code=status.HTTP_404_NOT_FOUND,
         detail=HttpErrorDetail(
             code="USER_NOT_FOUND",
-            display_message="Unknown User",
+            display_message="Unknown User.",
         ),
     )
     USER_NOT_ACTIVE = HttpError(
         status_code=status.HTTP_409_CONFLICT,
         detail=HttpErrorDetail(
             code="USER_NOT_ACTIVE",
-            display_message="User Account not Active",
+            display_message="User Account not Active.",
         ),
     )
     NO_ACTIVE_CAMPAIGNS = HttpError(

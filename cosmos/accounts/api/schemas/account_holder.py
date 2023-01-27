@@ -11,6 +11,7 @@ from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.core.api.service import ServiceError
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Reward
+from cosmos.retailers.enums import RetailerStatuses
 
 from .utils import UTCDatetime, utc_datetime_from_timestamp
 
@@ -64,6 +65,11 @@ class AccountHolderRewardSchema(BaseModel):
     @classmethod
     def get_timestamp(cls, dt: datetime | None) -> int | None:
         return int(dt.timestamp()) if dt else None
+
+    @classmethod
+    def from_orm(cls, obj: Reward) -> BaseModel:  # type: ignore [override]
+        obj.campaign_slug = obj.campaign.slug
+        return super().from_orm(obj)
 
     class Config:
         orm_mode = True
@@ -124,26 +130,29 @@ class CampaignBalanceSchema(BaseModel):
 
 
 class TransactionHistorySchema(BaseModel):
-    datetime: int = Field(..., alias="datetime")
+    datetime_: int = Field(..., alias="datetime")
     amount: str
     amount_currency: str
-    location_name: str | None = Field(None, alias="location")
+    location: str | None = None
     loyalty_earned_value: str | None = None
     loyalty_earned_type: str | None = None
 
-    @validator("datetime", pre=True)
+    @validator("datetime_", pre=True)
     @classmethod
-    def get_timestamp(cls, value: datetime) -> int:  # type: ignore [valid-type]
-        return int(value.timestamp())  # type: ignore [attr-defined]
+    def get_timestamp(cls, value: datetime) -> int:
+        return int(value.timestamp())
 
     @classmethod
     def from_orm(cls, obj: "Transaction") -> BaseModel:  # type: ignore [override]
         obj.amount_currency = "GBP"
         if hasattr(obj, "store") and obj.store is not None:
-            obj.location_name = obj.store.store_name
-        if obj.transaction_campaigns:
-            obj.loyalty_earned_value = obj.transaction_campaigns[0].adjustment
-            obj.loyalty_earned_type = obj.transaction_campaigns[0].campaign.loyalty_type.name
+            obj.location = obj.store.store_name
+        if obj.transaction_earns:
+            transaction_earn = obj.transaction_earns[0]
+            # Only single transaction earn support campaigns
+            obj.loyalty_earned_value = transaction_earn.humanized_earn_amount()
+            obj.loyalty_earned_type = transaction_earn.loyalty_type.name
+            obj.amount = obj.humanized_transaction_amount()
 
         return super().from_orm(obj)
 
@@ -152,14 +161,15 @@ class TransactionHistorySchema(BaseModel):
         allow_population_by_field_name = True
 
 
-# class AccountHolderStatusResponseSchema(BaseModel):
-#     status: AccountHolderStatuses
+class _Retailer(BaseModel):
+    status: RetailerStatuses
 
-#     class Config:
-#         orm_mode = True
+    class Config:
+        orm_mode = True
 
 
 class AccountHolderResponseSchema(BaseModel):
+    retailer: _Retailer = Field(..., exclude=True)
     account_holder_uuid: UUID4 = Field(..., alias="UUID")
     status: AccountHolderStatuses
     email: str
@@ -177,11 +187,25 @@ class AccountHolderResponseSchema(BaseModel):
     @validator("transactions")
     @classmethod
     def order_transactions(cls, transactions: list[TransactionHistorySchema]) -> list[TransactionHistorySchema]:
-        return sorted(transactions, key=lambda t: t.datetime, reverse=True)
+        return sorted(transactions, key=lambda t: t.datetime_, reverse=True)
+
+    @validator("current_balances", always=True)
+    @classmethod
+    def add_no_balances_object(cls, value: list[dict], values: dict) -> list[dict]:
+        if values["retailer"].status == RetailerStatuses.TEST and not value:
+            return [
+                {
+                    "campaign_slug": "N/A",
+                    "value": 0,
+                }
+            ]
+
+        return value
 
     class Config:
         orm_mode = True
         allow_population_by_field_name = True
+        arbitrary_types_allowed = True
 
 
 class GetAccountHolderByCredentials(BaseModel):
