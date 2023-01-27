@@ -12,12 +12,9 @@ WORKDIR /app
 ARG wheel=cosmos-*-py3-none-any.whl
 COPY --from=build /src/alembic/ ./alembic/
 COPY --from=build /src/alembic.ini .
-COPY --from=build /src/asgi.py .
 COPY --from=build /src/dist/$wheel .
 # gcc required for hiredis
 RUN apt update && apt -y install gcc && pip install $wheel && rm $wheel && apt -y autoremove gcc
 ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 ENTRYPOINT [ "linkerd-await", "--" ]
-CMD [ "gunicorn", "--workers=2", "--error-logfile=-", "--access-logfile=-", \
-    "--worker-class=uvicorn.workers.UvicornWorker", \
-    "--bind=0.0.0.0:9000", "--bind=0.0.0.0:9100", "asgi:app" ]
+CMD [ "echo", "cosmos" ]
