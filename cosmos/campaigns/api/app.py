@@ -13,6 +13,7 @@ from cosmos.core.api.exception_handlers import (
     service_list_error_handler,
     unexpected_exception_handler,
 )
+from cosmos.core.api.healthz import healthz_router
 from cosmos.core.api.service import ServiceError, ServiceListError
 from cosmos.core.config import settings
 
@@ -20,6 +21,7 @@ from cosmos.core.config import settings
 def create_app() -> FastAPI:
     fapi = FastAPI(title="Campaign Management API")
     fapi.include_router(api_router, prefix=f"{settings.API_PREFIX}/campaigns")
+    fapi.include_router(healthz_router)
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)
     fapi.add_exception_handler(HTTPException, http_exception_handler)
