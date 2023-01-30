@@ -42,17 +42,17 @@ ujson = "^5.5.0"
 hiredis = "^2.1.0"
 fastapi-prometheus-metrics = {version = "^0.2.3", source = "bink-pypi"}
 apscheduler = "^3.9.1.post1"
+gunicorn = "^20.1.0"
 # ADMIN DEPENDENCIES
 Flask = { version = "^2.2.2", optional = true }
 Flask-Admin = { version = "^1.6.0", optional = true }
 Authlib = { version = "^1.1.0", optional = true }
 requests = { version = "^2.28.1", optional = true }
-gunicorn = { version = "^20.1.0", optional = true }
 Flask-WTF = { version = "^1.0.1", optional = true }
 cryptography = { version = "^38.0.3", optional = true }
 
 [tool.poetry.extras]
-admin = ["Flask", "Flask-Admin", "Authlib", "requests", "sentry-sdk[flask]", "gunicorn", "Flask-WTF", "cryptography"]
+admin = ["Flask", "Flask-Admin", "Authlib", "requests", "sentry-sdk[flask]", "Flask-WTF", "cryptography"]
 
 [tool.poetry.group.dev]
 optional = true
