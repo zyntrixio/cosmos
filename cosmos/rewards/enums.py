@@ -1,13 +1,6 @@
 from enum import Enum
 
 
-class RewardTypeStatuses(str, Enum):
-    ACTIVE = "active"
-    CANCELLED = "cancelled"
-    ENDED = "ended"
-    DELETED = "deleted"
-
-
 class RewardUpdateStatuses(Enum):
     CANCELLED = "cancelled"
     REDEEMED = "redeemed"

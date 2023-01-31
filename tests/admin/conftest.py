@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+from typing import Generator
 from unittest import mock
 
 import pytest
@@ -7,6 +9,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 
 from admin.app import create_app
+from admin.views.model_views import AuthorisedModelView
 
 
 @pytest.fixture()
@@ -21,12 +24,24 @@ def mock_field() -> mock.MagicMock:
 
 @pytest.fixture(scope="session")
 def app() -> Flask:
-    app = create_app()
+    app = create_app(with_activities=False)
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["ENV"] = "development"
     return app
 
 
-@pytest.fixture()
-def test_client(app: Flask) -> FlaskClient:
-    return app.test_client()
+@pytest.fixture(scope="function")
+def test_client(app: Flask) -> Generator["FlaskClient", None, None]:
+    with (
+        app.app_context(),
+        app.test_request_context(),
+        mock.patch.object(
+            AuthorisedModelView,
+            "user_info",
+            {
+                "roles": {"Admin"},
+                "exp": (datetime.now(tz=timezone.utc) + timedelta(days=1)).timestamp(),
+            },
+        ),
+    ):
+        yield app.test_client()

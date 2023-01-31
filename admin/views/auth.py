@@ -14,11 +14,7 @@ auth_bp = Blueprint("auth_views", __name__, url_prefix=settings.ADMIN_ROUTE_BASE
 
 @auth_bp.route("/login/")
 def login() -> "Response":
-    if settings.OAUTH_REDIRECT_URI:
-        redirect_uri = settings.OAUTH_REDIRECT_URI
-    else:
-        redirect_uri = url_for("auth_views.authorize", _external=True)
-
+    redirect_uri = settings.OAUTH_REDIRECT_URI or url_for("auth_views.authorize", _external=True)
     return oauth.event_horizon.authorize_redirect(redirect_uri)
 
 
@@ -37,8 +33,7 @@ def authorize() -> "Response":
     except MismatchingStateError:
         return redirect(url_for("auth_views.login"))
 
-    userinfo = token.get("userinfo")
-    if userinfo:
+    if userinfo := token.get("userinfo"):
         session["user"] = userinfo
 
     return redirect(url_for("admin.index"))

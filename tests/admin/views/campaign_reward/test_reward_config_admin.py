@@ -7,7 +7,6 @@ from sqlalchemy.future import select
 
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.db.models import RewardConfig
-from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
     from flask.testing import FlaskClient
@@ -26,7 +25,7 @@ def test_reward_config_deactivate_action_too_many_objects(
     rc = RewardConfig(
         id=100,
         slug="reward-config-100",
-        status=RewardTypeStatuses.ACTIVE,
+        active=True,
         fetch_type_id=pre_loaded_fetch_type.id,
     )
     retailer.reward_configs.append(rc)
@@ -46,7 +45,7 @@ def test_reward_config_deactivate_action_too_many_objects(
         db_session.scalar(
             select(func.count("*"))
             .select_from(RewardConfig)
-            .where(RewardConfig.retailer_id == retailer.id, RewardConfig.status == RewardTypeStatuses.ACTIVE)
+            .where(RewardConfig.retailer_id == retailer.id, RewardConfig.active.is_(True))
         )
         == 2
     )
@@ -80,8 +79,8 @@ def test_reward_config_deactivate_action(
     db_session.refresh(reward_config)
 
     if campaign_status == CampaignStatuses.ACTIVE:
-        assert reward_config.status == RewardTypeStatuses.ACTIVE
+        assert reward_config.active is True
         assert "This RewardConfig has ACTIVE campaigns associated with it" in resp.text
     else:
-        assert reward_config.status == RewardTypeStatuses.DELETED
+        assert reward_config.active is False
         assert "RewardConfig DEACTIVATED" in resp.text

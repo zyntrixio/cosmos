@@ -301,7 +301,7 @@ def reward_rule_payload(campaign_id: int, reward_config_id: int, refund_window: 
         "reward_goal": 1000,
     }
     if refund_window is not None:
-        payload.update({"allocation_window": refund_window})
+        payload["allocation_window"] = refund_window
 
     return payload
 
@@ -316,14 +316,13 @@ def earn_rule_payload(campaign_id: int, loyalty_type: str) -> dict:
 
 
 def reward_config_payload(retailer_id: int, fetch_type_id: int, slug: str) -> dict:
-    payload = {
+    return {
         "slug": slug,
         "retailer_id": retailer_id,
-        "status": "ACTIVE",
+        "active": True,
         "fetch_type_id": fetch_type_id,
         "required_fields_values": json.dumps({"validity_days": 30}),
     }
-    return payload
 
 
 def retailer_fetch_type_payload(retailer_id: int, fetch_type_id: int, agent_config: str | None = None) -> dict:
