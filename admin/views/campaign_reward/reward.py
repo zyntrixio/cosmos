@@ -9,7 +9,6 @@ from admin.views.campaign_reward.validators import validate_required_fields_valu
 from admin.views.model_views import BaseModelView
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.db.models import RewardConfig, RewardRule
-from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
     from werkzeug.wrappers import Response
@@ -59,11 +58,15 @@ class RewardConfigAdmin(BaseModelView):
         if not reward_config:
             raise ValueError(f"No RewardConfig with id {reward_config_id}")
 
+        if not reward_config.active:
+            flash("RewardConfig already DEACTIVATED")
+            return
+
         if any(reward_rule.campaign.status == CampaignStatuses.ACTIVE for reward_rule in reward_config.reward_rules):
             flash("This RewardConfig has ACTIVE campaigns associated with it", category="error")
             return
 
-        reward_config.status = RewardTypeStatuses.DELETED
+        reward_config.active = False
         self.session.commit()
         flash("RewardConfig DEACTIVATED")
 

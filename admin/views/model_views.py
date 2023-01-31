@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING
 from flask import abort, flash, redirect, session, url_for
 from flask_admin.contrib.sqla import ModelView
 
-from cosmos.core.config import settings
-
 if TYPE_CHECKING:
     from werkzeug.wrappers import Response  # pragma: no cover
 
@@ -64,8 +62,6 @@ class AuthorisedModelView(ModelView, UserSessionMixin):
         return self.is_read_write_user
 
     def is_accessible(self) -> bool:
-        if settings.TESTING:
-            return True
         return not self.user_session_expired and self.user_is_authorized if self.user_info else False
 
     def inaccessible_callback(self, name: str, **kwargs: dict | None) -> "Response":  # noqa: ARG002
@@ -75,8 +71,6 @@ class AuthorisedModelView(ModelView, UserSessionMixin):
         return redirect(url_for("auth_views.login"))
 
     def is_action_allowed(self, name: str) -> bool:
-        if settings.TESTING:
-            return True
         return self.can_delete if name == "delete" else self.can_edit  # noqa: PLR2004
 
 

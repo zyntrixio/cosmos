@@ -21,7 +21,7 @@ from cosmos.core.config import settings
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
 from cosmos.db.models import Retailer, Reward, RewardConfig, RewardFileLog, RewardUpdate
 from cosmos.db.session import SyncSessionMaker
-from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
+from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 from cosmos.rewards.schemas import RewardUpdateSchema
 
 logger = logging.getLogger("reward-import")
@@ -311,7 +311,7 @@ class RewardImportAgent(BlobFileAgent):
         except KeyError:
             raise BlobProcessingError(f"No RewardConfig found for slug {slug}") from None
 
-        if reward_config.status != RewardTypeStatuses.ACTIVE:
+        if not reward_config.active:
             raise RewardConfigNotActiveError(slug=slug)
 
         expiry_date = self._get_expiry_date(sub_blob_name, blob_name)

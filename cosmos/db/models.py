@@ -35,7 +35,7 @@ from cosmos.core.config import settings
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
-from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
+from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 
 
 class AccountHolder(IdPkMixin, Base, TimestampMixin):
@@ -366,7 +366,7 @@ class RewardConfig(IdPkMixin, Base, TimestampMixin):
     slug = Column(String, index=True, nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
-    status = Column(Enum(RewardTypeStatuses), nullable=False, default=RewardTypeStatuses.ACTIVE)
+    active = Column(Boolean, nullable=False, default=True)
     required_fields_values = Column(Text, nullable=True)
 
     rewards = relationship("Reward", back_populates="reward_config")

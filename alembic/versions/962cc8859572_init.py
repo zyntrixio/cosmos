@@ -240,9 +240,7 @@ def upgrade() -> None:
         ),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("fetch_type_id", sa.BigInteger(), nullable=False),
-        sa.Column(
-            "status", sa.Enum("ACTIVE", "CANCELLED", "ENDED", "DELETED", name="rewardtypestatuses"), nullable=False
-        ),
+        sa.Column("active", sa.Boolean(), nullable=False),
         sa.Column("required_fields_values", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["fetch_type_id"], ["fetch_type.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),

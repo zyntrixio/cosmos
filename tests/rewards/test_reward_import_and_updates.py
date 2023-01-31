@@ -16,7 +16,7 @@ from sqlalchemy.future import select
 from testfixtures import LogCapture
 
 from cosmos.db.models import AccountHolder, Retailer, Reward, RewardConfig, RewardUpdate
-from cosmos.rewards.enums import FileAgentType, RewardTypeStatuses, RewardUpdateStatuses
+from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 from cosmos.rewards.imports.file_agent import (
     BlobProcessingError,
     RewardFileLog,
@@ -255,7 +255,7 @@ def test_import_agent__reward_config_non_active_status_error(
     log_capture: LogCapture, setup: SetupType, mocker: MockerFixture
 ) -> None:
     db_session, reward_config, _ = setup
-    reward_config.status = RewardTypeStatuses.ENDED
+    reward_config.active = False
     db_session.commit()
     MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)

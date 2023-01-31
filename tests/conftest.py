@@ -32,7 +32,6 @@ from cosmos.db.models import (
 )
 from cosmos.db.session import SyncSessionMaker, sync_engine
 from cosmos.retailers.enums import RetailerStatuses
-from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -257,7 +256,7 @@ def reward_config(setup: SetupType, pre_loaded_fetch_type: FetchType) -> RewardC
         required_fields_values="validity_days: 15",
         retailer_id=retailer.id,
         fetch_type_id=pre_loaded_fetch_type.id,
-        status=RewardTypeStatuses.ACTIVE,
+        active=True,
     )
     db_session.add(mock_reward_config)
     db_session.commit()
@@ -486,7 +485,7 @@ def create_reward_config(db_session: "Session", pre_loaded_retailer_fetch_type: 
             "required_fields_values": "validity_days: 15",
             "retailer_id": pre_loaded_retailer_fetch_type.retailer_id,
             "fetch_type_id": pre_loaded_retailer_fetch_type.fetch_type_id,
-            "status": RewardTypeStatuses.ACTIVE,
+            "active": True,
         }
 
         mock_reward_config_params.update(reward_config_params)
