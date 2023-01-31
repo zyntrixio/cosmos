@@ -1,10 +1,15 @@
 from typing import TYPE_CHECKING
 
-from flask import Markup, redirect, url_for
+from flask import Markup, flash, redirect, url_for
+from flask_admin.actions import action
+from sqlalchemy.orm import joinedload
 
 from admin.helpers.custom_formatters import account_holder_export_repr, account_holder_repr
 from admin.views.campaign_reward.validators import validate_required_fields_values_yaml, validate_retailer_fetch_type
 from admin.views.model_views import BaseModelView
+from cosmos.campaigns.enums import CampaignStatuses
+from cosmos.db.models import RewardConfig, RewardRule
+from cosmos.rewards.enums import RewardTypeStatuses
 
 if TYPE_CHECKING:
     from werkzeug.wrappers import Response
@@ -12,7 +17,7 @@ if TYPE_CHECKING:
 
 class RewardConfigAdmin(BaseModelView):
     column_filters = ("retailer.slug",)
-    form_excluded_columns = ("rewards", "reward_rules", "created_at", "updated_at")
+    form_excluded_columns = ("rewards", "reward_rules", "status", "created_at", "updated_at")
     form_widget_args = {
         "required_fields_values": {"rows": 5},
     }
@@ -34,6 +39,33 @@ class RewardConfigAdmin(BaseModelView):
         + Markup.escape(model.required_fields_values)
         + Markup("</pre>"),
     }
+
+    @action(
+        "deactivate-reward-type",
+        "DEACTIVATE",
+        "This action can only be carried out on one reward_config at a time and is not reversible."
+        " Are you sure you wish to proceed?",
+    )
+    def deactivate_reward_type(self, reward_config_ids: list[str]) -> None:
+        if len(reward_config_ids) != 1:
+            flash("This action must be completed for reward_configs one at a time", category="error")
+            return
+        reward_config_id = int(reward_config_ids[0])
+        reward_config: RewardConfig | None = self.session.get(
+            RewardConfig,
+            reward_config_id,
+            options=[joinedload(RewardConfig.reward_rules).joinedload(RewardRule.campaign)],
+        )
+        if not reward_config:
+            raise ValueError(f"No RewardConfig with id {reward_config_id}")
+
+        if any(reward_rule.campaign.status == CampaignStatuses.ACTIVE for reward_rule in reward_config.reward_rules):
+            flash("This RewardConfig has ACTIVE campaigns associated with it", category="error")
+            return
+
+        reward_config.status = RewardTypeStatuses.DELETED
+        self.session.commit()
+        flash("RewardConfig DEACTIVATED")
 
 
 class RewardAdmin(BaseModelView):
