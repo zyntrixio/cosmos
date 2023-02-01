@@ -123,7 +123,7 @@ marketing_pref:
                 ActivityType.get_retailer_created_activity_data(
                     sso_username=self.sso_username,
                     activity_datetime=model.created_at,
-                    status=model.status,
+                    status=model.status.name,
                     retailer_name=model.name,
                     retailer_slug=model.slug,
                     account_number_prefix=model.account_number_prefix,

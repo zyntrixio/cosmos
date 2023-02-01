@@ -16,3 +16,17 @@ class TransactionAdmin(BaseModelView):
     column_filters = ("retailer.slug", "created_at", "datetime")
     column_searchable_list = ("transaction_id", "payment_transaction_id", "account_holder.account_holder_uuid")
     column_labels = {"retailer.slug": "Retailer"}
+
+
+class TransactionEarnAdmin(BaseModelView):
+    column_list = (
+        "transaction_id",
+        "transaction.account_holder.account_holder_uuid",
+        "earn_amount",
+        "earn_rule_id",
+        "loyalty_type",
+        "created_at",
+    )
+    column_filters = ("loyalty_type", "created_at")
+    column_searchable_list = ("transaction_id", "earn_rule_id", "transaction.account_holder.account_holder_uuid")
+    column_labels = {"transaction.account_holder.account_holder_uuid": "Account Holder UUID"}
