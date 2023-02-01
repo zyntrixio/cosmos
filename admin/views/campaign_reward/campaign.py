@@ -26,6 +26,7 @@ from admin.views.campaign_reward.validators import (
     validate_reward_rule_deletion,
 )
 from admin.views.model_views import CanDeleteModelView
+from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.activity.tasks import sync_send_activity
 
 if TYPE_CHECKING:
@@ -108,7 +109,7 @@ class CampaignAdmin(CanDeleteModelView):
                     sso_username=self.sso_username,
                     activity_datetime=datetime.now(tz=timezone.utc),
                     campaign_slug=model.slug,
-                    loyalty_type=model.loyalty_type,
+                    loyalty_type=model.loyalty_type.name,
                     start_date=model.start_date,
                     end_date=model.end_date,
                 ),
@@ -122,8 +123,12 @@ class CampaignAdmin(CanDeleteModelView):
 
             for field in form:
                 if (new_val := getattr(model, field.name)) != field.object_data:
-                    new_values[field.name] = new_val
-                    original_values[field.name] = field.object_data
+                    if isinstance(new_val, LoyaltyTypes):
+                        new_values[field.name] = new_val.name
+                        original_values[field.name] = field.object_data.name
+                    else:
+                        new_values[field.name] = new_val
+                        original_values[field.name] = field.object_data
 
             if new_values:
                 sync_send_activity(
