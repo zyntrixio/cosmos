@@ -151,6 +151,22 @@ def retailer(db_session: "Session", test_retailer: dict) -> Retailer:
 
 
 @pytest.fixture(scope="function")
+def create_retailer(
+    db_session: "Session",
+    test_retailer: dict,
+) -> Callable[..., Retailer]:
+    def _create_retailer(**params: str | int) -> Retailer:
+        test_retailer.update(params)
+        retailer = Retailer(**test_retailer)
+        db_session.add(retailer)
+        db_session.commit()
+
+        return retailer
+
+    return _create_retailer
+
+
+@pytest.fixture(scope="function")
 def test_account_holder_activation_data() -> dict:
     return {
         "email": "activate_1@test.user",

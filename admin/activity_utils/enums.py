@@ -648,7 +648,7 @@ class ActivityType(Enum):
         sso_username: str,
     ) -> dict:
 
-        payload = ActivitySchema(
+        return ActivitySchema(
             type=cls.ACCOUNT_DELETED.name,
             datetime=datetime.now(tz=timezone.utc),
             underlying_datetime=activity_datetime,
@@ -661,4 +661,3 @@ class ActivityType(Enum):
             campaigns=[],
             data={},
         ).dict()
-        return payload

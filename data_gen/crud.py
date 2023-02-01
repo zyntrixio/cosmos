@@ -100,7 +100,7 @@ def _get_fetch_type(db_session: "Session", fetch_type_name: str) -> FetchType:
 def get_retailer_by_slug(db_session: "Session", retailer_slug: str) -> Retailer:
     retailer = db_session.scalar(select(Retailer).where(Retailer.slug == retailer_slug))
     if not retailer:
-        click.echo("requested retailer '%s' does not exists in DB." % retailer_slug)
+        click.echo(f"requested retailer '{retailer_slug}' does not exists in DB.")
         sys.exit(-1)
 
     return retailer
@@ -274,14 +274,16 @@ def _generate_account_holder_transaction_history(
         account_holder_transaction_history.append(transaction)
         for campaign in active_campaigns:
             if campaign.loyalty_type.name == "STAMPS":
-                if float(tx_history.tx_amount) <= 0:
-                    adjustment = 0
-                else:
-                    adjustment = 1
+                earn_amount = 0 if float(tx_history.tx_amount) <= 0 else 1
             else:
-                adjustment = tx_history.tx_amount
+                earn_amount = tx_history.tx_amount
             account_holder_transaction_history.append(
-                TransactionEarn(campaign_id=campaign.id, transaction_id=transaction.id, adjustment=adjustment)
+                TransactionEarn(
+                    transaction_id=transaction.id,
+                    earn_rule_id=campaign.earn_rule.id,
+                    loyalty_type=campaign.loyalty_type.name,
+                    earn_amount=earn_amount,
+                )
             )
 
     return account_holder_transaction_history
@@ -319,6 +321,11 @@ def setup_retailer(
         db_session.execute(
             delete(AccountHolder)
             .where(AccountHolder.retailer_id == Retailer.id, Retailer.slug == retailer_slug)
+            .execution_options(synchronize_session=False)
+        )
+        db_session.execute(
+            delete(Campaign)
+            .where(Campaign.retailer_id == retailer.id, Retailer.slug == retailer_slug)
             .execution_options(synchronize_session=False)
         )
         db_session.execute(
@@ -382,7 +389,7 @@ def delete_insert_fetch_types(db_session: "Session") -> None:
 
 
 def get_active_campaigns(db_session: "Session", retailer: Retailer) -> list[Campaign]:
-    campaigns = (
+    return (
         db_session.execute(
             select(Campaign).where(
                 Campaign.status == "ACTIVE",
@@ -393,11 +400,6 @@ def get_active_campaigns(db_session: "Session", retailer: Retailer) -> list[Camp
         .scalars()
         .all()
     )
-
-    # if not campaigns:
-    #     return [campaign_default]
-    # else:
-    return campaigns
 
 
 def get_campaign(db_session: "Session", campaign_slug: str) -> Campaign:
