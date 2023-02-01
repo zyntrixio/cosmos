@@ -13,7 +13,7 @@ task_type_data = [
     TaskTypeData(
         name="account-holder-activation",
         path="cosmos.accounts.tasks.account_holder.account_holder_activation",
-        error_handler_path="cosmos.accounts.tasks.error_handlers.handle_retry_task_request_error",
+        error_handler_path="cosmos.core.tasks.error_handlers.handle_retry_task_request_error",
         keys=[
             TaskTypeKeyData(name="account_holder_id", type=INTEGER),
             TaskTypeKeyData(name="welcome_email_retry_task_id", type=INTEGER),
@@ -25,7 +25,7 @@ task_type_data = [
     TaskTypeData(
         name="send-email",
         path="cosmos.accounts.tasks.account_holder.send_email",
-        error_handler_path="cosmos.accounts.tasks.error_handlers.handle_retry_task_request_error",
+        error_handler_path="cosmos.core.tasks.error_handlers.handle_retry_task_request_error",
         keys=[
             TaskTypeKeyData(name="account_holder_id", type=INTEGER),
             TaskTypeKeyData(name="retailer_id", type=INTEGER),
@@ -36,7 +36,7 @@ task_type_data = [
     TaskTypeData(
         name="enrolment-callback",
         path="cosmos.accounts.tasks.account_holder.enrolment_callback",
-        error_handler_path="cosmos.accounts.tasks.error_handlers.handle_retry_task_request_error",
+        error_handler_path="cosmos.core.tasks.error_handlers.handle_retry_task_request_error",
         keys=[
             TaskTypeKeyData(name="account_holder_id", type=INTEGER),
             TaskTypeKeyData(name="callback_url", type=STRING),
