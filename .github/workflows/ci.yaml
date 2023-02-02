@@ -95,7 +95,7 @@ jobs:
           context: .
           file: ./Admin.Dockerfile
           push: true
-          tags : |
+          tags: |
             binkcore.azurecr.io/${{ github.event.repository.name }}-admin:${{ steps.date.outputs.date }}
             binkcore.azurecr.io/${{ github.event.repository.name }}-admin:latest
   release_staging:

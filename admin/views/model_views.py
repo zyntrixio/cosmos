@@ -62,9 +62,7 @@ class AuthorisedModelView(ModelView, UserSessionMixin):
         return self.is_read_write_user
 
     def is_accessible(self) -> bool:
-        if not self.user_info:
-            return False
-        return not self.user_session_expired and self.user_is_authorized
+        return not self.user_session_expired and self.user_is_authorized if self.user_info else False
 
     def inaccessible_callback(self, name: str, **kwargs: dict | None) -> "Response":  # noqa: ARG002
         if self.user_info and not self.user_is_authorized:

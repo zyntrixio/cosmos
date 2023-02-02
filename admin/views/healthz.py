@@ -3,7 +3,7 @@ from typing import Any
 from flask.blueprints import Blueprint
 from sqlalchemy.sql import text
 
-from admin.db.session import db_session
+from cosmos.db.session import scoped_db_session
 
 healthz_bp = Blueprint("healthz", __name__)
 
@@ -20,7 +20,7 @@ def readyz() -> Any:  # noqa: ANN401
     db_errors = []
 
     try:
-        db_session.execute(text("SELECT 1"))
+        scoped_db_session.execute(text("SELECT 1"))
     except Exception as ex:  # noqa: BLE001
         db_errors.append(f"failed to connect to cosmos database due to error: {ex!r}")
 

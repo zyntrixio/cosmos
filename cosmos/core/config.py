@@ -98,7 +98,6 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "cosmos"
-    ACTIVITY_DB: str = "hubble"
     SQLALCHEMY_DATABASE_URI: str = ""
     SQLALCHEMY_DATABASE_URI_ASYNC: str = ""
     DB_CONNECTION_RETRY_TIMES: int = 3
@@ -270,13 +269,14 @@ class Settings(BaseSettings):
     RETAILER_MENU_PREFIX: str = "retailers"
     CAMPAIGN_AND_REWARD_MENU_PREFIX: str = "campaign-and-reward"
     TRANSACTIONS_MENU_PREFIX: str = "transactions"
-    ACTIVITY_MENU_PREFIX: str = "hubble"
     FLASK_ADMIN_SWATCH: str = "simplex"
     FLASK_DEBUG: bool = False
     ADMIN_QUERY_LOG_LEVEL: str | int = "WARN"
     FLASK_DEV_PORT: int = 5000
     SECRET_KEY: str = ""
     REQUEST_TIMEOUT: int = 2
+    ACTIVITY_DB: str = "hubble"
+    ACTIVITY_MENU_PREFIX: str = "hubble"
 
     @validator("SECRET_KEY")
     @classmethod
