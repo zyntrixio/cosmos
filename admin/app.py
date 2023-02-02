@@ -10,13 +10,10 @@ from flask_wtf.csrf import CSRFProtect
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-from admin.db.session import db_session
-from admin.hubble.db import db_session as hubble_db_session
-from admin.hubble.db.models import Base as HubbleModelBase
-from admin.hubble.db.session import engine as hubble_engine
 from admin.version import __version__
 from admin.views import main_admin
 from cosmos.core.config import settings
+from cosmos.db.session import scoped_db_session
 
 oauth = OAuth()
 oauth.register(
@@ -32,11 +29,9 @@ class RelativeLocationHeaderResponse(Response):
     autocorrect_location_header = False
 
 
-def create_app() -> Flask:
-    HubbleModelBase.prepare(hubble_engine, reflect=True)
+def create_app(with_activities: bool = True) -> Flask:
 
     from admin.views.accounts import register_customer_admin
-    from admin.views.activity import register_hubble_admin
     from admin.views.auth import auth_bp
     from admin.views.campaign_reward import register_campaign_and_reward_management_admin
     from admin.views.healthz import healthz_bp
@@ -66,7 +61,19 @@ def create_app() -> Flask:
     register_retailer_admin(main_admin)
     register_campaign_and_reward_management_admin(main_admin)
     register_transactions_admin(main_admin)
-    register_hubble_admin(main_admin)
+
+    if with_activities:
+        from admin.hubble.db import db_session as hubble_db_session
+        from admin.hubble.db.models import Base as HubbleModelBase
+        from admin.hubble.db.session import engine as hubble_engine
+        from admin.views.activity import register_hubble_admin
+
+        HubbleModelBase.prepare(hubble_engine, reflect=True)
+        register_hubble_admin(main_admin)
+
+        @app.teardown_appcontext
+        def remove_hubble_session(exception: BaseException | None = None) -> Any:  # noqa: ARG001, ANN401
+            hubble_db_session.remove()
 
     main_admin.init_app(app)
     oauth.init_app(app)
@@ -79,8 +86,7 @@ def create_app() -> Flask:
     app.register_blueprint(eh_bp)
 
     @app.teardown_appcontext
-    def remove_session(exception: BaseException | None = None) -> Any:  # noqa: ARG001, ANN401
-        db_session.remove()
-        hubble_db_session.remove()
+    def remove_cosmos_session(exception: BaseException | None = None) -> Any:  # noqa: ARG001, ANN401
+        scoped_db_session.remove()
 
     return app
