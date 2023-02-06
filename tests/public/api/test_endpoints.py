@@ -10,7 +10,7 @@ from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
 from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import AccountHolder, MarketingPreference, MarketingPreferenceValueTypes, Retailer, Reward
-from cosmos.public_api.api.service import RESPONSE_TEMPLATE
+from cosmos.public.api.service import RESPONSE_TEMPLATE
 from tests.conftest import SetupType
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, 
         "cosmos.accounts.activity.enums.ActivityType.get_marketing_preference_change_activity_data",
         return_value={"mock": "payload"},
     )
-    mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
+    mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     mp_true = MarketingPreference(
         account_holder_id=account_holder.id,
         key_name="preference-one",
@@ -85,7 +85,7 @@ def test_opt_out_marketing_preferences_wrong_retailer(
 ) -> None:
     db_session = setup.db_session
     account_holder = setup.account_holder
-    mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
+    mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     mp_true = MarketingPreference(
         account_holder_id=account_holder.id,
         key_name="preference-one",
@@ -109,7 +109,7 @@ def test_opt_out_marketing_preferences_wrong_retailer(
 def test_opt_out_marketing_preferences_invalid_opt_out_token(
     mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
 ) -> None:
-    mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
+    mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
     resp = test_client.get(
         f"{PUBLIC_API_PREFIX}/{retailer.slug}/marketing/unsubscribe?u=WRONG-TOKEN",
@@ -123,7 +123,7 @@ def test_opt_out_marketing_preferences_invalid_opt_out_token(
 def test_opt_out_marketing_preferences_wrong_opt_out_token(
     mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
 ) -> None:
-    mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
+    mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
     resp = test_client.get(
         f"{PUBLIC_API_PREFIX}/{retailer.slug}/marketing/unsubscribe?u={uuid.uuid4()}",
@@ -137,7 +137,7 @@ def test_opt_out_marketing_preferences_wrong_opt_out_token(
 def test_opt_out_marketing_preferences_no_opt_out_token_provided(
     mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
 ) -> None:
-    mock_sync_send_activity = mocker.patch("cosmos.public_api.api.service.async_send_activity")
+    mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
     resp = test_client.get(
         f"{PUBLIC_API_PREFIX}/{retailer.slug}/marketing/unsubscribe",

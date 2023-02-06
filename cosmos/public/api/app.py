@@ -15,7 +15,7 @@ from cosmos.core.api.exception_handlers import (
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.healthz import healthz_router
 from cosmos.core.api.service import ServiceError
-from cosmos.public_api.api.endpoints import public_router
+from cosmos.public.api.endpoints import public_router
 
 
 def create_app() -> FastAPI:
