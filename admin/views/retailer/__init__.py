@@ -19,7 +19,7 @@ def register_retailer_admin(admin: "Admin") -> None:
             Retailer,
             scoped_db_session,
             "Retailers",
-            endpoint=f"{settings.RETAILER_MENU_PREFIX}/retailer",
+            endpoint="retailers",
             category=retailer_management,
         )
     )
@@ -28,7 +28,7 @@ def register_retailer_admin(admin: "Admin") -> None:
             RetailerStore,
             scoped_db_session,
             "Retailer's Stores",
-            endpoint=f"{settings.RETAILER_MENU_PREFIX}/retailer-stores",
+            endpoint="retailer-stores",
             category=retailer_management,
         )
     )
@@ -37,7 +37,7 @@ def register_retailer_admin(admin: "Admin") -> None:
             RetailerFetchType,
             scoped_db_session,
             "Retailer's Fetch Types",
-            endpoint=f"{settings.RETAILER_MENU_PREFIX}/retailer-fetch-types",
+            endpoint="retailer-fetch-types",
             category=retailer_management,
         )
     )
@@ -46,7 +46,7 @@ def register_retailer_admin(admin: "Admin") -> None:
             EmailTemplate,
             scoped_db_session,
             "Email Templates",
-            endpoint=f"{settings.RETAILER_MENU_PREFIX}/email-templates",
+            endpoint="email-templates",
             category=retailer_management,
         )
     )
@@ -55,7 +55,7 @@ def register_retailer_admin(admin: "Admin") -> None:
             EmailTemplateKey,
             scoped_db_session,
             "Email Template Keys",
-            endpoint=f"{settings.RETAILER_MENU_PREFIX}/email-template-keys",
+            endpoint="email-template-keys",
             category=retailer_management,
         )
     )

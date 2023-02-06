@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 from admin.views.accounts.main import (
     AccountHolderAdmin,
-    AccountHolderProfileAdmin,
     CampaignBalanceAdmin,
     MarketingPreferenceAdmin,
     PendingRewardAdmin,
+    ProfileAdmin,
 )
 from cosmos.core.config import settings
 from cosmos.db.models import AccountHolder, AccountHolderProfile, CampaignBalance, MarketingPreference, PendingReward
@@ -22,16 +22,16 @@ def register_customer_admin(admin: "Admin") -> None:
             AccountHolder,
             scoped_db_session,
             "Account Holders",
-            endpoint=f"{settings.ACCOUNTS_MENU_PREFIX}/account-holders",
+            endpoint="account-holders",
             category=customer_management_title,
         )
     )
     admin.add_view(
-        AccountHolderProfileAdmin(
+        ProfileAdmin(
             AccountHolderProfile,
             scoped_db_session,
             "Profiles",
-            endpoint=f"{settings.ACCOUNTS_MENU_PREFIX}/profiles",
+            endpoint="profiles",
             category=customer_management_title,
         )
     )
@@ -40,7 +40,7 @@ def register_customer_admin(admin: "Admin") -> None:
             CampaignBalance,
             scoped_db_session,
             "Campaign Balances",
-            endpoint=f"{settings.ACCOUNTS_MENU_PREFIX}/campaign-balances",
+            endpoint="campaign-balances",
             category=customer_management_title,
         )
     )
@@ -49,7 +49,7 @@ def register_customer_admin(admin: "Admin") -> None:
             PendingReward,
             scoped_db_session,
             "Pending Rewards",
-            endpoint=f"{settings.ACCOUNTS_MENU_PREFIX}/pending-rewards",
+            endpoint="pending-rewards",
             category=customer_management_title,
         )
     )
@@ -58,7 +58,7 @@ def register_customer_admin(admin: "Admin") -> None:
             MarketingPreference,
             scoped_db_session,
             "Marketing Preferences",
-            endpoint=f"{settings.ACCOUNTS_MENU_PREFIX}/marketing-preferences",
+            endpoint="marketing-preferences",
             category=customer_management_title,
         )
     )

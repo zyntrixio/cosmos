@@ -31,9 +31,9 @@ def _fetch_account_holders(db_session: "Session") -> list[AccountHolder]:
 
 def mock_delete_account_holders_request(account_holder_ids: list[str], client: "FlaskClient") -> "Response":
     return client.post(
-        "/admin/accounts/account-holders/action/",
+        "/admin/account-holders/action/",
         data={
-            "url": "/admin/accounts/account-holders/",
+            "url": "/admin/account-holders/",
             "action": "delete-account-holder",
             "rowid": account_holder_ids,
         },

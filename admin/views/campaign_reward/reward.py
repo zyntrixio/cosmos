@@ -114,10 +114,10 @@ class RewardAdmin(BaseModelView):
 
     def inaccessible_callback(self, name: str, **kwargs: dict | None) -> "Response":
         if self.is_read_write_user:
-            return redirect(url_for("account-holder-rewards.index_view"))
+            return redirect(url_for("rewards.index_view"))
 
         if self.is_read_only_user:
-            return redirect(url_for("ro-account-holder-rewards.index_view"))
+            return redirect(url_for("ro-rewards.index_view"))
 
         return super().inaccessible_callback(name, **kwargs)
 

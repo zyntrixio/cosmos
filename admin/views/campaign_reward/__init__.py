@@ -33,7 +33,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             Campaign,
             scoped_db_session,
             "Campaigns",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/campaigns",
+            endpoint="campaigns",
             category=campaign_and_reward_management_title,
         )
     )
@@ -42,7 +42,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             EarnRule,
             scoped_db_session,
             "Earn Rules",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/earn-rules",
+            endpoint="earn-rules",
             category=campaign_and_reward_management_title,
         )
     )
@@ -51,7 +51,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             RewardRule,
             scoped_db_session,
             "Reward Rules",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/reward-rules",
+            endpoint="reward-rules",
             category=campaign_and_reward_management_title,
         )
     )
@@ -60,7 +60,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             RewardConfig,
             scoped_db_session,
             "Reward Configurations",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/reward-configs",
+            endpoint="reward-configs",
             category=campaign_and_reward_management_title,
         )
     )
@@ -69,7 +69,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             Reward,
             scoped_db_session,
             "Rewards",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/rewards",
+            endpoint="rewards",
             category=campaign_and_reward_management_title,
         )
     )
@@ -78,7 +78,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             Reward,
             scoped_db_session,
             "Rewards",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/ro-rewards",
+            endpoint="ro-rewards",
             category=campaign_and_reward_management_title,
         )
     )
@@ -87,7 +87,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             FetchType,
             scoped_db_session,
             "Fetch Types",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/fetch-types",
+            endpoint="fetch-types",
             category=campaign_and_reward_management_title,
         )
     )
@@ -96,7 +96,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             RewardUpdate,
             scoped_db_session,
             "Reward Updates",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/reward-updates",
+            endpoint="reward-updates",
             category=campaign_and_reward_management_title,
         )
     )
@@ -105,7 +105,7 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             RewardFileLog,
             scoped_db_session,
             "Reward File Log",
-            endpoint=f"{settings.CAMPAIGN_AND_REWARD_MENU_PREFIX}/reward-file-log",
+            endpoint="reward-file-log",
             category=campaign_and_reward_management_title,
         )
     )

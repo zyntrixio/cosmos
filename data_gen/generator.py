@@ -52,7 +52,6 @@ def _generate_account_holders_and_rewards_data(
             reward_config=reward_config,
         )
         db_session.bulk_save_objects(unallocated_rewards_batch)
-        db_session.commit()
 
     for account_holder_type in AccountHolderTypes:
         typer.echo("\ncreating %s users." % account_holder_type.value)

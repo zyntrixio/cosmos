@@ -158,6 +158,10 @@ def populate(
             tx_history,
             loyalty_type,
         )
+    except Exception as exc:  # noqa: BLE001
+        db_session.rollback()
+    else:
+        db_session.commit()
     finally:
         db_session.close()
 
