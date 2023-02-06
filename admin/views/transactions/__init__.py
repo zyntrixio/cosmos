@@ -13,7 +13,7 @@ def register_transactions_admin(admin: "Admin") -> None:
             Transaction,
             scoped_db_session,
             "Transactions",
-            endpoint=f"{settings.TRANSACTIONS_MENU_PREFIX}/transactions",
+            endpoint="transactions",
             category=transaction_menu_title,
         )
     )
@@ -22,7 +22,7 @@ def register_transactions_admin(admin: "Admin") -> None:
             TransactionEarn,
             scoped_db_session,
             "Transaction Earn",
-            endpoint=f"{settings.TRANSACTIONS_MENU_PREFIX}/transaction-earn",
+            endpoint="transaction-earns",
             category=transaction_menu_title,
         )
     )

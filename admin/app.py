@@ -36,6 +36,7 @@ def create_app(with_activities: bool = True) -> Flask:
     from admin.views.campaign_reward import register_campaign_and_reward_management_admin
     from admin.views.healthz import healthz_bp
     from admin.views.retailer import register_retailer_admin
+    from admin.views.tasks import register_tasks_admin
     from admin.views.transactions import register_transactions_admin
 
     sqla_logger = logging.getLogger("sqlalchemy.engine")
@@ -61,6 +62,7 @@ def create_app(with_activities: bool = True) -> Flask:
     register_retailer_admin(main_admin)
     register_campaign_and_reward_management_admin(main_admin)
     register_transactions_admin(main_admin)
+    register_tasks_admin(main_admin)
 
     if with_activities:
         from admin.hubble.db import db_session as hubble_db_session

@@ -17,7 +17,7 @@ def register_hubble_admin(admin: "Admin") -> None:
             Activity,
             db_session,
             "Activity",
-            endpoint=f"{settings.ACTIVITY_MENU_PREFIX}/activity",
+            endpoint="activities",
             category=hubble_menu_title,
         )
     )

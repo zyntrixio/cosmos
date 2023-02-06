@@ -35,18 +35,22 @@ def account_holder_repr(
     _c: "Context",
     model: AccountHolderProfile | Reward | CampaignBalance,
     _p: str,
-) -> str:
-    return Markup(
-        (
-            "<strong><a href='{}'>ID:</a></strong>&nbsp;{}<br />"
-            "<strong>Email:</strong>&nbsp;{}<br />"
-            "<strong>UUID:</strong>&nbsp;{}"
-        ).format(
-            url_for("accounts/account-holders.details_view", id=model.account_holder.id),
-            model.account_holder.id,
-            model.account_holder.email,
-            model.account_holder.account_holder_uuid,
+) -> str | None:
+    return (
+        Markup(
+            (
+                "<strong><a href='{}'>ID:</a></strong>&nbsp;{}<br />"
+                "<strong>Email:</strong>&nbsp;{}<br />"
+                "<strong>UUID:</strong>&nbsp;{}"
+            ).format(
+                url_for("account-holders.details_view", id=model.account_holder.id),
+                model.account_holder.id,
+                model.account_holder.email,
+                model.account_holder.account_holder_uuid,
+            )
         )
+        if model.account_holder
+        else None
     )
 
 

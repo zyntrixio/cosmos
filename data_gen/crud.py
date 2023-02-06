@@ -93,7 +93,7 @@ def create_unallocated_rewards(
 
 def _get_fetch_type(db_session: "Session", fetch_type_name: str) -> FetchType:
     if not hasattr(FetchTypesEnum, fetch_type_name):
-        raise Exception("Unknown fetch type")
+        raise ValueError(f"Unknown fetch type {fetch_type_name}")
     return db_session.execute(select(FetchType).where(FetchType.name == fetch_type_name)).scalar()
 
 
@@ -176,7 +176,6 @@ def batch_create_account_holders_and_rewards(
     db_session.bulk_save_objects(account_holders_marketing_batch)
     db_session.bulk_save_objects(account_holder_rewards_batch)
     db_session.bulk_save_objects(account_holder_balance_batch)
-    db_session.commit()
 
     return progress_counter
 
@@ -281,7 +280,7 @@ def _generate_account_holder_transaction_history(
                 TransactionEarn(
                     transaction_id=transaction.id,
                     earn_rule_id=campaign.earn_rule.id,
-                    loyalty_type=campaign.loyalty_type.name,
+                    loyalty_type=campaign.loyalty_type,
                     earn_amount=earn_amount,
                 )
             )
@@ -298,7 +297,6 @@ def clear_existing_account_holders(db_session: "Session", retailer_id: int) -> N
         )
         .execution_options(synchronize_session=False)
     )
-    db_session.commit()
 
 
 def setup_retailer(
@@ -362,7 +360,6 @@ def setup_retailer(
     db_session.flush()
     db_session.add(RewardRule(**reward_rule_payload(campaign.id, reward_config.id, refund_window)))
     db_session.add(EarnRule(**earn_rule_payload(campaign.id, loyalty_type)))
-    db_session.commit()
     return retailer
 
 
@@ -385,7 +382,6 @@ def delete_insert_fetch_types(db_session: "Session") -> None:
         )
         .on_conflict_do_nothing()
     )
-    db_session.commit()
 
 
 def get_active_campaigns(db_session: "Session", retailer: Retailer) -> list[Campaign]:

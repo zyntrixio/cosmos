@@ -31,9 +31,9 @@ def test_reward_config_deactivate_action_too_many_objects(
     retailer.reward_configs.append(rc)
     db_session.commit()
     resp = test_client.post(
-        "/admin/campaign-and-reward/reward-configs/action/",
+        "/admin/reward-configs/action/",
         data={
-            "url": "/admin/campaign-and-reward/reward-configs/",
+            "url": "/admin/reward-configs/",
             "action": "deactivate-reward-type",
             "rowid": ["1", "100"],
         },
@@ -67,9 +67,9 @@ def test_reward_config_deactivate_action(
 
     reward_config = campaign_with_rules.reward_rule.reward_config
     resp = test_client.post(
-        "/admin/campaign-and-reward/reward-configs/action/",
+        "/admin/reward-configs/action/",
         data={
-            "url": "/admin/campaign-and-reward/reward-configs/",
+            "url": "/admin/reward-configs/",
             "action": "deactivate-reward-type",
             "rowid": f"{reward_config.id}",
         },

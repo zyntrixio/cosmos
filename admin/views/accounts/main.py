@@ -101,7 +101,7 @@ class AccountHolderAdmin(BaseModelView):
         flash(f"Deleted {len(result)} Account Holders.")
 
 
-class AccountHolderProfileAdmin(BaseModelView):
+class ProfileAdmin(BaseModelView):
     can_create = False
     column_searchable_list = ("account_holder_id", "account_holder.email", "account_holder.account_holder_uuid")
     column_labels = {"account_holder": "Account Holder"}
