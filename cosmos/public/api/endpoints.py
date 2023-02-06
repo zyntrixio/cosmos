@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import get_session
 from cosmos.core.config import settings
-from cosmos.public_api.api.schemas import RewardMicrositeResponseSchema
-from cosmos.public_api.api.service import PublicService
+from cosmos.public.api.schemas import RewardMicrositeResponseSchema
+from cosmos.public.api.service import PublicService
 
 if TYPE_CHECKING:
     from cosmos.db.models import Reward

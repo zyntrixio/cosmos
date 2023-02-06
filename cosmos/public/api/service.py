@@ -12,7 +12,7 @@ from cosmos.core.api.crud import get_reward
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.prometheus import invalid_marketing_opt_out, microsite_reward_requests
-from cosmos.public_api.api import crud
+from cosmos.public.api import crud
 from cosmos.retailers.crud import get_retailer_by_slug
 
 if TYPE_CHECKING:
