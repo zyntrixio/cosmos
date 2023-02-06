@@ -15,7 +15,7 @@ get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.I
 
 
 @api_router.post(
-    path="/{retailer_slug}/campaigns/status-change",
+    path="/{retailer_slug}/status-change",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(user_is_authorised)],
 )
