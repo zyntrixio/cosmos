@@ -160,6 +160,13 @@ class EarnRuleAdmin(CanDeleteModelView):
         "created_at",
         "updated_at",
     )
+    form_create_rules = form_edit_rules = (
+        "campaign",
+        "threshold",
+        "increment",
+        "increment_multiplier",
+        "max_amount",
+    )
     column_labels = {
         "campaign.slug": "Campaign",
         "campaign.retailer": "Retailer",
@@ -216,7 +223,7 @@ class EarnRuleAdmin(CanDeleteModelView):
                     sso_username=self.sso_username,
                     activity_datetime=model.created_at,
                     campaign_slug=model.campaign.slug,
-                    loyalty_type=model.campaign.loyalty_type,
+                    loyalty_type=model.campaign.loyalty_type.name,
                     threshold=model.threshold,
                     increment=model.increment,
                     increment_multiplier=model.increment_multiplier,

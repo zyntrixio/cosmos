@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class RewardConfigAdmin(BaseModelView):
     column_filters = ("retailer.slug",)
-    form_excluded_columns = ("rewards", "reward_rules", "status", "created_at", "updated_at")
+    form_excluded_columns = ("rewards", "reward_rules", "active", "created_at", "updated_at")
     form_widget_args = {
         "required_fields_values": {"rows": 5},
     }
