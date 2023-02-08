@@ -12,6 +12,7 @@ class Activity(Base):
 
     reasons = Column(ARRAY(String), index=True, nullable=False)
     campaigns = Column(ARRAY(String), nullable=False, index=True)
+    retailer = Column(String, index=True, nullable=False)
 
     def __str__(self) -> str:
         return f"{self.type} {self.summary}"

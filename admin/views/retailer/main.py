@@ -1,13 +1,18 @@
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import wtforms
 import yaml
 
-from flask import Markup
+from flask import Markup, flash, redirect, request, session, url_for
+from flask_admin import expose
+from flask_admin.actions import action
+from sqlalchemy.future import select
 from wtforms.validators import DataRequired, Optional
 
 from admin.activity_utils.enums import ActivityType
 from admin.views.model_views import BaseModelView, CanDeleteModelView
+from admin.views.retailer.custom_actions import DeleteRetailerAction
 from admin.views.retailer.validators import (
     validate_account_number_prefix,
     validate_marketing_config,
@@ -15,11 +20,14 @@ from admin.views.retailer.validators import (
     validate_retailer_config,
     validate_retailer_config_new_values,
 )
+from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.tasks import sync_send_activity
+from cosmos.db.models import Campaign, Retailer
+from cosmos.retailers.enums import RetailerStatuses
 
 if TYPE_CHECKING:
 
-    from cosmos.db.models import Retailer
+    from werkzeug.wrappers import Response
 
 
 class RetailerAdmin(BaseModelView):
@@ -115,7 +123,7 @@ marketing_pref:
         + Markup("</pre>"),
     }
 
-    def after_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
+    def after_model_change(self, form: wtforms.Form, model: Retailer, is_created: bool) -> None:
         if is_created:
             # Synchronously send activity for retailer creation
             #  FIXME: Fix once Retailer model has balance_reset_advanced_warning_days column
@@ -167,6 +175,119 @@ marketing_pref:
     #     self.session.execute(stmt)
 
     # return super().on_model_change(form, model, is_created)
+
+    def _get_retailer_by_id(self, retailer_id: int) -> Retailer:
+        return self.session.execute(select(Retailer).where(Retailer.id == retailer_id)).scalar_one()
+
+    def _check_activate_campaign_for_retailer(self, retailer_id: int) -> list[int]:
+        return (
+            self.session.execute(
+                select(Campaign.id).where(
+                    Campaign.retailer_id == retailer_id, Campaign.status == CampaignStatuses.ACTIVE
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    @action(
+        "activate retailer",
+        "Activate",
+        "Selected test retailer must have an activate campaign. Are you sure you want to proceed?",
+    )
+    def activate_retailer(self, ids: list[str]) -> None:
+        if len(ids) > 1:
+            flash("Cannot activate more than one retailer at once", category="error")
+            return
+
+        retailer = self._get_retailer_by_id(int(ids[0]))
+        if (original_status := retailer.status) != RetailerStatuses.TEST:
+            flash("Retailer in incorrect state for activation", category="error")
+            return
+
+        if self._check_activate_campaign_for_retailer(retailer.id):
+            try:
+                retailer.status = RetailerStatuses.ACTIVE
+                self.session.commit()
+                flash("Update retailer status successfully")
+            except Exception:  # noqa: BLE001
+                self.session.rollback()
+                flash("Failed to update retailer", category="error")
+            else:
+                self.session.refresh(retailer)
+                sync_send_activity(
+                    ActivityType.get_retailer_status_update_activity_data(
+                        sso_username=self.sso_username,
+                        activity_datetime=retailer.updated_at,
+                        new_status=retailer.status.name,
+                        original_status=original_status.name,
+                        retailer_name=retailer.name,
+                        retailer_slug=retailer.slug,
+                    ),
+                    routing_key=ActivityType.RETAILER_STATUS.value,
+                )
+        else:
+            flash("Retailer has no active campaign", category="error")
+
+    @expose("/custom-actions/delete-retailer", methods=["GET", "POST"])
+    def delete_retailer(self) -> "Response":
+        if not self.user_info or self.user_session_expired:
+            return redirect(url_for("auth_views.login"))
+
+        retailers_index_uri = url_for("retailers.index_view")
+        if not self.can_edit:
+            return redirect(retailers_index_uri)
+
+        del_ret_action = DeleteRetailerAction()
+
+        if "action_context" in session and request.method == "POST":  # noqa: PLR2004
+            del_ret_action.session_data = session["action_context"]
+
+        else:
+            if error_msg := del_ret_action.validate_selected_ids(request.args.to_dict(flat=False).get("ids", [])):
+                flash(error_msg, category="error")
+                return redirect(retailers_index_uri)
+
+            session["action_context"] = del_ret_action.session_data.to_base64_str()
+
+        if del_ret_action.form.validate_on_submit():
+            del session["action_context"]
+            if del_ret_action.delete_retailer():
+                sync_send_activity(
+                    ActivityType.get_retailer_deletion_activity_data(
+                        sso_username=self.sso_username,
+                        activity_datetime=datetime.now(tz=timezone.utc),
+                        retailer_name=del_ret_action.session_data.retailer_name,
+                        retailer_slug=del_ret_action.session_data.retailer_slug,
+                        original_values={
+                            "status": del_ret_action.session_data.retailer_status.name,
+                            "name": del_ret_action.session_data.retailer_name,
+                            "slug": del_ret_action.session_data.retailer_slug,
+                            "loyalty_name": del_ret_action.session_data.loyalty_name,
+                        },
+                    ),
+                    routing_key=ActivityType.RETAILER_DELETED.value,
+                )
+
+            return redirect(retailers_index_uri)
+
+        return self.render(
+            "eh_delete_retailer_action.html",
+            retailer_name=del_ret_action.session_data.retailer_name,
+            account_holders_count=del_ret_action.affected_account_holders_count(),
+            transactions_count=del_ret_action.affected_transactions_count(),
+            rewards_count=del_ret_action.affected_rewards_count(),
+            campaign_slugs=del_ret_action.affected_campaigns_slugs(),
+            form=del_ret_action.form,
+        )
+
+    @action(
+        "delete-retailer",
+        "Delete",
+        "Only one non active retailer allowed for this action. This action is unreversible, Proceed?",
+    )
+    def delete_retailer_action(self, ids: list[str]) -> "Response":
+        return redirect(url_for("retailers.delete_retailer", ids=ids))
 
 
 class EmailTemplateAdmin(CanDeleteModelView):
