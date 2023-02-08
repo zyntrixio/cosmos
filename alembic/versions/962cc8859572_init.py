@@ -126,10 +126,7 @@ def upgrade() -> None:
         sa.Column("account_holder_uuid", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("opt_out_token", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["retailer_id"],
-            ["retailer.id"],
-        ),
+        sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("account_holder_uuid"),
         sa.UniqueConstraint("email", "retailer_id", name="email_retailer_unq"),

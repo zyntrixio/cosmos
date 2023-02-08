@@ -15,13 +15,18 @@
                         <li class="list-group-item">
                             <strong>Issued Rewards:</strong> {{rewards_count}}
                         </li>
+                        <li class="list-group-item">
+                            <strong>Transactions:</strong> {{transactions_count}}
+                        </li>
                     </ul>
                 </div>
             </div>
             <div class="panel panel-default">
                 <div class="panel-body">
                     <form method="POST" class="form-group" name="deleteRetailerForm">
+                        {% if form.csrf_token %}
                         {{ form.csrf_token()|safe }}
+                        {% endif %}
                         <div class="form-check">
                             {{ form.acceptance()|safe }} {{ form.acceptance.label }}
                         </div>

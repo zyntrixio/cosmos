@@ -46,7 +46,7 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     account_number = Column(String, nullable=True, index=True, unique=True)
     account_holder_uuid = Column(UUID(as_uuid=True), nullable=False, default=uuid4, unique=True)
     opt_out_token = Column(UUID(as_uuid=True), nullable=False, default=uuid4, unique=True)
-    retailer_id = Column(BigInteger, ForeignKey("retailer.id"), index=True)
+    retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), index=True)
 
     retailer = relationship("Retailer", back_populates="account_holders")
     profile = relationship("AccountHolderProfile", uselist=False, back_populates="account_holder")

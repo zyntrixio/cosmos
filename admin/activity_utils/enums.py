@@ -55,7 +55,7 @@ class ActivityType(Enum):
         end_date: utc_datetime | None = None,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.CAMPAIGN.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -79,7 +79,6 @@ class ActivityType(Enum):
                 }
             ).dict(exclude_unset=True),
         }
-        return payload
 
     @classmethod
     def get_campaign_updated_activity_data(
@@ -94,7 +93,7 @@ class ActivityType(Enum):
         original_values: dict,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.CAMPAIGN.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -113,8 +112,6 @@ class ActivityType(Enum):
             ).dict(exclude_unset=True),
         }
 
-        return payload
-
     @classmethod
     def get_campaign_deleted_activity_data(
         cls,
@@ -129,7 +126,7 @@ class ActivityType(Enum):
         end_date: utc_datetime | None = None,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.CAMPAIGN.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -154,8 +151,6 @@ class ActivityType(Enum):
             ).dict(exclude_unset=True),
         }
 
-        return payload
-
     @classmethod
     def get_earn_rule_created_activity_data(
         cls,
@@ -177,7 +172,7 @@ class ActivityType(Enum):
         if loyalty_type == "STAMPS":
             new_values["increment"] = increment
 
-        payload = {
+        return {
             "type": cls.EARN_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -193,7 +188,6 @@ class ActivityType(Enum):
                 earn_rule={"new_values": new_values},
             ).dict(exclude_unset=True),
         }
-        return payload
 
     @classmethod
     def get_earn_rule_updated_activity_data(
@@ -208,7 +202,7 @@ class ActivityType(Enum):
         original_values: dict,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.EARN_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -227,8 +221,6 @@ class ActivityType(Enum):
             ).dict(exclude_unset=True),
         }
 
-        return payload
-
     @classmethod
     def get_earn_rule_deleted_activity_data(
         cls,
@@ -244,7 +236,7 @@ class ActivityType(Enum):
         max_amount: int,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.EARN_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -266,7 +258,6 @@ class ActivityType(Enum):
                 }
             ).dict(exclude_unset=True),
         }
-        return payload
 
     @classmethod
     def get_reward_rule_created_activity_data(
@@ -282,7 +273,7 @@ class ActivityType(Enum):
         reward_cap: int | None,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.REWARD_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -304,7 +295,6 @@ class ActivityType(Enum):
                 }
             ).dict(exclude_unset=True),
         }
-        return payload
 
     @classmethod
     def get_balance_change_activity_data(
@@ -328,7 +318,7 @@ class ActivityType(Enum):
             case _:
                 raise ValueError(f"Unexpected value {loyalty_type} for loyalty_type.")
 
-        payload = BalanceChangeWholeActivitySchema(
+        return BalanceChangeWholeActivitySchema(
             type=cls.BALANCE_CHANGE.name,
             datetime=datetime.now(tz=timezone.utc),
             underlying_datetime=activity_datetime,
@@ -346,8 +336,6 @@ class ActivityType(Enum):
             },
         ).dict()
 
-        return payload
-
     @classmethod
     def get_campaign_migration_activity_data(
         cls,
@@ -363,7 +351,7 @@ class ActivityType(Enum):
         transfer_balance_requested: bool,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.CAMPAIGN_MIGRATION.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -386,7 +374,6 @@ class ActivityType(Enum):
                 pending_rewards=pending_rewards,
             ).dict(),
         }
-        return payload
 
     @classmethod
     def get_reward_rule_updated_activity_data(
@@ -401,7 +388,7 @@ class ActivityType(Enum):
         original_values: dict,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.REWARD_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -419,7 +406,6 @@ class ActivityType(Enum):
                 }
             ).dict(exclude_unset=True),
         }
-        return payload
 
     @classmethod
     def get_reward_rule_deleted_activity_data(
@@ -435,7 +421,7 @@ class ActivityType(Enum):
         reward_cap: int | None,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.REWARD_RULE.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -457,7 +443,6 @@ class ActivityType(Enum):
                 }
             ).dict(exclude_unset=True, exclude_none=True),
         }
-        return payload
 
     @classmethod
     def get_retailer_created_activity_data(
@@ -480,7 +465,7 @@ class ActivityType(Enum):
         if marketing_preferences:
             marketing_pref_data = [{"key": k, **v} for k, v in marketing_preferences.items()]
 
-        payload = {
+        return {
             "type": cls.RETAILER_CREATED.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -507,7 +492,6 @@ class ActivityType(Enum):
                 ).dict(exclude_unset=True, exclude_none=True),
             },
         }
-        return payload
 
     @classmethod
     def get_retailer_update_activity_data(
@@ -524,7 +508,7 @@ class ActivityType(Enum):
             new_values["enrolment_config"] = new_values.pop("profile_config")
             original_values["enrolment_config"] = original_values.pop("profile_config")
 
-        payload = {
+        return {
             "type": cls.RETAILER_CHANGED.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -542,7 +526,6 @@ class ActivityType(Enum):
                 ).dict(exclude_unset=True, exclude_none=True),
             },
         }
-        return payload
 
     @classmethod
     def get_retailer_deletion_activity_data(
@@ -555,7 +538,7 @@ class ActivityType(Enum):
         original_values: dict,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.RETAILER_DELETED.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -572,7 +555,6 @@ class ActivityType(Enum):
                 ).dict(exclude_unset=True, exclude_none=True),
             },
         }
-        return payload
 
     @classmethod
     def get_retailer_status_update_activity_data(
@@ -586,7 +568,7 @@ class ActivityType(Enum):
         retailer_slug: str,
     ) -> dict:
 
-        payload = {
+        return {
             "type": cls.RETAILER_STATUS.name,
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": activity_datetime,
@@ -599,11 +581,11 @@ class ActivityType(Enum):
             "campaigns": [],
             "data": {
                 "retailer": RetailerStatusUpdateActivitySchema(
-                    new_values={"status": new_status}, original_values={"status": original_status}
+                    new_values={"status": new_status},
+                    original_values={"status": original_status},
                 ).dict(),
             },
         }
-        return payload
 
     @classmethod
     def get_reward_status_activity_data(
@@ -617,7 +599,7 @@ class ActivityType(Enum):
         pending_reward_uuid: str,
     ) -> dict:
 
-        payload = RewardStatusWholeActivitySchema(
+        return RewardStatusWholeActivitySchema(
             type=cls.REWARD_STATUS.name,
             datetime=datetime.now(tz=timezone.utc),
             underlying_datetime=activity_datetime,
@@ -633,8 +615,6 @@ class ActivityType(Enum):
                 "old_campaign": from_campaign_slug,
             },
         ).dict()
-
-        return payload
 
     @classmethod
     def get_account_holder_deleted_activity_data(
