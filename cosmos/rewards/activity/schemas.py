@@ -3,10 +3,17 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-class RewardStatusDataSchema(BaseModel):
+class PendingRewardStatusDataSchema(BaseModel):
     new_status: str
     original_status: str | None
     count: int | None
+
+
+class RewardStatusDataSchema(BaseModel):
+    new_status: str
+    original_status: str | None
+    reward_slug: str
+    pending_reward_id: str | None
 
 
 class RewardUpdateDataSchema(BaseModel):

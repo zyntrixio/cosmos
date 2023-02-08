@@ -18,6 +18,7 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379/0
       TESTING: "True"
       PUBLIC_URL: http://fake-cosmos-public-url
+      PRE_LOADED_REWARD_BASE_URL: http://test.url
     services:
       postgres:
         image: postgres:latest

@@ -1,15 +1,26 @@
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from cosmos.core.activity.enums import ActivityTypeMixin
 from cosmos.core.config import settings
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.rewards.activity.schemas import (
+    PendingRewardStatusDataSchema,
     RewardStatusDataSchema,
     RewardTransferActivityDataSchema,
     RewardUpdateDataSchema,
 )
+
+if TYPE_CHECKING:
+    from cosmos.db.models import Campaign, Retailer
+
+
+class IssuedRewardReasons(Enum):
+    CAMPAIGN_END = "Pending reward converted at campaign end"
+    CONVERTED = "Pending Reward converted"
+    GOAL_MET = "Reward goal met"
 
 
 class ActivityType(ActivityTypeMixin, Enum):
@@ -36,7 +47,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             associated_value="Deleted",
             retailer_slug=retailer_slug,
             campaigns=[campaign_slug],
-            data=RewardStatusDataSchema(
+            data=PendingRewardStatusDataSchema(
                 new_status="deleted",
                 original_status="pending",
             ).dict(exclude_unset=True),
@@ -101,7 +112,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             associated_value=new_status,
             retailer_slug=retailer_slug,
             campaigns=campaigns,
-            data=RewardStatusDataSchema(**data_kwargs).dict(
+            data=PendingRewardStatusDataSchema(**data_kwargs).dict(
                 exclude_unset=True,
                 exclude_none=True,
             ),
@@ -131,4 +142,43 @@ class ActivityType(ActivityTypeMixin, Enum):
             retailer_slug=retailer_slug,
             campaigns=campaigns,
             data=RewardUpdateDataSchema(**reward_update_data).dict(exclude_unset=True),
+        )
+
+    @classmethod
+    def get_issued_reward_status_activity_data(
+        cls,
+        *,
+        account_holder_uuid: str,
+        retailer: "Retailer",
+        reward_slug: str,
+        activity_timestamp: datetime,
+        reward_uuid: str,
+        pending_reward_id: str | None,
+        campaign: "Campaign | None",
+        reason: IssuedRewardReasons,
+    ) -> dict:
+        data_payload = {"new_status": "issued", "reward_slug": reward_slug}
+
+        if reason in (IssuedRewardReasons.CONVERTED, IssuedRewardReasons.CAMPAIGN_END):
+            if not (campaign and pending_reward_id):
+                raise ValueError("Pending reward conversion requires a campaign and pending_reward_id")
+
+            summary = f"{retailer.name} Pending Reward issued for {campaign.name}"
+            data_payload["original_status"] = "pending"
+            data_payload["pending_reward_id"] = pending_reward_id
+
+        else:
+            summary = f"{retailer.name} Reward issued"
+
+        return cls._assemble_payload(
+            activity_type=cls.REWARD_STATUS.name,
+            underlying_datetime=activity_timestamp,
+            summary=summary,
+            reasons=[reason.value],
+            activity_identifier=reward_uuid,
+            user_id=account_holder_uuid,
+            associated_value="issued",
+            retailer_slug=retailer.slug,
+            campaigns=[campaign.slug] if campaign else [],
+            data=RewardStatusDataSchema(**data_payload).dict(exclude_unset=True),
         )

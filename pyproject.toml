@@ -181,3 +181,5 @@ ignore = [
 "tests/*" = ["S101", "PLR2004", "ARG001"]
 "cosmos/core/config.py" = ["PLR2004"]
 "tests/rewards/test_reward_import_and_updates.py" = ["N806"]
+"cosmos/rewards/fetch_reward/jigsaw.py" = ["PLR2004"]
+"tests/rewards/functional/fetch_reward_jigsaw/*" = ["S105", "SIM117"]
