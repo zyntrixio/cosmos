@@ -127,6 +127,15 @@ class Settings(BaseSettings):
         )
 
     KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
+    KEY_VAULT: KeyVault = None  # type: ignore [assignment]
+
+    @validator("KEY_VAULT", pre=True, always=True)
+    @classmethod
+    def load_key_vault(cls, _: None, values: dict[str, Any]) -> KeyVault:
+        if key_vault_uri := values.get("KEY_VAULT_URI"):
+            return KeyVault(key_vault_uri, values["TESTING"] or values["MIGRATING"])
+
+        raise KeyError("required var KEY_VAULT_URI is not set.")
 
     HTTP_REQUEST_RETRY_TIMES: int = 3
 
@@ -163,6 +172,8 @@ class Settings(BaseSettings):
     CONVERT_PENDING_REWARDS_TASK_NAME: str = "convert-pending-rewards"
     DELETE_PENDING_REWARDS_TASK_NAME: str = "delete-pending-rewards"
     ANONYMISE_ACCOUNT_HOLDER_TASK_NAME: str = "anonymise-account-holder"
+    REWARD_ISSUANCE_TASK_NAME = "reward-issuance"
+    REWARD_ISSUANCE_REQUEUE_BACKOFF_SECONDS: int = 60 * 60 * 12  # 12 hours
     TASK_QUEUE_PREFIX: str = "cosmos:"
     TASK_QUEUES: list[str] | None = None
     PENDING_REWARDS_SCHEDULE: str = "0 2 * * *"
@@ -183,35 +194,17 @@ class Settings(BaseSettings):
     SEND_EMAIL: bool = False
     MAILJET_API_URL: str | None = "https://api.mailjet.com/v3.1/send"  # Set in the env
     MAILJET_API_PUBLIC_KEY: str = ""
-    MAILJET_API_SECRET_KEY: str | None = None
+    MAILJET_API_SECRET_KEY: str = ""
 
     @validator("MAILJET_API_PUBLIC_KEY")
     @classmethod
     def fetch_mailjet_api_public_key(cls, v: str, values: dict[str, Any]) -> str:
-        if v and isinstance(v, str):
-            return v
-
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"] or values["MIGRATING"],
-            ).get_secret("bpl-mailjet-api-public-key")
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+        return v or values["KEY_VAULT"].get_secret("bpl-mailjet-api-public-key")
 
     @validator("MAILJET_API_SECRET_KEY")
     @classmethod
-    def fetch_mailjet_api_secret_key(cls, v: str | None, values: dict[str, Any]) -> str:
-        if v and isinstance(v, str):
-            return v
-
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"] or values["MIGRATING"],
-            ).get_secret("bpl-mailjet-api-secret-key")
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+    def fetch_mailjet_api_secret_key(cls, v: str, values: dict[str, Any]) -> str:
+        return v or values["KEY_VAULT"].get_secret("bpl-mailjet-api-secret-key")
 
     ACTIVATE_TASKS_METRICS: bool = True
 
@@ -226,39 +219,20 @@ class Settings(BaseSettings):
     @validator("VELA_API_AUTH_TOKEN")
     @classmethod
     def fetch_vela_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
-        if v and not values["TESTING"]:
-            return v
-
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"] or values["MIGRATING"],
-            ).get_secret("bpl-vela-api-auth-token")
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+        return v or values["KEY_VAULT"].get_secret("bpl-vela-api-auth-token")
 
     POLARIS_API_AUTH_TOKEN: str = ""
 
     @validator("POLARIS_API_AUTH_TOKEN")
     @classmethod
     def fetch_polaris_api_auth_token(cls, v: str | None, values: dict[str, Any]) -> str:
-        if v and not values["TESTING"]:
-            return v
-
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"] or values["MIGRATING"],
-            ).get_secret("bpl-polaris-api-auth-token")
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+        return v or values["KEY_VAULT"].get_secret("bpl-polaris-api-auth-token")
 
     # ADMIN PANEL SETTINGS
     ADMIN_PROJECT_NAME: str = "cosmos-admin"
     ADMIN_ROUTE_BASE: str = "/admin"
     FLASK_ADMIN_SWATCH: str = "simplex"
     ADMIN_TEMPLATE_MODE: str = "bootstrap4"
-    ADMIN_NAV_STYLE: str = "dark"
     FLASK_DEBUG: bool = False
     ADMIN_QUERY_LOG_LEVEL: str | int = "WARN"
     FLASK_DEV_PORT: int = 5000
@@ -267,6 +241,8 @@ class Settings(BaseSettings):
     ACTIVITY_DB: str = "hubble"
     ACTIVITY_MENU_PREFIX: str = "hubble"
 
+    ADMIN_NAV_STYLE: Literal["primary", "dark", "light"] = "dark"
+
     @validator("ADMIN_NAV_STYLE")
     @classmethod
     def validate_admin_nav_style(cls, v: str) -> str:
@@ -274,19 +250,10 @@ class Settings(BaseSettings):
             return v
         raise ValueError("ADMIN_NAV_STYLE should be one of 'primary', 'dark' or 'light'")
 
-    @validator("SECRET_KEY")
+    @validator("SECRET_KEY", always=True, pre=False)
     @classmethod
-    def fetch_admin_secret_key(cls, v: str | None, values: dict[str, Any]) -> str:
-        if v and not values["TESTING"]:
-            return v
-
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"],
-            ).get_secret("bpl-event-horizon-secret-key")
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+    def fetch_admin_secret_key(cls, v: str, values: dict[str, Any]) -> str:
+        return v or values["KEY_VAULT"].get_secret("bpl-event-horizon-secret-key")
 
     ## AAD SSO
     OAUTH_REDIRECT_URI: str | None = None
@@ -300,16 +267,31 @@ class Settings(BaseSettings):
     @validator("EVENT_HORIZON_CLIENT_SECRET")
     @classmethod
     def fetch_admin_client_secret(cls, v: str | None, values: dict[str, Any]) -> str:
-        if v and not values["TESTING"]:
+        return v or values["KEY_VAULT"].get_secret("bpl-event-horizon-sso-client-secret")
+
+    PRE_LOADED_REWARD_BASE_URL: AnyHttpUrl
+    MESSAGE_IF_NO_PRE_LOADED_REWARDS: bool = False
+
+    JIGSAW_AGENT_USERNAME: str = "Bink_dev"
+    JIGSAW_AGENT_PASSWORD: str = None  # type: ignore [assignment]
+
+    @validator("JIGSAW_AGENT_PASSWORD", pre=True, always=True)
+    @classmethod
+    def fetch_jigsaw_agent_password(cls, v: str | None, values: dict[str, Any]) -> str:
+        if v is not None:
             return v
 
-        if "KEY_VAULT_URI" in values:
-            return KeyVault(
-                values["KEY_VAULT_URI"],
-                values["TESTING"],
-            ).get_secret("bpl-event-horizon-sso-client-secret")
+        return values["KEY_VAULT"].get_secret("bpl-carina-agent-jigsaw-password")
 
-        raise KeyError("required var KEY_VAULT_URI is not set.")
+    JIGSAW_AGENT_ENCRYPTION_KEY: str = None  # type: ignore [assignment]
+
+    @validator("JIGSAW_AGENT_ENCRYPTION_KEY", pre=True, always=True)
+    @classmethod
+    def fetch_jigsaw_agent_encryption_key(cls, v: str | None, values: dict[str, Any]) -> str:
+        if v is not None:
+            return v
+
+        return values["KEY_VAULT"].get_secret("bpl-carina-agent-jigsaw-encryption-key")
 
     # FIXME - cleanup
 

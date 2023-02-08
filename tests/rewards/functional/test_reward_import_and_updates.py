@@ -2,16 +2,13 @@ import logging
 import uuid
 
 from collections import defaultdict
-from datetime import date, datetime, timezone  # time, timezone
+from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Callable, DefaultDict
 
 import pytest
 
 from azure.storage.blob import BlobClient, BlobServiceClient, ContainerClient
 from pytest_mock import MockerFixture
-
-# from retry_tasks_lib.db.models import RetryTask, TaskType
-# from sqlalchemy import func
 from sqlalchemy.future import select
 from testfixtures import LogCapture
 
@@ -25,12 +22,7 @@ from cosmos.rewards.imports.file_agent import (
     RewardUpdatesAgent,
 )
 from cosmos.rewards.schemas import RewardUpdateSchema
-from tests.conftest import SetupType
-
-# from unittest import mock
-
-# import redis
-
+from tests.rewards.conftest import RewardsSetupType
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -44,9 +36,9 @@ def _get_reward_rows(db_session: "Session") -> list[Reward]:
     return db_session.execute(select(Reward)).scalars().all()
 
 
-def test_import_agent__process_csv(setup: SetupType, mocker: MockerFixture) -> None:
+def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
     mocker.patch("cosmos.rewards.imports.file_agent.sentry_sdk")
-    db_session, reward_config, pre_existing_reward = setup
+    db_session, reward_config, pre_existing_reward = setup_rewards
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
@@ -90,8 +82,8 @@ def test_import_agent__process_csv(setup: SetupType, mocker: MockerFixture) -> N
     )
 
 
-def test_import_agent__process_csv_with_expiry_date(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_import_agent__process_csv_with_expiry_date(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
 
@@ -108,8 +100,8 @@ def test_import_agent__process_csv_with_expiry_date(setup: SetupType, mocker: Mo
         assert reward.expiry_date.date() == expiry_date
 
 
-def test_import_agent__process_csv_with_bad_expiry_date(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_import_agent__process_csv_with_bad_expiry_date(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
 
@@ -128,14 +120,14 @@ def test_import_agent__process_csv_with_bad_expiry_date(setup: SetupType, mocker
 
 
 def test_import_agent__process_csv_soft_deleted(
-    setup: SetupType, create_reward_config: Callable, mocker: MockerFixture
+    setup_rewards: RewardsSetupType, create_reward_config: Callable, mocker: MockerFixture
 ) -> None:
     """
     Test that a reward code will be imported OK when the code exists in the DB but for a different reward slug,
     and it has been soft deleted
     """
     mocker.patch("cosmos.rewards.imports.file_agent.sentry_sdk")
-    db_session, reward_config, pre_existing_reward = setup
+    db_session, reward_config, pre_existing_reward = setup_rewards
     second_reward_config = create_reward_config(**{"slug": "second-test-reward"})
     # Associate the existing reward with a different reward config i.e. a different reward slug.
     # This means the same reward code should import OK for the 'test-reward' reward slug
@@ -169,13 +161,13 @@ def test_import_agent__process_csv_soft_deleted(
 
 
 def test_import_agent__process_csv_not_soft_deleted(
-    setup: SetupType, create_reward_config: Callable, mocker: MockerFixture
+    setup_rewards: RewardsSetupType, create_reward_config: Callable, mocker: MockerFixture
 ) -> None:
     """
     Test that a reward code imported for a different reward slug, but where that existing reward code has
     NOT been soft-deleted, will cause an error to be reported and will not be imported
     """
-    db_session, reward_config, pre_existing_reward = setup
+    db_session, reward_config, pre_existing_reward = setup_rewards
     second_reward_config = create_reward_config(**{"slug": "second-test-reward"})
     # Associate the existing reward with a different reward config i.e. a different reward slug.
     # This means the same reward code should import OK for the 'test-reward' reward type slug
@@ -212,12 +204,14 @@ def test_import_agent__process_csv_not_soft_deleted(
     )
 
 
-def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(setup: SetupType, mocker: MockerFixture) -> None:
+def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
     """
     Test that a reward code imported for the same reward slug, where that existing reward code HAS
     been soft-deleted, will cause an error to be reported and will not be imported
     """
-    db_session, reward_config, pre_existing_reward = setup
+    db_session, reward_config, pre_existing_reward = setup_rewards
     pre_existing_reward.deleted = True
     db_session.commit()
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
@@ -252,12 +246,14 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(setup: Setu
 
 
 def test_import_agent__reward_config_non_active_status_error(
-    log_capture: LogCapture, setup: SetupType, mocker: MockerFixture
+    log_capture: LogCapture, setup_rewards: RewardsSetupType, mocker: MockerFixture
 ) -> None:
-    db_session, reward_config, _ = setup
+    db_session, reward_config, _ = setup_rewards
     reward_config.active = False
     db_session.commit()
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
 
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
@@ -280,8 +276,8 @@ def test_import_agent__reward_config_non_active_status_error(
     mock_move_blob.assert_called_once()
 
 
-def test_import_agent__process_csv_no_reward_config(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_import_agent__process_csv_no_reward_config(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
 
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
@@ -295,8 +291,10 @@ def test_import_agent__process_csv_no_reward_config(setup: SetupType, mocker: Mo
     assert exc_info.value.args == ("No RewardConfig found for slug incorrect-reward-type",)
 
 
-def test_import_agent__process_csv_blob_path_does_not_template(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_import_agent__process_csv_blob_path_does_not_template(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
+    db_session, reward_config, _ = setup_rewards
 
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
@@ -312,8 +310,8 @@ def test_import_agent__process_csv_blob_path_does_not_template(setup: SetupType,
     )
 
 
-def test_updates_agent__process_csv(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_updates_agent__process_csv(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
 
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardUpdatesAgent()
@@ -376,10 +374,10 @@ TEST87654322,2021-07-30,redeemed
 
 
 def test_updates_agent__process_csv_reward_code_fails_non_validating_rows(
-    setup: SetupType, mocker: MockerFixture, account_holder: AccountHolder
+    setup_rewards: RewardsSetupType, mocker: MockerFixture, account_holder: AccountHolder
 ) -> None:
     """If non-validating values are encountered, sentry should log a msg"""
-    db_session, reward_config, reward = setup
+    db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
     db_session.commit()
 
@@ -413,10 +411,10 @@ TEST666666,2021-07-30,{bad_status}
 
 
 def test_updates_agent__process_csv_reward_code_fails_malformed_csv_rows(
-    setup: SetupType, mocker: MockerFixture
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
 ) -> None:
     """If a bad CSV row in encountered, sentry should log a msg"""
-    db_session, reward_config, _ = setup
+    db_session, reward_config, _ = setup_rewards
 
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
@@ -440,8 +438,10 @@ def test_updates_agent__process_csv_reward_code_fails_malformed_csv_rows(
     assert "IndexError('list index out of range')" in expected_error_msg
 
 
-def test_updates_agent__process_updates(setup: SetupType, mocker: MockerFixture, account_holder: AccountHolder) -> None:
-    db_session, reward_config, reward = setup
+def test_updates_agent__process_updates(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture, account_holder: AccountHolder
+) -> None:
+    db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
     reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
     other_reward = Reward(
@@ -520,9 +520,9 @@ def test_updates_agent__process_updates(setup: SetupType, mocker: MockerFixture,
 
 
 def test_updates_agent__process_updates_duplicates(
-    setup: SetupType, mocker: MockerFixture, account_holder: AccountHolder, reward_config: RewardConfig
+    setup_rewards: RewardsSetupType, mocker: MockerFixture, account_holder: AccountHolder, reward_config: RewardConfig
 ) -> None:
-    db_session, reward_config, reward = setup
+    db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
     reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
 
@@ -607,9 +607,11 @@ def test_updates_agent__process_updates_duplicates(
     assert other_reward.status == Reward.RewardStatuses.CANCELLED
 
 
-def test_updates_agent__process_updates_reward_code_not_allocated(setup: SetupType, mocker: MockerFixture) -> None:
+def test_updates_agent__process_updates_reward_code_not_allocated(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
     """If the reward is not allocated, it should be soft-deleted"""
-    db_session, reward_config, reward = setup
+    db_session, reward_config, reward = setup_rewards
     assert reward.account_holder_id is None
     db_session.commit()
 
@@ -651,9 +653,11 @@ def test_updates_agent__process_updates_reward_code_not_allocated(setup: SetupTy
     assert reward.issued_date is None
 
 
-def test_updates_agent__process_updates_reward_code_does_not_exist(setup: SetupType, mocker: MockerFixture) -> None:
+def test_updates_agent__process_updates_reward_code_does_not_exist(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
     """The reward does not exist"""
-    db_session, reward_config, _ = setup
+    db_session, reward_config, _ = setup_rewards
 
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
@@ -693,9 +697,11 @@ class Blob:
         self.name = name
 
 
-def test_process_blobs(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+def test_process_blobs(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
 
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
@@ -724,9 +730,13 @@ def test_process_blobs(setup: SetupType, mocker: MockerFixture) -> None:
     mock_move_blob.assert_called_once()
 
 
-def test_process_blobs_unicodedecodeerror(log_capture: LogCapture, setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+def test_process_blobs_unicodedecodeerror(
+    log_capture: LogCapture, setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
+    db_session, reward_config, _ = setup_rewards
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
 
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
@@ -752,9 +762,11 @@ def test_process_blobs_unicodedecodeerror(log_capture: LogCapture, setup: SetupT
     mock_move_blob.assert_called_once()
 
 
-def test_process_blobs_not_csv(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+def test_process_blobs_not_csv(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
     from cosmos.rewards.imports.file_agent import logger
@@ -785,8 +797,8 @@ def test_process_blobs_not_csv(setup: SetupType, mocker: MockerFixture) -> None:
     mock_process_csv.assert_not_called()
 
 
-def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFixture) -> None:
-    db_session, reward_config, _ = setup
+def test_process_blobs_filename_is_duplicate(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
+    db_session, reward_config, _ = setup_rewards
     file_name = "re-test/rewards.update.update.csv"
     db_session.add(
         RewardFileLog(
@@ -795,7 +807,9 @@ def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFix
         )
     )
     db_session.commit()
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
     from cosmos.rewards.imports.file_agent import logger
@@ -826,9 +840,9 @@ def test_process_blobs_filename_is_duplicate(setup: SetupType, mocker: MockerFix
     mock_process_csv.assert_not_called()
 
 
-def test_process_blobs_filename_is_not_duplicate(setup: SetupType, mocker: MockerFixture) -> None:
+def test_process_blobs_filename_is_not_duplicate(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
     """A filename exists in the log, but the file agent type is different"""
-    db_session, reward_config, _ = setup
+    db_session, reward_config, _ = setup_rewards
     file_name = "re-test/rewards.update.update.csv"
     db_session.add(
         RewardFileLog(
@@ -837,7 +851,9 @@ def test_process_blobs_filename_is_not_duplicate(setup: SetupType, mocker: Mocke
         )
     )
     db_session.commit()
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     mock_blob_service_client = mocker.MagicMock(spec=BlobServiceClient)
 
     MockBlobServiceClient.from_connection_string.return_value = mock_blob_service_client
@@ -867,7 +883,9 @@ def test_process_blobs_filename_is_not_duplicate(setup: SetupType, mocker: Mocke
 
 
 def test_move_blob(mocker: MockerFixture) -> None:
-    MockBlobServiceClient = mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True)
+    MockBlobServiceClient = mocker.patch(  # noqa: N806
+        "cosmos.rewards.imports.file_agent.BlobServiceClient", autospec=True
+    )
     MockBlobServiceClient.from_connection_string.return_value = mocker.MagicMock(spec=BlobServiceClient)
     mock_src_blob_client = mocker.patch("cosmos.rewards.imports.file_agent.BlobClient", autospec=True)
     mock_src_blob_client.url = "https://a-blob-url"

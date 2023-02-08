@@ -245,7 +245,7 @@ def pre_loaded_fetch_type(db_session: "Session") -> FetchType:
     ft = FetchType(
         name="PRE_LOADED",
         required_fields="validity_days: integer",
-        path="path.to.pre_loaded_agent",
+        path="cosmos.rewards.fetch_reward.pre_loaded.PreLoaded",
     )
     db_session.add(ft)
     db_session.commit()
@@ -256,7 +256,7 @@ def pre_loaded_fetch_type(db_session: "Session") -> FetchType:
 def jigsaw_fetch_type(db_session: "Session") -> FetchType:
     ft = FetchType(
         name="JIGSAW_EGIFT",
-        path="path.to.jigsaw_agent",
+        path="cosmos.rewards.fetch_reward.jigsaw.Jigsaw",
         required_fields="transaction_value: integer",
     )
     db_session.add(ft)
