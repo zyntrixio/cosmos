@@ -81,11 +81,13 @@ class CampaignAdmin(CanDeleteModelView):
             validate_campaign_end_date_change(
                 old_end_date=form.end_date.object_data,
                 new_end_date=model.end_date,
-                status=model.status,
+                campaign_status=model.status,
                 start_date=model.start_date,
             )
             validate_campaign_start_date_change(
-                old_start_date=form.start_date.object_data, new_start_date=model.start_date, status=model.status
+                old_start_date=form.start_date.object_data,
+                new_start_date=model.start_date,
+                campaign_status=model.status,
             )
             validate_retailer_update(
                 old_retailer=form.retailer.object_data,

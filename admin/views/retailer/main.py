@@ -225,13 +225,18 @@ class RetailerStoreAdmin(BaseModelView):
 
 class RetailerFetchTypeAdmin(CanDeleteModelView):
     column_list = (
-        "fetch_type.retailer",
+        "retailer",
         "fetch_type",
         "agent_config",
         "created_at",
         "updated_at",
     )
-    column_searchable_list = ("fetch_type.retailer.slug", "fetch_type.name")
+    form_create_rules = form_edit_rules = (
+        "retailer",
+        "fetch_type",
+        "agent_config",
+    )
+    column_searchable_list = ("retailer.slug", "fetch_type.name")
     form_widget_args = {
         "agent_config": {"rows": 5},
     }
@@ -241,7 +246,7 @@ class RetailerFetchTypeAdmin(CanDeleteModelView):
         + Markup("</pre>"),
         "fetch_type": lambda _v, _c, model, _p: model.fetch_type.name,
     }
-    column_labels = {"fetch_type.retailer": "Retailer"}
+    column_labels = {"retailer": "Retailer"}
     form_args = {
         "agent_config": {
             "description": "Optional configuration in YAML format",

@@ -138,11 +138,14 @@ def validate_required_fields_values_yaml(form: wtforms.Form, field: wtforms.Fiel
 
 
 def validate_campaign_end_date_change(
-    old_end_date: datetime | None, new_end_date: datetime | None, start_date: datetime | None, status: str
+    old_end_date: datetime | None,
+    new_end_date: datetime | None,
+    start_date: datetime | None,
+    campaign_status: CampaignStatuses,
 ) -> None:
     if old_end_date:
         old_end_date = old_end_date.replace(microsecond=0)
-    if status not in (CampaignStatuses.DRAFT.name, CampaignStatuses.ACTIVE.name) and new_end_date != old_end_date:
+    if campaign_status not in (CampaignStatuses.DRAFT, CampaignStatuses.ACTIVE) and new_end_date != old_end_date:
         raise wtforms.ValidationError(
             "Can not amend the end date field of anything other than a draft or active campaign."
         )
@@ -150,34 +153,36 @@ def validate_campaign_end_date_change(
     if new_end_date and start_date:
         if new_end_date < start_date:
             raise wtforms.ValidationError("Can not set end date to be earlier than start date.")
-        if old_end_date and status == CampaignStatuses.ACTIVE.name and old_end_date > new_end_date:
+        if old_end_date and campaign_status == CampaignStatuses.ACTIVE and old_end_date > new_end_date:
             raise wtforms.ValidationError(
                 "Active campaign end dates cannot be brought forward, they can only be extended."
             )
 
 
 def validate_campaign_start_date_change(
-    old_start_date: datetime | None, new_start_date: datetime | None, status: str
+    old_start_date: datetime | None, new_start_date: datetime | None, campaign_status: CampaignStatuses
 ) -> None:
     if old_start_date:
         old_start_date = old_start_date.replace(microsecond=0)
-    if status != CampaignStatuses.DRAFT.name and new_start_date != old_start_date:
+    if campaign_status != CampaignStatuses.DRAFT and new_start_date != old_start_date:
         raise wtforms.ValidationError("Can not amend the start date field of anything other than a draft campaign.")
 
 
-def validate_retailer_update(old_retailer: str, new_retailer: str, campaign_status: str) -> None:
-    if old_retailer != new_retailer and campaign_status != CampaignStatuses.DRAFT.name:
+def validate_retailer_update(old_retailer: str, new_retailer: str, campaign_status: CampaignStatuses) -> None:
+    if old_retailer != new_retailer and campaign_status != CampaignStatuses.DRAFT:
         raise wtforms.ValidationError("Can only change retailer for a draft campaign")
 
 
-def validate_campaign_slug_update(old_campaign_slug: str, new_campaign_slug: str, campaign_status: str) -> None:
-    if old_campaign_slug != new_campaign_slug and campaign_status != CampaignStatuses.DRAFT.name:
+def validate_campaign_slug_update(
+    old_campaign_slug: str, new_campaign_slug: str, campaign_status: CampaignStatuses
+) -> None:
+    if old_campaign_slug != new_campaign_slug and campaign_status != CampaignStatuses.DRAFT:
         raise wtforms.ValidationError("Can only change campaign slug for a draft campaign")
 
 
 def validate_earn_rule_deletion(campaign: "Campaign") -> None:
-    if campaign.status == CampaignStatuses.ACTIVE and len(campaign.earnrule_collection) < 2:  # noqa: PLR2004 FIXME
-        raise wtforms.ValidationError("Can not delete the last earn rule of an active campaign.")
+    if campaign.status == CampaignStatuses.ACTIVE:
+        raise wtforms.ValidationError("Can not delete earn rule of an active campaign.")
 
 
 def validate_reward_rule_deletion(campaign: "Campaign") -> None:
@@ -186,12 +191,9 @@ def validate_reward_rule_deletion(campaign: "Campaign") -> None:
 
 
 def validate_reward_rule_change(campaign: Campaign, is_created: bool) -> None:
-    if len(campaign.rewardrule_collection) > 1 and is_created:  # FIXME
-        raise wtforms.ValidationError("There is already a reward rule in place for this campaign.")
-
     if (
-        campaign.status == CampaignStatuses.ACTIVE.name
-        and campaign.retailer.status != RetailerStatuses.TEST.name
+        campaign.status == CampaignStatuses.ACTIVE
+        and campaign.retailer.status != RetailerStatuses.TEST
         and not is_created
     ):
         raise wtforms.ValidationError("Can not edit the reward rule of an active campaign.")
