@@ -12,7 +12,8 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from admin.version import __version__
 from admin.views import main_admin
-from cosmos.core.config import settings
+from admin.views.model_views import BaseModelView
+from cosmos.core.config import redis, settings
 from cosmos.db.session import scoped_db_session
 
 oauth = OAuth()
@@ -31,12 +32,13 @@ class RelativeLocationHeaderResponse(Response):
 
 def create_app(with_activities: bool = True) -> Flask:
 
+    from retry_tasks_lib.admin.views import register_tasks_admin
+
     from admin.views.accounts import register_customer_admin
     from admin.views.auth import auth_bp
     from admin.views.campaign_reward import register_campaign_and_reward_management_admin
     from admin.views.healthz import healthz_bp
     from admin.views.retailer import register_retailer_admin
-    from admin.views.tasks import register_tasks_admin
     from admin.views.transactions import register_transactions_admin
 
     sqla_logger = logging.getLogger("sqlalchemy.engine")
@@ -62,7 +64,9 @@ def create_app(with_activities: bool = True) -> Flask:
     register_retailer_admin(main_admin)
     register_campaign_and_reward_management_admin(main_admin)
     register_transactions_admin(main_admin)
-    register_tasks_admin(main_admin)
+    register_tasks_admin(
+        admin=main_admin, scoped_db_session=scoped_db_session, admin_base_classes=(BaseModelView,), redis=redis
+    )
 
     if with_activities:
         from admin.hubble.db import db_session as hubble_db_session
