@@ -193,7 +193,7 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
         Enum(RewardCap, values_callable=lambda _: [str(e.value) for e in RewardCap]),
         nullable=True,
     )
-    campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False)
+    campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, unique=True)
     reward_config_id = Column(Integer, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
 
     campaign = relationship("Campaign", back_populates="reward_rule")
@@ -287,7 +287,8 @@ class RetailerFetchType(Base, TimestampMixin):
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     agent_config = Column(Text, nullable=True)
 
-    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type", viewonly=True)
+    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type")
+    retailer = relationship("Retailer", back_populates="retailer_fetch_type")
     __table_args__ = (PrimaryKeyConstraint("retailer_id", "fetch_type_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -492,6 +493,7 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     email_templates = relationship("EmailTemplate", back_populates="retailer")
     fetch_types = relationship("FetchType", secondary="retailer_fetch_type", back_populates="retailer", viewonly=True)
     rewards = relationship("Reward", back_populates="retailer")
+    retailer_fetch_type = relationship("RetailerFetchType", back_populates="retailer")
 
     __mapper_args__ = {"eager_defaults": True}
 

@@ -139,7 +139,7 @@ def _active_retailer_validation(original_warning_days: int, new_warning_days: in
 
 def validate_balance_reset_advanced_warning_days(
     form: wtforms.Form,
-    retailer_status: str,
+    retailer_status: RetailerStatuses,
 ) -> None:
     try:
         form.balance_reset_advanced_warning_days.data or form.balance_lifespan.data
@@ -149,7 +149,7 @@ def validate_balance_reset_advanced_warning_days(
         original_warning_days = form.balance_reset_advanced_warning_days.object_data
         new_warning_days = form.balance_reset_advanced_warning_days.data
         balance_lifespan = form.balance_lifespan.data
-        if retailer_status == RetailerStatuses.ACTIVE.name:
+        if retailer_status == RetailerStatuses.ACTIVE:
             _active_retailer_validation(original_warning_days, new_warning_days, balance_lifespan)
         if original_warning_days != new_warning_days:
             if balance_lifespan <= 0 != new_warning_days:
