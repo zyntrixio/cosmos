@@ -1,11 +1,12 @@
 {% extends 'admin/base.html' %}
 
 {% block title %}
-BPL -  {{ super() }}
+BPL - {{ super() }}
 {% endblock %}
 
 {% block brand %}
-<a href="{{ admin_view.admin.url }}"><img src="{{ url_for('eh.static', filename='img/bink-logo.png') }}" alt="Bink logo" style="padding-right: 2em"></a>
+<a href="{{ admin_view.admin.url }}"><img src="{{ url_for('eh.static', filename='img/bink-logo.png') }}" alt="Bink logo"
+        style="padding-right: 2em"></a>
 {% endblock %}
 
 {% block head_css %}
@@ -14,18 +15,44 @@ BPL -  {{ super() }}
     body {
         padding-top: 0px !important;
     }
+
+    .navbar {
+        background: linear-gradient(90deg, rgba(20, 30, 51, 1) 75%, rgba(48, 175, 185, 1) 100%) !important;
+        border-color: transparent !important;
+        border-style: none !important;
+    }
+
+    .navbar-nav {
+        background-color: transparent !important;
+    }
+
+    a {
+        color: #30AFB9;
+    }
+
+    .dropdown-item:hover {
+        background-color: #141E33 !important;
+    }
+
+    .page-link {
+        color: #30AFB9;
+    }
+
+    nav-link {
+        color: #EBFFFD !important;
+    }
 </style>
 {% endblock %}
 
 {% block page_body %}
 {% if config.get('SENTRY_ENV') == 'production' %}
-    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: red;">PRODUCTION</p>
+<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: red;">PRODUCTION</p>
 {% elif config.get('SENTRY_ENV') == 'sandbox' %}
-    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: lightskyblue;">PERFORMANCE</p>
+<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: lightskyblue;">PERFORMANCE</p>
 {% elif config.get('SENTRY_ENV') == 'staging' %}
-    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: orange;">STAGING</p>
+<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: orange;">STAGING</p>
 {% else %}
-    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: green;">DEVELOPMENT</p>
+<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: green;">DEVELOPMENT</p>
 {% endif %}
 {{ super() }}
 {% endblock %}
