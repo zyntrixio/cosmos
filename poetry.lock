@@ -2339,7 +2339,7 @@ reference = "bink-pypi"
 
 [[package]]
 name = "types-redis"
-version = "4.4.0.6"
+version = "4.5.1.0"
 description = "Typing stubs for redis"
 category = "dev"
 optional = false
@@ -3923,8 +3923,8 @@ types-pyyaml = [
     {file = "types_PyYAML-6.0.12.5-py3-none-any.whl", hash = "sha256:dcaf87b65b839e7b641721346ef8b12a87f94071e15205a64ac93ca0e0afc77a"},
 ]
 types-redis = [
-    {file = "types-redis-4.4.0.6.tar.gz", hash = "sha256:57f8b3706afe47ef36496d70a97a3783560e6cb19e157be12985dbb31de1d853"},
-    {file = "types_redis-4.4.0.6-py3-none-any.whl", hash = "sha256:8b40d6bf3a54352d4cb2aa7d01294c572a39d40a9d289b96bdf490b51d3a42d2"},
+    {file = "types-redis-4.5.1.0.tar.gz", hash = "sha256:6f6fb1cfeee3708112dec3609a042774f96f2cfcb4709d267c11f51a6976da0a"},
+    {file = "types_redis-4.5.1.0-py3-none-any.whl", hash = "sha256:dac6ea398c57a53213b70727be7c8e3a788ded3c3880e94bf74e85c22aa63c7e"},
 ]
 types-requests = [
     {file = "types-requests-2.28.11.12.tar.gz", hash = "sha256:fd530aab3fc4f05ee36406af168f0836e6f00f1ee51a0b96b7311f82cb675230"},
