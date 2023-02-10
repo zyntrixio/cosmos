@@ -12,7 +12,6 @@ class AdminSettings(BaseSettings):
     ADMIN_PROJECT_NAME: str = "cosmos-admin"
     ADMIN_ROUTE_BASE: str = "/admin"
     FLASK_ADMIN_SWATCH: str = "simplex"
-    ADMIN_TEMPLATE_MODE: str = "bootstrap4"
     FLASK_DEBUG: bool = False
     ADMIN_QUERY_LOG_LEVEL: str | int = "WARN"
     FLASK_DEV_PORT: int = 5000
@@ -20,15 +19,6 @@ class AdminSettings(BaseSettings):
     REQUEST_TIMEOUT: int = 2
     ACTIVITY_DB: str = "hubble"
     ACTIVITY_MENU_PREFIX: str = "hubble"
-
-    ADMIN_NAV_STYLE: Literal["primary", "dark", "light"] = "dark"
-
-    @validator("ADMIN_NAV_STYLE")
-    @classmethod
-    def validate_admin_nav_style(cls, v: str) -> str:
-        if v in {"primary", "dark", "light"}:
-            return v
-        raise ValueError("ADMIN_NAV_STYLE should be one of 'primary', 'dark' or 'light'")
 
     @validator("SECRET_KEY", always=True, pre=False)
     @classmethod
