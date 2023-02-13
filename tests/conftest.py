@@ -1,11 +1,13 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Callable, Generator, NamedTuple
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Generator, NamedTuple
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 
 from pytest_mock import MockerFixture
+from retry_tasks_lib.db.models import TaskType, TaskTypeKey
 from sqlalchemy_utils import create_database, database_exists, drop_database
 from testfixtures import LogCapture
 
@@ -30,12 +32,14 @@ from cosmos.db.models import (
     Transaction,
     TransactionEarn,
 )
-from cosmos.db.session import SyncSessionMaker, sync_engine
+from cosmos.db.session import AsyncSessionMaker, SyncSessionMaker, sync_engine
 from cosmos.retailers.enums import RetailerStatuses
+from cosmos.rewards.config import reward_settings
 
 if TYPE_CHECKING:
     from unittest.mock import MagicMock
 
+    from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm import Session
 
 
@@ -87,6 +91,12 @@ def db_session(main_db_session: "Session") -> Generator["Session", None, None]:
     yield main_db_session
     main_db_session.rollback()
     main_db_session.expunge_all()
+
+
+@pytest_asyncio.fixture(scope="function", name="async_db_session")
+async def async_session() -> AsyncGenerator["AsyncSession", None]:
+    async with AsyncSessionMaker() as db_session:
+        yield db_session
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -695,3 +705,29 @@ def create_transaction_earn(db_session: "Session") -> Callable:
         return te
 
     return _create_transaction_earn
+
+
+@pytest.fixture(scope="function")
+def reward_issuance_task_type(db_session: "Session") -> TaskType:
+    task_type = TaskType(
+        name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
+        path="path.to.func",
+        error_handler_path="path.to.error_handler",
+        queue_name="queue-name",
+    )
+    db_session.add(task_type)
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            TaskTypeKey(task_type_id=task_type.task_type_id, name=key_name, type=key_type)
+            for key_name, key_type in (
+                ("account_holder_id", "INTEGER"),
+                ("campaign_id", "INTEGER"),
+                ("reward_config_id", "INTEGER"),
+                ("pending_reward_id", "STRING"),
+                ("reason", "STRING"),
+                ("agent_state_params_raw", "STRING"),
+            )
+        ]
+    )

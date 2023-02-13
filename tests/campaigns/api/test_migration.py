@@ -8,11 +8,14 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture
+from retry_tasks_lib.db.models import RetryTask, TaskType
 from sqlalchemy.future import select
 
+from cosmos.campaigns.api.endpoints import CampaignService
 from cosmos.campaigns.config import campaign_settings
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
 from cosmos.db.models import AccountHolder, CampaignBalance, PendingReward
+from cosmos.rewards.config import reward_settings
 from tests import validate_error_response
 from tests.conftest import SetupType
 
@@ -269,9 +272,10 @@ def test_migration_ok(
     create_pending_reward: Callable[..., PendingReward],
     create_balance: Callable[..., "CampaignBalance"],
     mocker: MockerFixture,
+    reward_issuance_task_type: TaskType,
 ) -> None:
-    mock_convert_pr = mocker.patch("cosmos.campaigns.api.service.convert_pending_rewards_placeholder")
     db_session, retailer, account_holder_over_half = setup
+    mock_trigger_asyncio_task = mocker.patch.object(CampaignService, "trigger_asyncio_task")
 
     retailer.status = "TEST"
     account_holder_over_half.status = "ACTIVE"
@@ -327,17 +331,30 @@ def test_migration_ok(
     def pending_reward_exists() -> bool:
         return db_session.scalar(select(PendingReward).where(PendingReward.id == pending_reward.id)) is not None
 
+    reward_issuance_tasks = (
+        db_session.execute(
+            select(RetryTask).where(
+                RetryTask.task_type_id == TaskType.task_type_id,
+                TaskType.name == reward_settings.REWARD_ISSUANCE_TASK_NAME,
+            )
+        )
+        .scalars()
+        .unique()
+        .all()
+    )
     match pending_rewards_action:  # noqa: E999
         case "remove":
-            mock_convert_pr.assert_not_called()
+            assert not reward_issuance_tasks
+            mock_trigger_asyncio_task.assert_not_called()
             assert not pending_reward_exists()
         case "convert":
-            # TODO: update this once carina logic is implemented
-            mock_convert_pr.assert_called_once()
-            assert pending_reward_exists()
+            assert len(reward_issuance_tasks) == pending_reward.count
+            mock_trigger_asyncio_task.assert_called()
+            assert not pending_reward_exists()
         case "transfer":
             db_session.refresh(pending_reward)
             assert pending_reward.campaign_id == activable_campaign.id
+            mock_trigger_asyncio_task.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -1,10 +1,14 @@
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar, cast
+import asyncio
+
+from typing import TYPE_CHECKING, Callable, Coroutine, Generic, TypeVar, cast
 
 from cosmos.core.activity.utils import format_and_send_activity_in_background
 from cosmos.core.api.crud import commit
 from cosmos.core.error_codes import ErrorCode
 
 if TYPE_CHECKING:
+
+    from asyncio import Task
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +50,7 @@ class Service:
         self.db_session = db_session
         self.retailer = retailer
         self._stored_activities: list[dict] = []
+        self._asyncio_tasks: set["Task"] = set()
 
     async def commit_db_changes(self) -> None:
         await commit(self.db_session)
@@ -73,6 +78,11 @@ class Service:
     async def format_and_send_stored_activities(self) -> None:
         for stored_activity in self._stored_activities:
             await format_and_send_activity_in_background(**stored_activity)
+
+    def trigger_asyncio_task(self, coro: Coroutine) -> None:
+        task = asyncio.create_task(coro)
+        self._asyncio_tasks.add(task)
+        task.add_done_callback(self._asyncio_tasks.discard)
 
 
 class ServiceError(Exception):

@@ -6,22 +6,28 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from retry_tasks_lib.utils.asynchronous import async_create_many_tasks
 
 from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
 from cosmos.accounts.api import crud as accounts_crud
 from cosmos.accounts.api.schemas.account_holder import AccountHolderStatuses
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
+from cosmos.core.api.tasks import enqueue_many_tasks
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
+from cosmos.rewards.activity.enums import IssuedRewardReasons
+from cosmos.rewards.config import reward_settings
 from cosmos.transactions.activity.enums import ActivityType
 from cosmos.transactions.api import crud
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
 if TYPE_CHECKING:
     from typing import TypeVar
+
+    from retry_tasks_lib.db.models import RetryTask
 
     from cosmos.db.models import AccountHolder
 
@@ -46,11 +52,6 @@ class AdjustmentAmount:
     amount: int
     threshold: int
     accepted: bool
-
-
-async def _allocate_reward_placeholder() -> None:
-    # TODO: complete this logic once Carina reward agents have been implemented
-    pass
 
 
 class TransactionService(Service):
@@ -435,54 +436,71 @@ class TransactionService(Service):
         )
 
     async def _process_rewards(
-        self, transaction: Transaction, campaign: Campaign, campaign_balance_amount: int, adjustment: int
-    ) -> tuple[int, str] | None:
+        self, transaction: Transaction, campaign: Campaign, rewards_achieved_n: int, trc_reached: bool, adjustment: int
+    ) -> tuple[int, list["RetryTask"]]:
         log_suffix = f"(tx_id: {transaction.transaction_id})"
-        rewards_achieved_n, trc_reached = self._rewards_achieved(campaign, campaign_balance_amount, adjustment)
-        if rewards_achieved_n > 0:
-            if trc_reached:
-                tot_cost_to_user = adjustment
-                logger.info("Transaction reward cap '%s' reached %s", campaign.reward_rule.reward_cap, log_suffix)
-                post_msg = (
-                    "Transaction reward cap reached, "
-                    f"decreasing balance by original adjustment amount (%s) {log_suffix}"
-                )
+        if trc_reached:
+            tot_cost_to_user = adjustment
+            logger.info("Transaction reward cap '%s' reached %s", campaign.reward_rule.reward_cap, log_suffix)
+            logger.info(
+                "Transaction reward cap reached, decreasing balance by original adjustment amount (%s) %s",
+                tot_cost_to_user,
+                log_suffix,
+            )
+        else:
+            tot_cost_to_user = int(rewards_achieved_n * campaign.reward_rule.reward_goal)
+            logger.info(
+                "Reward goal (%d) met %d time%s %s",
+                campaign.reward_rule.reward_goal,
+                rewards_achieved_n,
+                "s" if rewards_achieved_n > 1 else "",
+                log_suffix,
+            )
+            logger.info("Decreasing balance by total rewards value (%s) %s", tot_cost_to_user, log_suffix)
 
-            else:
-                tot_cost_to_user = int(rewards_achieved_n * campaign.reward_rule.reward_goal)
-                logger.info(
-                    "Reward goal (%d) met %d time%s %s",
-                    campaign.reward_rule.reward_goal,
-                    rewards_achieved_n,
-                    "s" if rewards_achieved_n > 1 else "",
-                    log_suffix,
-                )
-                post_msg = f"Decreasing balance by total rewards value (%s) {log_suffix}"
+        if campaign.reward_rule.allocation_window > 0:
+            await self.allocate_pending_reward(
+                transaction=transaction,
+                campaign=campaign,
+                count=rewards_achieved_n,
+                total_cost_to_user=tot_cost_to_user,
+            )
+            reward_issuance_tasks = []
 
-            if campaign.reward_rule.allocation_window > 0:
-                await self.allocate_pending_reward(
-                    transaction=transaction,
-                    campaign=campaign,
-                    count=rewards_achieved_n,
-                    total_cost_to_user=tot_cost_to_user,
-                )
+        else:
+            reward_issuance_tasks = await self._create_reward_issuance_tasks(
+                transaction=transaction, campaign=campaign, num_rewards=rewards_achieved_n
+            )
 
-            else:
-                await _allocate_reward_placeholder()
+        return tot_cost_to_user, reward_issuance_tasks
 
-            return tot_cost_to_user, post_msg
-
-        return None
+    async def _create_reward_issuance_tasks(
+        self, *, transaction: Transaction, campaign: Campaign, num_rewards: int
+    ) -> list["RetryTask"]:
+        return await async_create_many_tasks(
+            self.db_session,
+            task_type_name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
+            params_list=[
+                {
+                    "account_holder_id": transaction.account_holder_id,
+                    "campaign_id": campaign.id,
+                    "reward_config_id": campaign.reward_rule.reward_config_id,
+                    "reason": IssuedRewardReasons.GOAL_MET.name,
+                }
+                for _ in range(num_rewards)
+            ],
+        )
 
     async def _process_balance_adjustments(
         self, campaigns: list[Campaign], transaction: Transaction, account_holder: "AccountHolder"
-    ) -> dict[str, AdjustmentAmount]:
+    ) -> tuple[dict[str, AdjustmentAmount], list["RetryTask"] | None]:
         locked_balances = await crud.get_balances_for_update(
             self.db_session, account_holder_id=account_holder.id, campaigns=campaigns
         )
         balances_by_campaign_id = {balance.campaign_id: balance for balance in locked_balances}
 
         adjustments: dict[str, AdjustmentAmount] = {}
+        reward_issuance_tasks: list["RetryTask"] | None = None
         for campaign in campaigns:
             campaign_balance = balances_by_campaign_id[campaign.id]
             adjustment = await self._adjust_balance(
@@ -501,18 +519,20 @@ class TransactionService(Service):
                 adjustment.amount if adjustment.accepted else None,
             )
             if adjustment.accepted and adjustment.amount > 0:
-                processed_rewards_adjustment_data = await self._process_rewards(
-                    transaction=transaction,
-                    campaign=campaign,
-                    campaign_balance_amount=campaign_balance.balance,
-                    adjustment=adjustment.amount,
+                rewards_achieved_n, trc_reached = self._rewards_achieved(
+                    campaign, campaign_balance.balance, adjustment.amount
                 )
-                if processed_rewards_adjustment_data:
-                    tot_cost_to_user, post_msg = processed_rewards_adjustment_data
-                    campaign_balance.balance -= tot_cost_to_user
-                    logger.info(post_msg, tot_cost_to_user)
+                if rewards_achieved_n:
+                    balance_reduction, reward_issuance_tasks = await self._process_rewards(
+                        transaction=transaction,
+                        campaign=campaign,
+                        rewards_achieved_n=rewards_achieved_n,
+                        trc_reached=trc_reached,
+                        adjustment=adjustment.amount,
+                    )
+                    campaign_balance.balance -= balance_reduction
 
-        return adjustments
+        return adjustments, reward_issuance_tasks
 
     async def update_payload_and_store_activity(self, activity_data: dict, updated_payload_data: dict) -> None:
         activity_data["formatter_kwargs"].update(updated_payload_data)
@@ -534,18 +554,18 @@ class TransactionService(Service):
 
     async def _handle_incoming_transaction(
         self, request_payload: CreateTransactionSchema, tx_import_activity_data: dict
-    ) -> ServiceResult[str, ServiceError]:
+    ) -> tuple[ServiceResult[str, ServiceError], list["RetryTask"] | None]:
 
         account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
         if not account_holder:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_FOUND))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_FOUND)), None
         if account_holder.status != AccountHolderStatuses.ACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE)), None
 
         if not (active_campaigns := await self.get_active_campaigns(request_payload.transaction_datetime)):
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS)), None
 
         tx_import_activity_data["campaign_slugs"] = [cmp.slug for cmp in active_campaigns]
 
@@ -557,9 +577,11 @@ class TransactionService(Service):
         )
         if not transaction.processed:
             await self.commit_db_changes()
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.DUPLICATE_TRANSACTION))
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.DUPLICATE_TRANSACTION)), None
 
-        adjustment_amounts = await self._process_balance_adjustments(active_campaigns, transaction, account_holder)
+        adjustment_amounts, reward_issuance_tasks = await self._process_balance_adjustments(
+            active_campaigns, transaction, account_holder
+        )
         await self.store_activity(
             activity_type=ActivityType.TX_HISTORY,
             payload_formatter_fn=ActivityType.get_processed_tx_activity_data,
@@ -577,7 +599,7 @@ class TransactionService(Service):
         tx_import_activity_data["valid_refund"] = accepted_adjustments or not is_refund
 
         await self.commit_db_changes()
-        return ServiceResult(self._get_transaction_response(accepted_adjustments, is_refund))
+        return ServiceResult(self._get_transaction_response(accepted_adjustments, is_refund)), reward_issuance_tasks
 
     async def handle_incoming_transaction(
         self, request_payload: CreateTransactionSchema
@@ -591,14 +613,20 @@ class TransactionService(Service):
                 "campaign_slugs": [],
                 "valid_refund": False,
             }
-            service_result = await self._handle_incoming_transaction(request_payload, tx_import_activity_data)
+            service_result, reward_issuance_tasks = await self._handle_incoming_transaction(
+                request_payload, tx_import_activity_data
+            )
             tx_import_activity_data["error"] = service_result.error.error_code.name if service_result.error else None
 
         except Exception as exc:
             await self.clear_stored_activities()
             tx_import_activity_data["error"] = exc.__class__.__name__
             raise
-
+        else:
+            if reward_issuance_tasks:
+                self.trigger_asyncio_task(
+                    enqueue_many_tasks(retry_tasks_ids=[t.retry_task_id for t in reward_issuance_tasks])
+                )
         finally:
             tx_import_activity_data["request_payload"] = request_payload.dict()
             await self.store_activity(
