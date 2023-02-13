@@ -1,6 +1,6 @@
 import uuid
 
-from typing import TYPE_CHECKING, AsyncGenerator, Callable
+from typing import TYPE_CHECKING, Callable
 
 import pytest
 import pytest_asyncio
@@ -10,7 +10,6 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
 from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, PendingReward, Transaction
-from cosmos.db.session import AsyncSessionMaker
 from cosmos.transactions.api.service import TransactionService
 
 from .fixtures.refund_logic import ExpectationData, SetupData, now, test_refund_data
@@ -18,12 +17,6 @@ from .fixtures.refund_logic import ExpectationData, SetupData, now, test_refund_
 if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-@pytest_asyncio.fixture(scope="function", name="async_db_session")
-async def async_session() -> AsyncGenerator["AsyncSession", None]:
-    async with AsyncSessionMaker() as db_session:
-        yield db_session
 
 
 @pytest_asyncio.fixture(scope="function", name="balance_object")

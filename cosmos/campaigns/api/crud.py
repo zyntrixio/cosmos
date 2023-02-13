@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload, noload, selectinload
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer, Transaction
+from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, PendingReward, Retailer, Transaction
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import NamedTuple

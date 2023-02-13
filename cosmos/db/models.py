@@ -287,8 +287,9 @@ class RetailerFetchType(Base, TimestampMixin):
     fetch_type_id = Column(BigInteger, ForeignKey("fetch_type.id", ondelete="CASCADE"), nullable=False)
     agent_config = Column(Text, nullable=True)
 
-    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type")
-    retailer = relationship("Retailer", back_populates="retailer_fetch_type")
+    fetch_type = relationship("FetchType", back_populates="retailer_fetch_type", overlaps="retailer")
+    retailer = relationship("Retailer", back_populates="retailer_fetch_type", overlaps="retailer")
+
     __table_args__ = (PrimaryKeyConstraint("retailer_id", "fetch_type_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -493,7 +494,7 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     email_templates = relationship("EmailTemplate", back_populates="retailer")
     fetch_types = relationship("FetchType", secondary="retailer_fetch_type", back_populates="retailer", viewonly=True)
     rewards = relationship("Reward", back_populates="retailer")
-    retailer_fetch_type = relationship("RetailerFetchType", back_populates="retailer")
+    retailer_fetch_type = relationship("RetailerFetchType", back_populates="retailer", overlaps="retailer")
 
     __mapper_args__ = {"eager_defaults": True}
 

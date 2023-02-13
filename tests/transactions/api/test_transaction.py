@@ -6,11 +6,15 @@ import pytest
 
 from fastapi import status
 from pytest_mock import MockerFixture
+from retry_tasks_lib.db.models import RetryTask, TaskType
+from sqlalchemy import func
 from sqlalchemy.future import select
 
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Transaction
+from cosmos.rewards.config import reward_settings
+from cosmos.transactions.api.endpoints import TransactionService
 from cosmos.transactions.config import tx_settings
 from tests import validate_error_response
 
@@ -284,13 +288,13 @@ def test_transaction_ok_accumulator(
     campaign_balance: "CampaignBalance",
     mock_activity: "MagicMock",
     mocker: MockerFixture,
+    reward_issuance_task_type: TaskType,
 ) -> None:
+    mock_trigger_asyncio_task = mocker.patch.object(TransactionService, "trigger_asyncio_task")
     assert campaign_with_rules.loyalty_type == LoyaltyTypes.ACCUMULATOR
 
     db_session, retailer, account_holder = setup
     account_holder.status = "ACTIVE"
-
-    mock_reward_issuance = mocker.patch("cosmos.transactions.api.service._allocate_reward_placeholder")
 
     campaign_balance.balance = 100
     campaign_with_rules.reward_rule.allocation_window = allocation_window
@@ -327,9 +331,16 @@ def test_transaction_ok_accumulator(
     pr: PendingReward = db_session.scalar(
         select(PendingReward).where(PendingReward.account_holder_id == account_holder.id)
     )
+    reward_issuance_task_count = db_session.scalar(
+        select(func.count("*"))
+        .select_from(RetryTask)
+        .where(
+            RetryTask.task_type_id == TaskType.task_type_id, TaskType.name == reward_settings.REWARD_ISSUANCE_TASK_NAME
+        )
+    )
 
-    if allocation_window:
-        mock_reward_issuance.assert_not_called()
+    def assert_allocation_window() -> None:
+        assert not reward_issuance_task_count
         if expected_rewards_n:
             assert pr
             if reward_cap and expected_rewards_n > reward_cap:
@@ -340,13 +351,23 @@ def test_transaction_ok_accumulator(
                 assert pr.total_cost_to_user == reward_goal * expected_rewards_n
         else:
             assert not pr
-    else:
+
+    def assert_no_allocation_window() -> None:
         assert not pr
         if expected_rewards_n:
-            # TODO: update this once carina logic has been implemented
-            mock_reward_issuance.assert_called()
+            mock_trigger_asyncio_task.assert_called()
+            if reward_cap and expected_rewards_n > reward_cap:
+                assert reward_issuance_task_count == reward_cap
+            else:
+                assert reward_issuance_task_count == expected_rewards_n
         else:
-            mock_reward_issuance.assert_not_called()
+            assert not reward_issuance_task_count
+            mock_trigger_asyncio_task.assert_not_called()
+
+    if allocation_window:
+        assert_allocation_window()
+    else:
+        assert_no_allocation_window()
 
 
 # refund specific adjustment logic tested in dept in tests/transactions/functional/test_refund_logic.py
@@ -418,13 +439,14 @@ def test_transaction_ok_stamps(
     campaign_balance: "CampaignBalance",
     mock_activity: "MagicMock",
     mocker: MockerFixture,
+    reward_issuance_task_type: TaskType,
 ) -> None:
+
+    mock_trigger_asyncio_task = mocker.patch.object(TransactionService, "trigger_asyncio_task")
     assert campaign_with_rules.earn_rule.increment_multiplier == 1
 
     db_session, retailer, account_holder = setup
     account_holder.status = "ACTIVE"
-
-    mock_reward_issuance = mocker.patch("cosmos.transactions.api.service._allocate_reward_placeholder")
 
     campaign_balance.balance = 100
     campaign_with_rules.loyalty_type = LoyaltyTypes.STAMPS
@@ -461,8 +483,20 @@ def test_transaction_ok_stamps(
 
     assert not db_session.scalar(select(PendingReward).where(PendingReward.account_holder_id == account_holder.id))
 
+    reward_issuance_task_count = db_session.scalar(
+        select(func.count("*"))
+        .select_from(RetryTask)
+        .where(
+            RetryTask.task_type_id == TaskType.task_type_id, TaskType.name == reward_settings.REWARD_ISSUANCE_TASK_NAME
+        )
+    )
+
     if expected_rewards_n:
-        # TODO: update this once carina logic has been implemented
-        mock_reward_issuance.assert_called()
+        mock_trigger_asyncio_task.assert_called()
+        if reward_cap and expected_rewards_n > reward_cap:
+            assert reward_issuance_task_count == reward_cap
+        else:
+            assert reward_issuance_task_count == expected_rewards_n
     else:
-        mock_reward_issuance.assert_not_called()
+        mock_trigger_asyncio_task.assert_not_called()
+        assert not reward_issuance_task_count

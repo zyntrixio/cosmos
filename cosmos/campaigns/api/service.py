@@ -3,16 +3,19 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from fastapi import status
+from retry_tasks_lib.utils.asynchronous import async_create_many_tasks
 
 from cosmos.campaigns.activity.enums import ActivityType as CampaignActivityType
 from cosmos.campaigns.api import crud
 from cosmos.campaigns.enums import CampaignStatuses
-from cosmos.core.activity.utils import format_and_send_activity_in_background
 from cosmos.core.api.service import Service, ServiceError, ServiceListError, ServiceResult
+from cosmos.core.api.tasks import enqueue_many_tasks
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
 from cosmos.db.models import Campaign, Retailer
 from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
+from cosmos.rewards.activity.enums import IssuedRewardReasons
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.crud import (
     cancel_issued_rewards_for_campaign,
     delete_pending_rewards_for_campaign,
@@ -21,6 +24,7 @@ from cosmos.rewards.crud import (
 from cosmos.rewards.enums import PendingRewardActions, PendingRewardMigrationActions
 
 if TYPE_CHECKING:  # pragma: no cover
+    from retry_tasks_lib.db.models import RetryTask
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStatusChangeSchema
@@ -30,11 +34,6 @@ if TYPE_CHECKING:  # pragma: no cover
 class MigrationCampaigns:
     active: Campaign
     draft: Campaign
-
-
-async def convert_pending_rewards_placeholder() -> None:  # pragma: no cover
-    # TODO: complete this logic once Carina reward agents have been implemented
-    pass
 
 
 class CampaignService(Service):
@@ -62,10 +61,28 @@ class CampaignService(Service):
 
         return ErrorCode.INVALID_STATUS_REQUESTED if error else None
 
+    async def _issue_pending_rewards_for_campaign(self, campaign: Campaign) -> list["RetryTask"]:
+        del_data = await delete_pending_rewards_for_campaign(db_session=self.db_session, campaign=campaign)
+        return await async_create_many_tasks(
+            self.db_session,
+            task_type_name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
+            params_list=[
+                {
+                    "pending_reward_id": str(pending_reward_uuid),  # FIXME: alter the param to be pending_reward_uuid
+                    "account_holder_id": account_holder_id,
+                    "campaign_id": campaign.id,
+                    "reward_config_id": campaign.reward_rule.reward_config_id,
+                    "reason": IssuedRewardReasons.CONVERTED.name,
+                }
+                for _, pending_reward_uuid, count, account_holder_id, _ in del_data
+                for _ in range(count)
+            ],
+        )
+
     async def _delete_pending_rewards_for_campaign(self, campaign: Campaign) -> None:
         """Executes crud method delete_pending_rewards_for_campaign and stores required data for this activity"""
         now = datetime.now(tz=timezone.utc)
-        del_data = await delete_pending_rewards_for_campaign(self.db_session, retailer=self.retailer, campaign=campaign)
+        del_data = await delete_pending_rewards_for_campaign(self.db_session, campaign=campaign)
         await self.store_activity(
             activity_type=RewardsActivityType.REWARD_STATUS,
             payload_formatter_fn=RewardsActivityType.get_pending_reward_deleted_activity_data,
@@ -77,7 +94,7 @@ class CampaignService(Service):
                     "account_holder_uuid": account_holder_uuid,
                     "pending_reward_uuid": pending_reward_uuid,
                 }
-                for pending_reward_uuid, account_holder_uuid in del_data
+                for _, pending_reward_uuid, _, _, account_holder_uuid in del_data
             ],
         )
 
@@ -106,18 +123,20 @@ class CampaignService(Service):
 
     async def _handle_pending_rewards(
         self, campaign: "Campaign", pending_rewards_action: PendingRewardActions, requested_status: CampaignStatuses
-    ) -> None:
+    ) -> list["RetryTask"]:
 
+        reward_issuance_tasks: list["RetryTask"] = []
         if campaign.reward_rule.allocation_window > 0 and requested_status in (
             CampaignStatuses.ENDED,
             CampaignStatuses.CANCELLED,
         ):
             if pending_rewards_action == PendingRewardActions.CONVERT and requested_status == CampaignStatuses.ENDED:
-                await convert_pending_rewards_placeholder()
+                reward_issuance_tasks = await self._issue_pending_rewards_for_campaign(campaign=campaign)
             elif (
                 pending_rewards_action == PendingRewardActions.REMOVE or requested_status == CampaignStatuses.CANCELLED
             ):
                 await self._delete_pending_rewards_for_campaign(campaign)
+        return reward_issuance_tasks
 
     async def _handle_balances(self, campaign: "Campaign", requested_status: CampaignStatuses) -> None:
         if requested_status == CampaignStatuses.ACTIVE:
@@ -171,7 +190,9 @@ class CampaignService(Service):
         ):
             return ServiceResult(error=ServiceError(error_code=error_code))
 
-        await self._handle_pending_rewards(campaign, payload.pending_rewards_action, requested_status)
+        reward_issuance_tasks = await self._handle_pending_rewards(
+            campaign, payload.pending_rewards_action, requested_status
+        )
         await self._change_campaign_status(
             campaign=campaign,
             requested_status=requested_status,
@@ -180,6 +201,8 @@ class CampaignService(Service):
         await self._handle_balances(campaign, requested_status)
 
         await self.commit_db_changes()
+        if reward_issuance_tasks:
+            self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
         await self.format_and_send_stored_activities()
         return ServiceResult({})
 
@@ -199,7 +222,7 @@ class CampaignService(Service):
                     "activity_datetime": to_campaign.start_date,
                     "pending_reward_uuid": pr_uuid,
                 }
-                for pr_uuid, ah_uuid in updated_rewards
+                for _, pr_uuid, _, _, ah_uuid in updated_rewards
             ],
         )
 
@@ -321,11 +344,12 @@ class CampaignService(Service):
             await crud.lock_balances_for_campaign(self.db_session, campaign=campaigns.active)
             await self._transfer_balance(payload=payload, from_campaign=campaigns.active, to_campaign=campaigns.draft)
 
+        reward_issuance_tasks: list["RetryTask"] = []
         match payload.pending_rewards_action:  # noqa: E999
             case PendingRewardMigrationActions.TRANSFER:
                 await self._transfer_pending_rewards(from_campaign=campaigns.active, to_campaign=campaigns.draft)
             case PendingRewardMigrationActions.CONVERT:
-                await convert_pending_rewards_placeholder()
+                reward_issuance_tasks = await self._issue_pending_rewards_for_campaign(campaign=campaigns.active)
             case PendingRewardMigrationActions.REMOVE:
                 await self._delete_pending_rewards_for_campaign(campaigns.active)
 
@@ -334,5 +358,7 @@ class CampaignService(Service):
         )
         await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.active)
         await self.commit_db_changes()
+        if reward_issuance_tasks:
+            self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
         await self.format_and_send_stored_activities()
         return ServiceResult({})

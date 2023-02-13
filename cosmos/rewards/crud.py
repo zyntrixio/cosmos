@@ -17,10 +17,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
 
-    from cosmos.db.models import Campaign, Retailer
+    from cosmos.db.models import Campaign
 
     class PendingRewardsRes(NamedTuple):
+        pending_reward_id: int
         pending_reward_uuid: UUID
+        pending_reward_count: int
+        account_holder_id: int
         account_holder_uuid: UUID
 
     class CancelIssuedRewardsRes(NamedTuple):
@@ -30,7 +33,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 async def delete_pending_rewards_for_campaign(
-    db_session: "AsyncSession", *, retailer: "Retailer", campaign: "Campaign"
+    db_session: "AsyncSession", *, campaign: "Campaign"
 ) -> list["PendingRewardsRes"]:
     logger.info("Deleting pending rewards for campaign '%s'...", campaign.slug)
 
@@ -40,14 +43,19 @@ async def delete_pending_rewards_for_campaign(
             .where(
                 PendingReward.campaign_id == campaign.id,
                 PendingReward.account_holder_id == AccountHolder.id,
-                AccountHolder.retailer_id == retailer.id,
+                AccountHolder.retailer_id == campaign.retailer_id,
             )
-            .returning(PendingReward.pending_reward_uuid, AccountHolder.account_holder_uuid)
+            .returning(
+                PendingReward.id,
+                PendingReward.pending_reward_uuid,
+                PendingReward.count,
+                PendingReward.account_holder_id,
+                AccountHolder.account_holder_uuid,
+            )
         )
 
-        del_data, rowcount = result.all(), result.rowcount
         await savepoint.commit()
-        return del_data, rowcount
+        return result.all(), result.rowcount
 
     del_data, rowcount = await async_run_query(_delete_pending_rewards, db_session)
     logger.info(f"Deleted {rowcount} pending rewards")
@@ -96,7 +104,13 @@ async def transfer_pending_rewards(
                 # this is needed to return the account_holder_uuid
                 PendingReward.account_holder_id == AccountHolder.id,
             )
-            .returning(PendingReward.pending_reward_uuid, AccountHolder.account_holder_uuid)
+            .returning(
+                PendingReward.id,
+                PendingReward.pending_reward_uuid,
+                PendingReward.count,
+                PendingReward.account_holder_id,
+                AccountHolder.account_holder_uuid,
+            )
         )
         await savepoint.commit()
         return res.all()

@@ -6,14 +6,17 @@ import pytest
 
 from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture
+from retry_tasks_lib.db.models import RetryTask, TaskType
 from sqlalchemy.future import select
 
 from cosmos.accounts.enums import AccountHolderStatuses
+from cosmos.campaigns.api.service import CampaignService
 from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import CampaignBalance, PendingReward, Reward
 from cosmos.retailers.enums import RetailerStatuses
+from cosmos.rewards.config import reward_settings
 from tests import validate_error_response
 from tests.conftest import SetupType
 
@@ -381,15 +384,15 @@ def test_status_change_ending_campaign_ok(
     pending_reward: PendingReward,
     mock_activity: mock.MagicMock,
     mocker: MockerFixture,
+    reward_issuance_task_type: TaskType,
 ) -> None:
     db_session, retailer, _ = setup
+    mock_trigger_asyncio_task = mocker.patch.object(CampaignService, "trigger_asyncio_task")
 
     retailer.status = RetailerStatuses.TEST
     campaign_with_rules.status = CampaignStatuses.ACTIVE
     campaign_with_rules.reward_rule.allocation_window = 15
     db_session.commit()
-
-    mock_convert_pr = mocker.patch("cosmos.campaigns.api.service.convert_pending_rewards_placeholder")
 
     payload = {
         "requested_status": "ended",
@@ -410,14 +413,26 @@ def test_status_change_ending_campaign_ok(
     def pending_reward_exists() -> bool:
         return db_session.scalar(select(PendingReward).where(PendingReward.id == pending_reward.id)) is not None
 
+    reward_issuance_tasks = (
+        db_session.execute(
+            select(RetryTask).where(
+                RetryTask.task_type_id == TaskType.task_type_id,
+                TaskType.name == reward_settings.REWARD_ISSUANCE_TASK_NAME,
+            )
+        )
+        .scalars()
+        .unique()
+        .all()
+    )
     match pending_rewards_action:  # noqa: E999
         case "remove":
-            mock_convert_pr.assert_not_called()
+            assert not reward_issuance_tasks
+            mock_trigger_asyncio_task.assert_not_called()
             assert not pending_reward_exists()
         case "convert":
-            # TODO: update this once carina logic is implemented
-            mock_convert_pr.assert_called_once()
-            assert pending_reward_exists()
+            assert len(reward_issuance_tasks) == pending_reward.count
+            mock_trigger_asyncio_task.assert_called()
+            assert not pending_reward_exists()
 
     assert db_session.scalar(select(CampaignBalance).where(CampaignBalance.id == campaign_balance.id)) is None
     mock_activity.assert_called()
@@ -436,6 +451,7 @@ def test_status_change_cancel_campaign_ok(
     mocker: MockerFixture,
 ) -> None:
     db_session, retailer, account_holder = setup
+    mock_trigger_asyncio_task = mocker.patch.object(CampaignService, "trigger_asyncio_task")
 
     user_reward.cancelled_date = None
     user_reward.account_holder_id = account_holder.id
@@ -445,7 +461,6 @@ def test_status_change_cancel_campaign_ok(
     db_session.commit()
 
     mock_now = datetime.now(tz=timezone.utc)
-    mock_convert_pr = mocker.patch("cosmos.campaigns.api.service.convert_pending_rewards_placeholder")
     mock_datetime = mocker.patch("cosmos.rewards.crud.datetime")
     mock_datetime.now.return_value = mock_now
 
@@ -465,8 +480,21 @@ def test_status_change_cancel_campaign_ok(
 
     assert resp.status_code == fastapi_http_status.HTTP_200_OK
     assert resp.json() == {}
-
-    mock_convert_pr.assert_not_called()
+    assert (
+        len(
+            db_session.execute(
+                select(RetryTask).where(
+                    RetryTask.task_type_id == TaskType.task_type_id,
+                    TaskType.name == reward_settings.REWARD_ISSUANCE_TASK_NAME,
+                )
+            )
+            .scalars()
+            .unique()
+            .all()
+        )
+        == 0
+    )
+    mock_trigger_asyncio_task.assert_not_called()
     assert db_session.scalar(select(PendingReward).where(PendingReward.id == pending_reward.id)) is None
     assert db_session.scalar(select(CampaignBalance).where(CampaignBalance.id == campaign_balance.id)) is None
 
