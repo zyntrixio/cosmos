@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import sentry_sdk
 
-from pydantic import AnyHttpUrl, BaseSettings, Field, HttpUrl, PostgresDsn, validator
+from pydantic import AnyHttpUrl, BaseSettings, Field, HttpUrl, PostgresDsn, RedisDsn, validator
 from pydantic.validators import str_validator
 from redis import Redis
 from retry_tasks_lib.settings import load_settings
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         command = sys.argv[0]
         return True if "alembic" in command else v
 
-    PUBLIC_URL: AnyHttpUrl
+    PUBLIC_URL: AnyHttpUrl = "http://fake-cosmos-public-url"
 
     PROJECT_NAME: str = "cosmos"
     ROOT_LOG_LEVEL: LogLevel | None = None
@@ -150,15 +150,7 @@ class Settings(BaseSettings):
     BLOB_IMPORT_SCHEDULE = "*/5 * * * *"
     BLOB_CLIENT_LEASE_SECONDS = 60
     BLOB_IMPORT_LOGGING_LEVEL = logging.WARNING
-    REDIS_URL: str
-
-    @validator("REDIS_URL")
-    @classmethod
-    def assemble_redis_url(cls, v: str, values: dict[str, Any]) -> str:
-        if values["TESTING"]:
-            base_url, db_n = v.rsplit("/", 1)
-            return f"{base_url}/{int(db_n) + 1}"
-        return v
+    REDIS_URL: RedisDsn = "redis://redis:6379/0"
 
     ACCOUNT_HOLDER_ACTIVATION_TASK_NAME: str = "account-holder-activation"
     ENROLMENT_CALLBACK_TASK_NAME: str = "enrolment-callback"
