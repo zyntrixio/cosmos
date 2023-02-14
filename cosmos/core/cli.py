@@ -9,11 +9,14 @@ from prometheus_client import CollectorRegistry
 from prometheus_client import start_http_server as start_prometheus_server
 from prometheus_client import values
 from prometheus_client.multiprocess import MultiProcessCollector
+from retry_tasks_lib.reporting import report_anomalous_tasks, report_queue_lengths, report_tasks_summary
 from retry_tasks_lib.utils.error_handler import job_meta_handler
 from rq import Worker
 
 from cosmos.core.config import redis_raw, settings
+from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
+from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
 
 app = typer.Typer()
@@ -59,7 +62,7 @@ def task_worker(burst: bool = False) -> None:  # pragma: no cover
 
 @app.command()
 def cron_scheduler(
-    imports: bool = True, updates: bool = True  # , report_tasks: bool = True, report_rq_queues: bool = True,
+    imports: bool = True, updates: bool = True, report_tasks: bool = True, report_rq_queues: bool = True
 ) -> None:  # pragma: no cover
 
     logger.info("Initialising scheduler...")
@@ -77,41 +80,41 @@ def cron_scheduler(
             coalesce_jobs=True,
         )
 
-    # if report_tasks:
-    #     registry = CollectorRegistry()
-    #     MultiProcessCollector(registry)
-    #     logger.info("Starting prometheus metrics server...")
-    #     start_prometheus_server(settings.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
+    if report_tasks:
+        registry = CollectorRegistry()
+        MultiProcessCollector(registry)
+        logger.info("Starting prometheus metrics server...")
+        start_prometheus_server(settings.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
 
-    #     scheduler.add_job(
-    #         report_anomalous_tasks,
-    #         kwargs={"session_maker": SyncSessionMaker, "project_name": settings.PROJECT_NAME, "gauge": task_statuses},
-    #         schedule_fn=lambda: settings.REPORT_ANOMALOUS_TASKS_SCHEDULE,
-    #         coalesce_jobs=True,
-    #     )
-    #     scheduler.add_job(
-    #         report_tasks_summary,
-    #         kwargs={
-    #             "session_maker": SyncSessionMaker,
-    #             "project_name": settings.PROJECT_NAME,
-    #             "gauge": tasks_summary,
-    #         },
-    #         schedule_fn=lambda: settings.REPORT_TASKS_SUMMARY_SCHEDULE,
-    #         coalesce_jobs=True,
-    #     )
+        scheduler.add_job(
+            report_anomalous_tasks,
+            kwargs={"session_maker": SyncSessionMaker, "project_name": settings.PROJECT_NAME, "gauge": task_statuses},
+            schedule_fn=lambda: settings.REPORT_ANOMALOUS_TASKS_SCHEDULE,
+            coalesce_jobs=True,
+        )
+        scheduler.add_job(
+            report_tasks_summary,
+            kwargs={
+                "session_maker": SyncSessionMaker,
+                "project_name": settings.PROJECT_NAME,
+                "gauge": tasks_summary,
+            },
+            schedule_fn=lambda: settings.REPORT_TASKS_SUMMARY_SCHEDULE,
+            coalesce_jobs=True,
+        )
 
-    # if report_rq_queues:
-    #     scheduler.add_job(
-    #         report_queue_lengths,
-    #         kwargs={
-    #             "redis": redis_raw,
-    #             "project_name": settings.PROJECT_NAME,
-    #             "queue_names": settings.TASK_QUEUES,
-    #             "gauge": job_queue_summary,
-    #         },
-    #         schedule_fn=lambda: settings.REPORT_JOB_QUEUE_LENGTH_SCHEDULE,
-    #         coalesce_jobs=True,
-    #     )
+    if report_rq_queues:
+        scheduler.add_job(
+            report_queue_lengths,
+            kwargs={
+                "redis": redis_raw,
+                "project_name": settings.PROJECT_NAME,
+                "queue_names": settings.TASK_QUEUES,
+                "gauge": job_queue_summary,
+            },
+            schedule_fn=lambda: settings.REPORT_JOB_QUEUE_LENGTH_SCHEDULE,
+            coalesce_jobs=True,
+        )
 
     logger.info(f"Starting scheduler {cron_scheduler}...")
     scheduler.run()
