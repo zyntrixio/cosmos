@@ -10,7 +10,7 @@ from sqlalchemy import BigInteger, Column, DateTime, exc, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, declarative_base, declarative_mixin
 
-from cosmos.core.config import settings
+from cosmos.db.config import db_settings
 
 if TYPE_CHECKING:  # pragma: no cover
     from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
@@ -44,7 +44,7 @@ def sync_run_query(
     fn: Callable[..., ReturnType],
     session: Session,
     *,
-    attempts: int = settings.DB_CONNECTION_RETRY_TIMES,
+    attempts: int = db_settings.DB_CONNECTION_RETRY_TIMES,
     rollback_on_exc: bool = True,
     **kwargs: Any,  # noqa: ANN401
 ) -> ReturnType:  # pragma: no cover
@@ -75,7 +75,7 @@ async def async_run_query(
     fn: Callable[..., Coroutine[None, None, ReturnType]],
     session: AsyncSession,
     *,
-    attempts: int = settings.DB_CONNECTION_RETRY_TIMES,
+    attempts: int = db_settings.DB_CONNECTION_RETRY_TIMES,
     rollback_on_exc: bool = True,
     **kwargs: Any,  # noqa: ANN401
 ) -> ReturnType:  # pragma: no cover

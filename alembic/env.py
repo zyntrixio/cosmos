@@ -3,8 +3,8 @@ import logging
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from cosmos.core.config import settings
 from cosmos.db.base import Base
+from cosmos.db.config import db_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -44,7 +44,7 @@ def run_migrations_offline() -> None:
     """
     context.configure(
         # alembic will run the migrations synchronously with psycopg2
-        url=settings.SQLALCHEMY_DATABASE_URI,
+        url=db_settings.SQLALCHEMY_DATABASE_URI,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -68,7 +68,7 @@ def run_migrations_online() -> None:
     if cmd_line_dsn := context.get_x_argument(as_dictionary=True).get("db_dsn"):
         configuration["sqlalchemy.url"] = cmd_line_dsn
     elif not configuration.get("sqlalchemy.url"):  # allows sqla url to be set in another config context
-        configuration["sqlalchemy.url"] = settings.SQLALCHEMY_DATABASE_URI
+        configuration["sqlalchemy.url"] = db_settings.SQLALCHEMY_DATABASE_URI
 
     connectable = engine_from_config(
         configuration,
