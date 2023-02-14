@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 
 from logging.config import dictConfig
@@ -7,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import sentry_sdk
 
-from pydantic import AnyHttpUrl, BaseSettings, Field, HttpUrl, PostgresDsn, validator
+from pydantic import AnyHttpUrl, BaseSettings, Field, HttpUrl, validator
 from pydantic.validators import str_validator
 from redis import Redis
 from retry_tasks_lib.settings import load_settings
@@ -16,12 +15,11 @@ from sentry_sdk.integrations.rq import RqIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from cosmos.core.key_vault import KeyVault
+from cosmos.db.config import DatabaseSettings, db_settings
 from cosmos.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class LogLevel(str):
@@ -47,7 +45,6 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     TESTING: bool = False
-    SQL_DEBUG: bool = False
 
     @validator("TESTING")
     @classmethod
@@ -83,48 +80,7 @@ class Settings(BaseSettings):
     def sentry_dsn_can_be_blank(cls, v: str | None) -> str | None:
         return v or None
 
-    USE_NULL_POOL: bool = False
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5432"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = ""
-    POSTGRES_DB: str = "cosmos"
-    SQLALCHEMY_DATABASE_URI: str = ""
-    SQLALCHEMY_DATABASE_URI_ASYNC: str = ""
-    DB_CONNECTION_RETRY_TIMES: int = 3
-
-    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
-    @classmethod
-    def assemble_db_connection(cls, v: str, values: dict[str, Any]) -> str:
-        db_uri = (
-            v.format(values["POSTGRES_DB"])
-            if v
-            else PostgresDsn.build(
-                scheme="postgresql",
-                user=values.get("POSTGRES_USER"),
-                password=values.get("POSTGRES_PASSWORD"),
-                host=values.get("POSTGRES_HOST"),
-                port=values.get("POSTGRES_PORT"),
-                path="/" + values.get("POSTGRES_DB", ""),
-            )
-        )
-        if values["TESTING"]:
-            db_uri += "_test"
-
-        return db_uri
-
-    @validator("SQLALCHEMY_DATABASE_URI_ASYNC", pre=True)
-    @classmethod
-    def adapt_db_connection_to_async(cls, v: str, values: dict[str, Any]) -> str:
-        return (
-            v.format(values["POSTGRES_DB"])
-            if v
-            else (
-                values["SQLALCHEMY_DATABASE_URI"]
-                .replace("postgresql://", "postgresql+asyncpg://")
-                .replace("sslmode=", "ssl=")
-            )
-        )
+    db: DatabaseSettings = db_settings
 
     KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
     KEY_VAULT: KeyVault = None  # type: ignore [assignment]
@@ -301,7 +257,7 @@ class Settings(BaseSettings):
         # 1 - env vars already loaded (ie the one passed in by kubernetes)
         # 2 - env vars read from *local.env file
         # 3 - values assigned directly in the Settings class
-        env_file = os.path.join(BASE_DIR, "local.env")
+        env_file = "local.env"
         env_file_encoding = "utf-8"
 
 

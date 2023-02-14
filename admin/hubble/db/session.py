@@ -4,7 +4,7 @@ from sqlalchemy.pool import NullPool
 
 from cosmos.core.config import settings
 
-db_uri = settings.SQLALCHEMY_DATABASE_URI.rsplit("/", 1)[0] + f"/{settings.ACTIVITY_DB}"
+db_uri = settings.db.SQLALCHEMY_DATABASE_URI.rsplit("/", 1)[0] + f"/{settings.ACTIVITY_DB}"
 
 engine = create_engine(
     db_uri,
