@@ -9,7 +9,6 @@ from admin.views.campaign_reward.reward import (
     RewardFileLogAdmin,
     RewardUpdateAdmin,
 )
-from cosmos.core.config import settings
 from cosmos.db.models import (
     Campaign,
     EarnRule,

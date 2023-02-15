@@ -16,10 +16,11 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import CampaignStatuses, HttpErrors
 from cosmos.core.activity.tasks import sync_send_activity
-from cosmos.core.config import redis, settings
+from cosmos.core.config import redis
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
 from cosmos.core.tasks import send_request_with_metrics
 from cosmos.core.tasks.auth import get_callback_oauth_header
@@ -44,7 +45,7 @@ def _process_callback(task_params: dict, account_holder: AccountHolder) -> dict:
     logger.info(f"Processing callback for {account_holder.account_holder_uuid}")
     timestamp = datetime.now(tz=timezone.utc)
 
-    if settings.USE_CALLBACK_OAUTH2:
+    if account_settings.USE_CALLBACK_OAUTH2:
         headers: dict | None = get_callback_oauth_header()
     else:
         headers = None
@@ -127,8 +128,10 @@ def _activate_account_holder(db_session: "Session", account_holder: AccountHolde
 # it is relevantly reflected in the TaskType table
 @retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
 def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> None:
-    if settings.ACTIVATE_TASKS_METRICS:
-        tasks_run_total.labels(app=settings.PROJECT_NAME, task_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME).inc()
+    if account_settings.core.ACTIVATE_TASKS_METRICS:
+        tasks_run_total.labels(
+            app=account_settings.core.PROJECT_NAME, task_name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME
+        ).inc()
 
     task_params = retry_task.get_params()
     account_holder: AccountHolder = sync_run_query(
@@ -186,8 +189,10 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
 # it is relevantly reflected in the TaskType table
 @retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
 def enrolment_callback(retry_task: RetryTask, db_session: "Session") -> None:
-    if settings.ACTIVATE_TASKS_METRICS:
-        tasks_run_total.labels(app=settings.PROJECT_NAME, task_name=settings.ENROLMENT_CALLBACK_TASK_NAME).inc()
+    if account_settings.core.ACTIVATE_TASKS_METRICS:
+        tasks_run_total.labels(
+            app=account_settings.core.PROJECT_NAME, task_name=account_settings.ENROLMENT_CALLBACK_TASK_NAME
+        ).inc()
 
     task_params = retry_task.get_params()
     account_holder: AccountHolder = sync_run_query(
@@ -243,8 +248,10 @@ def _validate_email_variables(account_holder: AccountHolder, task_params: dict, 
 def send_email(retry_task: RetryTask, db_session: "Session") -> None:
     """Generic email sending task"""
     response_audit: dict[str, Any] | str = {}
-    if settings.ACTIVATE_TASKS_METRICS:
-        tasks_run_total.labels(app=settings.PROJECT_NAME, task_name=settings.SEND_EMAIL_TASK_NAME).inc()
+    if account_settings.core.ACTIVATE_TASKS_METRICS:
+        tasks_run_total.labels(
+            app=account_settings.core.PROJECT_NAME, task_name=account_settings.SEND_EMAIL_TASK_NAME
+        ).inc()
 
     task_params = retry_task.get_params()
     account_holder: AccountHolder = sync_run_query(
@@ -288,7 +295,7 @@ def send_email(retry_task: RetryTask, db_session: "Session") -> None:
         else:
             response_audit = {
                 "timestamp": datetime.now(tz=timezone.utc).isoformat(),
-                "request": {"url": settings.MAILJET_API_URL},
+                "request": {"url": account_settings.core.MAILJET_API_URL},
                 "response": {"status": resp.status_code, "body": resp.text},
             }
             try:

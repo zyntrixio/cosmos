@@ -9,10 +9,11 @@ from retry_tasks_lib.utils.synchronous import enqueue_retry_task_delay, retryabl
 from sqlalchemy.future import select
 
 from cosmos.campaigns.enums import CampaignStatuses
-from cosmos.core.config import redis_raw, settings
+from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
 from cosmos.db.models import AccountHolder, Campaign, RewardConfig
 from cosmos.db.session import SyncSessionMaker
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward import issue_agent_specific_reward
 from cosmos.rewards.schemas import IssuanceTaskParams
 
@@ -28,8 +29,10 @@ if TYPE_CHECKING:  # pragma: no cover
 @retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
 def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
     """Try to fetch and issue a reward, unless the campaign has been cancelled"""
-    if settings.ACTIVATE_TASKS_METRICS:
-        tasks_run_total.labels(app=settings.PROJECT_NAME, task_name=settings.REWARD_ISSUANCE_TASK_NAME).inc()
+    if reward_settings.core.ACTIVATE_TASKS_METRICS:
+        tasks_run_total.labels(
+            app=reward_settings.core.PROJECT_NAME, task_name=reward_settings.REWARD_ISSUANCE_TASK_NAME
+        ).inc()
 
     task_params = IssuanceTaskParams(**retry_task.get_params())
     campaign: Campaign = db_session.execute(select(Campaign).where(Campaign.id == task_params.campaign_id)).scalar_one()
@@ -56,7 +59,7 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
         retry_task.update_task(db_session, status=RetryTaskStatuses.SUCCESS, clear_next_attempt_time=True)
 
     else:
-        if settings.MESSAGE_IF_NO_PRE_LOADED_REWARDS:
+        if reward_settings.MESSAGE_IF_NO_PRE_LOADED_REWARDS:
             with sentry_sdk.push_scope() as scope:
                 scope.fingerprint = ["{{ default }}", "{{ message }}"]
                 event_id = sentry_sdk.capture_message(
@@ -73,7 +76,7 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
         next_attempt_time = enqueue_retry_task_delay(
             connection=redis_raw,
             retry_task=retry_task,
-            delay_seconds=settings.REWARD_ISSUANCE_REQUEUE_BACKOFF_SECONDS,
+            delay_seconds=reward_settings.REWARD_ISSUANCE_REQUEUE_BACKOFF_SECONDS,
         )
         logger.info(f"Next attempt time at {next_attempt_time}")
         retry_task.update_task(db_session, next_attempt_time=next_attempt_time)

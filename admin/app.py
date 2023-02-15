@@ -10,16 +10,17 @@ from flask_wtf.csrf import CSRFProtect
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
+from admin.config import admin_settings
 from admin.version import __version__
 from admin.views import main_admin
 from admin.views.model_views import BaseModelView
-from cosmos.core.config import redis, settings
+from cosmos.core.config import redis
 from cosmos.db.session import scoped_db_session
 
 oauth = OAuth()
 oauth.register(
     "event_horizon",  # FIXME: This is the registered app name on Azure AD
-    server_metadata_url=settings.OAUTH_SERVER_METADATA_URL,
+    server_metadata_url=admin_settings.OAUTH_SERVER_METADATA_URL,
     client_kwargs={"scope": "openid profile email"},
 )
 
@@ -42,22 +43,22 @@ def create_app(with_activities: bool = True) -> Flask:
     from admin.views.transactions import register_transactions_admin
 
     sqla_logger = logging.getLogger("sqlalchemy.engine")
-    sqla_logger.setLevel(settings.ADMIN_QUERY_LOG_LEVEL)
+    sqla_logger.setLevel(admin_settings.ADMIN_QUERY_LOG_LEVEL)
     sqla_handler = logging.StreamHandler()
-    sqla_handler.setLevel(level=settings.ADMIN_QUERY_LOG_LEVEL)
+    sqla_handler.setLevel(level=admin_settings.ADMIN_QUERY_LOG_LEVEL)
     sqla_logger.addHandler(sqla_handler)
 
-    if settings.SENTRY_DSN is not None:
+    if admin_settings.core.SENTRY_DSN is not None:
         sentry_sdk.init(
-            dsn=settings.SENTRY_DSN,
+            dsn=admin_settings.core.SENTRY_DSN,
             integrations=[FlaskIntegration(), SqlalchemyIntegration()],
-            environment=settings.SENTRY_ENV,
+            environment=admin_settings.core.SENTRY_ENV,
             release=__version__,
             traces_sample_rate=0.0,
         )
 
     app = Flask(__name__)
-    app.config.from_object(settings)
+    app.config.from_object(admin_settings)
     app.response_class = RelativeLocationHeaderResponse
 
     register_customer_admin(main_admin)
@@ -88,7 +89,9 @@ def create_app(with_activities: bool = True) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(healthz_bp)
 
-    eh_bp = Blueprint("eh", __name__, static_url_path=f"{settings.ADMIN_ROUTE_BASE}/eh/static", static_folder="static")
+    eh_bp = Blueprint(
+        "eh", __name__, static_url_path=f"{admin_settings.ADMIN_ROUTE_BASE}/eh/static", static_folder="static"
+    )
     app.register_blueprint(eh_bp)
 
     @app.teardown_appcontext

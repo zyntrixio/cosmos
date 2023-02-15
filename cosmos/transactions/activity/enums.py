@@ -2,7 +2,6 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.transactions.activity.schemas import (
@@ -11,6 +10,7 @@ from cosmos.transactions.activity.schemas import (
     TxImportEventSchema,
 )
 from cosmos.transactions.activity.utils import build_tx_history_earns, build_tx_history_reasons
+from cosmos.transactions.config import tx_settings
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -31,9 +31,9 @@ class TxImportReasons(Enum):
 
 
 class ActivityType(ActivityTypeMixin, Enum):
-    TX_HISTORY = f"activity.{settings.PROJECT_NAME}.tx.processed"
-    TX_IMPORT = f"activity.{settings.PROJECT_NAME}.tx.import"
-    REFUND_NOT_RECOUPED = f"activity.{settings.PROJECT_NAME}.refund.not.recouped"
+    TX_HISTORY = f"activity.{tx_settings.core.PROJECT_NAME}.tx.processed"
+    TX_IMPORT = f"activity.{tx_settings.core.PROJECT_NAME}.tx.import"
+    REFUND_NOT_RECOUPED = f"activity.{tx_settings.core.PROJECT_NAME}.refund.not.recouped"
 
     @classmethod
     def get_processed_tx_activity_data(

@@ -7,7 +7,6 @@ from admin.views.accounts.main import (
     PendingRewardAdmin,
     ProfileAdmin,
 )
-from cosmos.core.config import settings
 from cosmos.db.models import AccountHolder, AccountHolderProfile, CampaignBalance, MarketingPreference, PendingReward
 from cosmos.db.session import scoped_db_session
 

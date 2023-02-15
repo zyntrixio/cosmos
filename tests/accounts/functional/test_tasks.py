@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from testfixtures import LogCapture
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.accounts.tasks.account_holder import (
     _get_active_campaigns,
@@ -24,7 +25,6 @@ from cosmos.accounts.tasks.account_holder import (
     enrolment_callback,
     send_email,
 )
-from cosmos.core.config import settings
 from cosmos.db.models import AccountHolder, Campaign, EmailTemplateKey, Retailer
 from cosmos.retailers.enums import EmailTemplateKeys, EmailTemplateTypes, RetailerStatuses
 from tests.conftest import SetupType
@@ -351,7 +351,7 @@ def test_send_email_task(
     mocker: MockerFixture,
     capture: LogCapture,
 ) -> None:
-    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.settings")
+    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
     mock_settings.SEND_EMAIL = True
     mock_settings.MAILJET_API_URL = "http://fake-mailjet.com"
     mock_settings.MAILJET_API_PUBLIC_KEY = "potato"
@@ -401,7 +401,7 @@ def test_send_email_task(
     assert send_welcome_email_task.status == RetryTaskStatuses.SUCCESS
     assert send_welcome_email_task.audit_data == [
         {
-            "request": {"url": settings.MAILJET_API_URL},
+            "request": {"url": account_settings.core.MAILJET_API_URL},
             "response": {
                 "body": fake_response_body,
                 "status": 200,
@@ -422,7 +422,7 @@ def test_send_email_task_with_send_email_set_to_false(
     mocker: MockerFixture,
     capture: LogCapture,
 ) -> None:
-    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.settings")
+    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
     mock_settings.SEND_EMAIL = False
     mock_settings.MAILJET_API_URL = "http://fake-mailjet.com"
     mock_settings.MAILJET_API_PUBLIC_KEY = "potato"
@@ -568,7 +568,7 @@ def test_send_email_task_400(
     capture: LogCapture,
 ) -> None:
     mock_sentry = mocker.patch("cosmos.accounts.tasks.account_holder.sentry_sdk")
-    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.settings")
+    mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
     mock_settings.SEND_EMAIL = True
     mock_settings.MAILJET_API_URL = "http://fake-mailjet.com"
     mock_settings.MAILJET_API_PUBLIC_KEY = "potato"
@@ -618,7 +618,7 @@ def test_send_email_task_400(
     assert send_welcome_email_task.status == RetryTaskStatuses.FAILED
     assert send_welcome_email_task.audit_data == [
         {
-            "request": {"url": settings.MAILJET_API_URL},
+            "request": {"url": account_settings.core.MAILJET_API_URL},
             "response": {
                 "body": fake_response_body,
                 "status": 400,

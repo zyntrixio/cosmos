@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from admin.hubble.db.models import Activity
 from admin.views.activity.main import ActivityAdmin
-from cosmos.core.config import settings
 
 if TYPE_CHECKING:
     from flask_admin import Admin

@@ -5,9 +5,9 @@ import pytest
 from pytest_mock import MockerFixture
 from retry_tasks_lib.db.models import RetryTask, TaskType, TaskTypeKey, TaskTypeKeyValue
 
-from cosmos.core.config import settings
 from cosmos.db.models import RetailerFetchType, Reward, RewardConfig
 from cosmos.rewards.activity.enums import IssuedRewardReasons
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward.base import BaseAgent
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ def setup_rewards(
 @pytest.fixture(scope="function")
 def reward_issuance_task_type(db_session: "Session") -> TaskType:
     tt = TaskType(
-        name=settings.REWARD_ISSUANCE_TASK_NAME,
+        name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
         path="cosmos.rewards.tasks.issuance.issue_reward",
         error_handler_path="cosmos.core.tasks.error_handlers.default_handler",
         queue_name="cosmos:default",

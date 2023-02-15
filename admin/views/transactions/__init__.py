@@ -1,7 +1,6 @@
 from flask_admin import Admin
 
 from admin.views.transactions.main import TransactionAdmin, TransactionEarnAdmin
-from cosmos.core.config import settings
 from cosmos.db.models import Transaction, TransactionEarn
 from cosmos.db.session import scoped_db_session
 

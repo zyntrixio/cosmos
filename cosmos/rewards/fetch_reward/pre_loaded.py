@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import case, func
 from sqlalchemy.future import select
 
-from cosmos.core.config import settings
 from cosmos.db.models import Reward
+from cosmos.rewards.config import reward_settings
 
 from .base import BaseAgent
 
@@ -25,7 +25,7 @@ class PreLoaded(BaseAgent):
         expiry_date = now + timedelta(days=validity_days) if validity_days else None
 
         associated_url_template = (
-            f"{settings.PRE_LOADED_REWARD_BASE_URL}/reward?retailer={self.reward_config.retailer.slug}&reward=%s"
+            f"{reward_settings.PRE_LOADED_REWARD_BASE_URL}/reward?retailer={self.reward_config.retailer.slug}&reward=%s"
         )
 
         available_reward = (

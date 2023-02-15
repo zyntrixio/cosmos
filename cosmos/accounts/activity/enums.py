@@ -11,19 +11,19 @@ from cosmos.accounts.activity.schemas import (
     MarketingPreferenceChangeSchema,
     RefundNotRecoupedDataSchema,
 )
+from cosmos.accounts.config import account_settings
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.config import settings
 from cosmos.core.utils import pence_integer_to_currency_string
 
 
 class ActivityType(ActivityTypeMixin, Enum):
-    ACCOUNT_REQUEST = f"activity.{settings.PROJECT_NAME}.account.request"
-    ACCOUNT_VIEW = f"activity.{settings.PROJECT_NAME}.account.view"
-    ACCOUNT_AUTHENTICATION = f"activity.{settings.PROJECT_NAME}.account.authentication"
-    ACCOUNT_ENROLMENT = f"activity.{settings.PROJECT_NAME}.account.enrolment"
-    ACCOUNT_CHANGE = f"activity.{settings.PROJECT_NAME}.account.change"
-    BALANCE_CHANGE = f"activity.{settings.PROJECT_NAME}.balance.change"
-    REFUND_NOT_RECOUPED = f"activity.{settings.PROJECT_NAME}.refund.not.recouped"
+    ACCOUNT_REQUEST = f"activity.{account_settings.core.PROJECT_NAME}.account.request"
+    ACCOUNT_VIEW = f"activity.{account_settings.core.PROJECT_NAME}.account.view"
+    ACCOUNT_AUTHENTICATION = f"activity.{account_settings.core.PROJECT_NAME}.account.authentication"
+    ACCOUNT_ENROLMENT = f"activity.{account_settings.core.PROJECT_NAME}.account.enrolment"
+    ACCOUNT_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.account.change"
+    BALANCE_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.balance.change"
+    REFUND_NOT_RECOUPED = f"activity.{account_settings.core.PROJECT_NAME}.refund.not.recouped"
 
     @classmethod
     def get_account_request_activity_data(

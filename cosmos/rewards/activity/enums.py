@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.config import settings
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.rewards.activity.schemas import (
     PendingRewardStatusDataSchema,
@@ -12,6 +11,7 @@ from cosmos.rewards.activity.schemas import (
     RewardTransferActivityDataSchema,
     RewardUpdateDataSchema,
 )
+from cosmos.rewards.config import reward_settings
 
 if TYPE_CHECKING:
     from cosmos.db.models import Campaign, Retailer
@@ -24,8 +24,8 @@ class IssuedRewardReasons(Enum):
 
 
 class ActivityType(ActivityTypeMixin, Enum):
-    REWARD_STATUS = f"activity.{settings.PROJECT_NAME}.reward.status"
-    REWARD_UPDATE = f"activity.{settings.PROJECT_NAME}.reward.update"
+    REWARD_STATUS = f"activity.{reward_settings.core.PROJECT_NAME}.reward.status"
+    REWARD_UPDATE = f"activity.{reward_settings.core.PROJECT_NAME}.reward.update"
 
     @classmethod
     def get_pending_reward_deleted_activity_data(

@@ -3,15 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.api.schemas import AccountHolderEnrolment
 from cosmos.accounts.api.service import AccountService
+from cosmos.accounts.config import account_settings
 from cosmos.core.api.deps import RetailerDependency, UserIsAuthorised, bpl_channel_header_is_populated, get_session
 from cosmos.core.api.service import ServiceError
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
 get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
-user_is_authorised = UserIsAuthorised(expected_token=settings.POLARIS_API_AUTH_TOKEN)
-router = APIRouter(prefix=f"{settings.API_PREFIX}/loyalty")
+user_is_authorised = UserIsAuthorised(expected_token=account_settings.POLARIS_API_AUTH_TOKEN)
+router = APIRouter(prefix=account_settings.ACCOUNT_API_PREFIX)
 
 
 @router.post(

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from prometheus_client import Counter, Gauge, Histogram
 
-from cosmos.core.config import settings
+from cosmos.core.config import core_settings
 
 if TYPE_CHECKING:  # pragma: no cover
     from requests import RequestException, Response  # pragma: no cover
@@ -65,7 +65,7 @@ tasks_processing_time_histogram = Histogram(
 def update_metrics_hook(url_label: str) -> Callable:  # pragma: no cover
     def update_metrics(resp: "Response", *args: Any, **kwargs: Any) -> None:  # noqa: [ARG001, ANN401]
         outgoing_http_requests_total.labels(
-            app=settings.PROJECT_NAME,
+            app=core_settings.PROJECT_NAME,
             method=resp.request.method,
             response=f"HTTP_{resp.status_code}",
             exception=None,
@@ -77,7 +77,7 @@ def update_metrics_hook(url_label: str) -> Callable:  # pragma: no cover
 
 def update_metrics_exception_handler(ex: "RequestException", method: str, url: str) -> None:  # pragma: no cover
     outgoing_http_requests_total.labels(
-        app=settings.PROJECT_NAME,
+        app=core_settings.PROJECT_NAME,
         method=method,
         response=None,
         exception=ex.__class__.__name__,
@@ -87,4 +87,6 @@ def update_metrics_exception_handler(ex: "RequestException", method: str, url: s
 
 def task_processing_time_callback_fn(task_processing_time: float, task_name: str) -> None:
     logger.info(f"Updating {tasks_processing_time_histogram} metrics...")
-    tasks_processing_time_histogram.labels(app=settings.PROJECT_NAME, task_name=task_name).observe(task_processing_time)
+    tasks_processing_time_histogram.labels(app=core_settings.PROJECT_NAME, task_name=task_name).observe(
+        task_processing_time
+    )

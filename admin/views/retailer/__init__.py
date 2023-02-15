@@ -7,7 +7,6 @@ from admin.views.retailer.main import (
     RetailerFetchTypeAdmin,
     RetailerStoreAdmin,
 )
-from cosmos.core.config import settings
 from cosmos.db.models import EmailTemplate, EmailTemplateKey, Retailer, RetailerFetchType, RetailerStore
 from cosmos.db.session import scoped_db_session
 

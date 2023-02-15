@@ -8,7 +8,7 @@ from tenacity.retry import retry_if_exception_type, retry_if_result
 from tenacity.stop import stop_after_attempt
 from tenacity.wait import wait_fixed
 
-from cosmos.core.config import settings
+from cosmos.core.config import core_settings
 from cosmos.core.prometheus import update_metrics_exception_handler, update_metrics_hook
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ def send_request_with_metrics(
     label_kwargs: dict = {k: f"[{k}]" if k in exclude_from_label_url else v for k, v in url_kwargs.items()}
     label_url = url_template.format(**label_kwargs)
 
-    hooks = {"response": update_metrics_hook(label_url)} if settings.ACTIVATE_TASKS_METRICS else {}
+    hooks = {"response": update_metrics_hook(label_url)} if core_settings.ACTIVATE_TASKS_METRICS else {}
 
     try:
         return requests.request(
@@ -96,11 +96,11 @@ def send_request_with_metrics(
             timeout=timeout,
         )
     except requests.HTTPError as ex:
-        if settings.ACTIVATE_TASKS_METRICS:
+        if core_settings.ACTIVATE_TASKS_METRICS:
             update_metrics_hook(label_url)(ex.response)
         raise
 
     except requests.RequestException as ex:
-        if settings.ACTIVATE_TASKS_METRICS:
+        if core_settings.ACTIVATE_TASKS_METRICS:
             update_metrics_exception_handler(ex, method, label_url)
         raise

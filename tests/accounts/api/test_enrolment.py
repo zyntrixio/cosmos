@@ -15,8 +15,8 @@ from sqlalchemy.future import select
 from starlette import status
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
-from cosmos.core.config import settings
 from cosmos.db.models import AccountHolder
 from tests.accounts.fixtures import errors
 from tests.conftest import SetupType
@@ -43,7 +43,7 @@ def test_account_holder_enrol_success(
     db_session, retailer, _ = setup
 
     email = test_account_holder_enrol["credentials"]["email"]
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -84,7 +84,7 @@ def test_account_holder_enrol_success(
         db_session.execute(
             select(RetryTask).where(
                 TaskType.task_type_id == RetryTask.task_type_id,
-                TaskType.name == settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+                TaskType.name == account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
             )
         )
         .unique()
@@ -94,7 +94,7 @@ def test_account_holder_enrol_success(
         db_session.execute(
             select(RetryTask).where(
                 TaskType.task_type_id == RetryTask.task_type_id,
-                TaskType.name == settings.ENROLMENT_CALLBACK_TASK_NAME,
+                TaskType.name == account_settings.ENROLMENT_CALLBACK_TASK_NAME,
             )
         )
         .unique()
@@ -104,7 +104,7 @@ def test_account_holder_enrol_success(
         db_session.execute(
             select(RetryTask).where(
                 TaskType.task_type_id == RetryTask.task_type_id,
-                TaskType.name == settings.SEND_EMAIL_TASK_NAME,
+                TaskType.name == account_settings.SEND_EMAIL_TASK_NAME,
             )
         )
         .unique()
@@ -181,7 +181,7 @@ def test_account_holder_enrol_lower_cased_email(
     ].upper()
     email = copy_test_account_holder_enrol["credentials"]["email"]
     lower_cased_email = email.lower()
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
 
     resp = client.post(
         endpoint % retailer.slug,
@@ -205,7 +205,7 @@ def test_account_holder_enrol_third_party_idempty_string(
 ) -> None:
     retailer = setup.retailer
     test_account_holder_enrol["third_party_identifier"] = "     "
-    endpoint = f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/enrolment"
     resp = client.post(endpoint, json=test_account_holder_enrol, headers=accounts_auth_headers)
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert not DeepDiff(
@@ -230,7 +230,7 @@ def test_account_holder_enrol_credentials_empty_string(
     test_account_holder_enrol["credentials"]["address_line2"] = "     "
     test_account_holder_enrol["credentials"]["city"] = "     "
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/enrolment"
     resp = client.post(endpoint, json=test_account_holder_enrol, headers=accounts_auth_headers)
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert not DeepDiff(
@@ -265,7 +265,7 @@ def test_account_holder_enrol_duplicate(
     db_session.add(account_holder)
     db_session.commit()
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -336,7 +336,7 @@ def test_account_holder_enrol_no_channel_header(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -360,7 +360,7 @@ def test_account_holder_enrol_no_channel_header(
     resp = client.post(
         endpoint % retailer.slug,
         json=test_account_holder_enrol,
-        headers={"Authorization": "Token %s" % settings.POLARIS_API_AUTH_TOKEN},
+        headers={"Authorization": "Token %s" % account_settings.POLARIS_API_AUTH_TOKEN},
     )
 
     validate_error_response(resp, errors.MISSING_BPL_CHANNEL_HEADER)
@@ -379,7 +379,7 @@ def test_account_holder_enrol_invalid_token(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -430,7 +430,7 @@ def test_account_holder_enrol_invalid_retailer(
     mock_signal = mocker.patch("fastapi_prometheus_metrics.middleware.signal", autospec=True)
     mock_enqueue_retry_task = mocker.patch("retry_tasks_lib.utils.asynchronous.enqueue_retry_task")
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -474,7 +474,7 @@ def test_account_holder_enrol_validation_error(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -536,7 +536,7 @@ def test_account_holder_enrol_missing_marketing_preferences(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -591,7 +591,7 @@ def test_account_holder_enrol_badly_formatted_marketing_preferences(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(
@@ -652,7 +652,7 @@ def test_account_holder_enrol_marketing_preferences_wrong_value_type(
 
     retailer = setup.retailer
 
-    endpoint = f"{settings.API_PREFIX}/loyalty/%s/accounts/enrolment"
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
     expected_calls = [  # The expected call stack for signal, in order
         call(EventSignals.RECORD_HTTP_REQ),
         call().send(

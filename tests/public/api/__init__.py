@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
 
-from cosmos.core.config import settings
 from cosmos.public.api.app import app
 
 client = TestClient(app)

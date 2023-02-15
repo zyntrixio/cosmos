@@ -10,7 +10,7 @@ from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.util import undefined
 
-from cosmos.core.config import redis, settings
+from cosmos.core.config import core_settings, redis
 from cosmos.core.scheduled_tasks import logger as scheduled_tasks_logger
 
 from . import logger
@@ -32,7 +32,7 @@ def acquire_lock(runner: Runner) -> Callable:
     def decorater(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa ANN401
-            func_lock_key = f"{settings.REDIS_KEY_PREFIX}{runner.name}:{func.__qualname__}"
+            func_lock_key = f"{core_settings.REDIS_KEY_PREFIX}{runner.name}:{func.__qualname__}"
             value = f"{runner.uid}:{datetime.now(tz=timezone.utc)}"
             if redis.set(func_lock_key, value, LOCK_TIMEOUT_SECS, nx=True):
                 # This assumes jobs will be completed within LOCK_TIMEOUT_SECS

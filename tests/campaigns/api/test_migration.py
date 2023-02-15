@@ -10,7 +10,7 @@ from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture
 from sqlalchemy.future import select
 
-from cosmos.core.config import settings
+from cosmos.campaigns.config import campaign_settings
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
 from cosmos.db.models import AccountHolder, CampaignBalance, PendingReward
 from tests import validate_error_response
@@ -67,7 +67,7 @@ def test_migration_mangled_json(test_client: "TestClient", setup: SetupType) -> 
     retailer = setup.retailer
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         data=b"{",
         headers=auth_headers,
     )
@@ -82,7 +82,7 @@ def test_migration_mangled_json(test_client: "TestClient", setup: SetupType) -> 
 def test_migration_invalid_token(test_client: "TestClient", setup: SetupType, campaign: "Campaign") -> None:
     retailer = setup.retailer
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json={},
         headers={"Authorization": "Token wrong token"},
     )
@@ -97,7 +97,7 @@ def test_migration_invalid_token(test_client: "TestClient", setup: SetupType, ca
 def test_migration_invalid_retailer(test_client: "TestClient", campaign: "Campaign") -> None:
     bad_retailer = "WRONG_RETAILER"
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{bad_retailer}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{bad_retailer}/migration",
         json={},
         headers=auth_headers,
     )
@@ -126,7 +126,7 @@ def test_migration_campaign_not_found(
     expected_not_found = [slug for slug in (from_campaign, to_campaign) if "WRONG" in slug]
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{activable_campaign.retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{activable_campaign.retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -149,7 +149,7 @@ def test_migration_campaigns_have_different_loyalty_types(
     db_session.commit()
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -193,7 +193,7 @@ def test_migration_invalid_status_requested(
         expected_errors[ErrorCodeDetails.MISSING_CAMPAIGN_COMPONENTS] = [activable_campaign.slug]
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -232,7 +232,7 @@ def test_migration_missing_rules(
     db_session.commit()
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -293,7 +293,7 @@ def test_migration_ok(
     sample_payload["balance_action"]["qualifying_threshold"] = qualifying_threshold
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -389,7 +389,7 @@ def test_migration_stamps_campaigns_ok(
     sample_payload["balance_action"]["qualifying_threshold"] = qualifying_threshold
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/migration",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
         json=sample_payload,
         headers=auth_headers,
     )

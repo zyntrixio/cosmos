@@ -9,9 +9,9 @@ from pytest_mock import MockerFixture
 from sqlalchemy.future import select
 
 from cosmos.campaigns.enums import LoyaltyTypes
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Transaction
+from cosmos.transactions.config import tx_settings
 from tests import validate_error_response
 
 from . import auth_headers
@@ -41,7 +41,7 @@ def test_transaction_mangled_json(test_client: "TestClient", setup: "SetupType")
     retailer = setup.retailer
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         data=b"{",
         headers=auth_headers,
     )
@@ -57,7 +57,7 @@ def test_transaction_invalid_token(test_client: "TestClient", setup: "SetupType"
     retailer = setup.retailer
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json={},
         headers={"Authorization": "Token WRONG-TOKEN"},
     )
@@ -72,7 +72,7 @@ def test_transaction_invalid_token(test_client: "TestClient", setup: "SetupType"
 def test_transaction_invalid_retailer(test_client: "TestClient") -> None:
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/WRONG-RETAILER",
+        f"{tx_settings.TX_API_PREFIX}/WRONG-RETAILER",
         json={},
         headers=auth_headers,
     )
@@ -89,7 +89,7 @@ def test_transaction_account_holder_not_found(
         sample_payload["loyalty_id"] = str(uuid4())
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -108,7 +108,7 @@ def test_transaction_user_not_active(
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -130,7 +130,7 @@ def test_transaction_no_active_campaigns(
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -164,7 +164,7 @@ def test_transaction_duplicated_transaction(
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -200,7 +200,7 @@ def test_transaction_ok_threshold_not_met(
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -239,7 +239,7 @@ def test_transaction_ok_amount_over_max(
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -312,7 +312,7 @@ def test_transaction_ok_accumulator(
     assert not account_holder.pending_rewards
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -384,7 +384,7 @@ def test_transaction_refund(
     assert not account_holder.pending_rewards
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )
@@ -447,7 +447,7 @@ def test_transaction_ok_stamps(
     assert not account_holder.pending_rewards
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/transactions/{retailer.slug}",
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
         json=sample_payload,
         headers=auth_headers,
     )

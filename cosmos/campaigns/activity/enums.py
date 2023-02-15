@@ -3,9 +3,9 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from cosmos.campaigns.activity.schemas import BalanceChangeActivityDataSchema, CampaignStatusChangeActivitySchema
+from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.config import settings
 from cosmos.core.utils import pence_integer_to_currency_string
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -14,8 +14,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class ActivityType(ActivityTypeMixin, Enum):
-    CAMPAIGN = f"activity.{settings.PROJECT_NAME}.campaign.status.change"
-    BALANCE_CHANGE = f"activity.{settings.PROJECT_NAME}.balance.change"
+    CAMPAIGN = f"activity.{campaign_settings.core.PROJECT_NAME}.campaign.status.change"
+    BALANCE_CHANGE = f"activity.{campaign_settings.core.PROJECT_NAME}.balance.change"
 
     @classmethod
     def get_campaign_status_change_activity_data(

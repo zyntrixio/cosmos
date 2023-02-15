@@ -9,8 +9,8 @@ from pytest_mock import MockerFixture
 from sqlalchemy.future import select
 
 from cosmos.accounts.enums import AccountHolderStatuses
+from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import CampaignStatuses
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import CampaignBalance, PendingReward, Reward
 from cosmos.retailers.enums import RetailerStatuses
@@ -29,7 +29,7 @@ def test_status_change_mangled_json(test_client: "TestClient", setup: SetupType)
     retailer = setup.retailer
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         data=b"{",
         headers=auth_headers,
     )
@@ -49,7 +49,7 @@ def test_status_change_invalid_token(test_client: "TestClient", setup: SetupType
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers={"Authorization": "Token wrong token"},
     )
@@ -70,7 +70,7 @@ def test_status_change_invalid_retailer(test_client: "TestClient", campaign: "Ca
     bad_retailer = "WRONG_RETAILER"
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{bad_retailer}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{bad_retailer}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -87,7 +87,7 @@ def test_status_change_campaign_not_found(test_client: "TestClient", setup: Setu
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -115,7 +115,7 @@ def test_status_change_campaign_does_not_belong_to_retailer(
     second_retailer = create_mock_retailer(slug="second-retailer")
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{second_retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{second_retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -145,7 +145,7 @@ def test_status_change_whitespace_validation_fail_is_422(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -173,7 +173,7 @@ def test_status_change_fields_fail_validation(
     db_session.commit()
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -201,7 +201,7 @@ def test_status_change_illegal_state(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -231,7 +231,7 @@ def test_status_change_no_active_campaign_left_error_for_active_retailer(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -269,7 +269,7 @@ def test_status_change_no_active_campaign_left_ok_for_test_retailer(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -319,7 +319,7 @@ def test_status_change_activating_a_campaign_ok(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -360,7 +360,7 @@ def test_activating_a_campaign_with_missing_rule(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -399,7 +399,7 @@ def test_status_change_ending_campaign_ok(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )
@@ -458,7 +458,7 @@ def test_status_change_cancel_campaign_ok(
     }
 
     resp = test_client.post(
-        f"{settings.API_PREFIX}/campaigns/{retailer.slug}/status-change",
+        f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
         json=payload,
         headers=auth_headers,
     )

@@ -7,7 +7,7 @@ from retry_tasks_lib.db.models import RetryTask, TaskType, TaskTypeKey
 from retry_tasks_lib.utils.synchronous import sync_create_task
 from testfixtures import LogCapture
 
-from cosmos.core.config import settings
+from cosmos.accounts.config import account_settings
 from cosmos.db.models import AccountHolder, EmailTemplate, EmailTemplateKey, Retailer
 from cosmos.retailers.enums import EmailTemplateTypes
 
@@ -37,7 +37,7 @@ def test_account_holder_activation_data() -> dict:
 @pytest.fixture(scope="function")
 def enrolment_callback_task_type(db_session: "Session") -> TaskType:
     task_type = TaskType(
-        name=settings.ENROLMENT_CALLBACK_TASK_NAME,
+        name=account_settings.ENROLMENT_CALLBACK_TASK_NAME,
         path="path.to.func",
         error_handler_path="path.to.error_handler",
         queue_name="queue-name",
@@ -63,7 +63,7 @@ def enrolment_callback_task_type(db_session: "Session") -> TaskType:
 @pytest.fixture(scope="function")
 def account_holder_activation_task_type(db_session: "Session") -> TaskType:
     task_type = TaskType(
-        name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+        name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
         path="path.to.func",
         error_handler_path="path.to.error_handler",
         queue_name="queue-name",
@@ -110,7 +110,7 @@ def enrolment_callback_task(
 @pytest.fixture(scope="function")
 def send_email_task_type(db_session: "Session") -> TaskType:
     task_type = TaskType(
-        name=settings.SEND_EMAIL_TASK_NAME,
+        name=account_settings.SEND_EMAIL_TASK_NAME,
         path="path.to.func",
         error_handler_path="path.to.error_handler",
         queue_name="queue-name",
@@ -327,7 +327,7 @@ def test_account_holder_duplicate() -> dict:
 @pytest.fixture(scope="function")
 def anonymise_account_holder_task_type(db_session: "Session") -> TaskType:
     task_type = TaskType(
-        name=settings.ANONYMISE_ACCOUNT_HOLDER_TASK_NAME,
+        name=account_settings.ANONYMISE_ACCOUNT_HOLDER_TASK_NAME,
         path="path.to.func",
         error_handler_path="path.to.error_handler",
         queue_name="queue-name",
@@ -369,10 +369,10 @@ def anonymise_account_holder_task(
 
 @pytest.fixture
 def run_task_with_metrics() -> Generator:
-    val = settings.ACTIVATE_TASKS_METRICS
-    settings.ACTIVATE_TASKS_METRICS = True
+    val = account_settings.core.ACTIVATE_TASKS_METRICS
+    account_settings.core.ACTIVATE_TASKS_METRICS = True
     yield
-    settings.ACTIVATE_TASKS_METRICS = val
+    account_settings.core.ACTIVATE_TASKS_METRICS = val
 
 
 @pytest.fixture(scope="function")

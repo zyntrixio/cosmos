@@ -17,10 +17,10 @@ from sqlalchemy import bindparam, update
 from sqlalchemy.future import select
 from sqlalchemy.sql import and_, not_, or_
 
-from cosmos.core.config import settings
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
 from cosmos.db.models import Retailer, Reward, RewardConfig, RewardFileLog, RewardUpdate
 from cosmos.db.session import SyncSessionMaker
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 from cosmos.rewards.schemas import RewardUpdateSchema
 
@@ -52,12 +52,12 @@ class BlobFileAgent:
 
     def __init__(self) -> None:
         self.file_agent_type: FileAgentType
-        self.container_name = settings.BLOB_IMPORT_CONTAINER
-        self.schedule = settings.BLOB_IMPORT_SCHEDULE
+        self.container_name = reward_settings.BLOB_IMPORT_CONTAINER
+        self.schedule = reward_settings.BLOB_IMPORT_SCHEDULE
         blob_client_logger = logging.getLogger("blob-client")
-        blob_client_logger.setLevel(settings.BLOB_IMPORT_LOGGING_LEVEL)
+        blob_client_logger.setLevel(reward_settings.BLOB_IMPORT_LOGGING_LEVEL)
         self.blob_service_client: BlobServiceClient = BlobServiceClient.from_connection_string(
-            settings.BLOB_STORAGE_DSN, logger=blob_client_logger
+            reward_settings.BLOB_STORAGE_DSN, logger=blob_client_logger
         )
         # type hints for blob storage still not working properly, remove ignores if it gets fixed.
         with suppress(ResourceExistsError):
@@ -134,15 +134,17 @@ class BlobFileAgent:
                 db_session=db_session,
             )
         except BlobProcessingError as ex:
-            logger.error(f"Problem processing blob {blob.name} - {ex}. Moving to {settings.BLOB_ERROR_CONTAINER}")
-            self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+            logger.error(
+                f"Problem processing blob {blob.name} - {ex}. Moving to {reward_settings.BLOB_ERROR_CONTAINER}"
+            )
+            self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
             db_session.rollback()
         except UnicodeDecodeError as ex:
             logger.error(
                 f"Problem decoding blob {blob.name} (files should be utf-8 encoded) - {ex}. "
-                f"Moving to {settings.BLOB_ERROR_CONTAINER}"
+                f"Moving to {reward_settings.BLOB_ERROR_CONTAINER}"
             )
-            self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+            self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
             db_session.rollback()
         except RewardConfigNotActiveError as ex:
             logger.error(
@@ -151,11 +153,11 @@ class BlobFileAgent:
                     f"type: {ex.slug}, moving to errors blob container for manual fix"
                 )
             )
-            self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+            self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
             db_session.rollback()
         else:
             logger.debug(f"Archiving blob {blob.name}.")
-            self.move_blob(settings.BLOB_ARCHIVE_CONTAINER, blob_client, lease)
+            self.move_blob(reward_settings.BLOB_ARCHIVE_CONTAINER, blob_client, lease)
             db_session.add(RewardFileLog(file_name=blob.name, file_agent_type=self.file_agent_type))
             # commit all or nothing
             db_session.commit()
@@ -167,22 +169,24 @@ class BlobFileAgent:
             blob_client = self.blob_service_client.get_blob_client(self.container_name, blob.name)
 
             try:
-                lease = blob_client.acquire_lease(lease_duration=settings.BLOB_CLIENT_LEASE_SECONDS)
+                lease = blob_client.acquire_lease(lease_duration=reward_settings.BLOB_CLIENT_LEASE_SECONDS)
             except HttpResponseError:
                 msg = f"Skipping blob {blob.name} as we could not acquire a lease."
                 self._log_warn_and_alert(msg)
                 continue
 
             if self._blob_name_is_duplicate(db_session, file_name=blob.name):
-                logger.error(f"{blob.name} is a duplicate. Moving to {settings.BLOB_ERROR_CONTAINER} for checking")
-                self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+                logger.error(
+                    f"{blob.name} is a duplicate. Moving to {reward_settings.BLOB_ERROR_CONTAINER} for checking"
+                )
+                self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
                 continue
 
             if not blob.name.endswith(".csv"):
                 logger.error(
-                    f"{blob.name} does not have .csv ext. Moving to {settings.BLOB_ERROR_CONTAINER} for checking"
+                    f"{blob.name} does not have .csv ext. Moving to {reward_settings.BLOB_ERROR_CONTAINER} for checking"
                 )
-                self.move_blob(settings.BLOB_ERROR_CONTAINER, blob_client, lease)
+                self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
                 continue
 
             byte_content = blob_client.download_blob(lease=lease).readall()
