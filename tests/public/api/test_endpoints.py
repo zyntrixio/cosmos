@@ -7,17 +7,17 @@ from pytest_mock import MockerFixture
 from starlette import status
 
 from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import AccountHolder, MarketingPreference, MarketingPreferenceValueTypes, Retailer, Reward
 from cosmos.public.api.service import RESPONSE_TEMPLATE
+from cosmos.public.config import public_settings
 from tests.conftest import SetupType
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 
-PUBLIC_API_PREFIX = f"{settings.API_PREFIX}/public"
+PUBLIC_API_PREFIX = public_settings.PUBLIC_API_PREFIX
 
 
 def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, test_client: "TestClient") -> None:

@@ -42,7 +42,7 @@ def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Mock
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.SENTRY_DSN = "SENTRY_DSN"
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
 
@@ -137,7 +137,7 @@ def test_import_agent__process_csv_soft_deleted(
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.SENTRY_DSN = "SENTRY_DSN"
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
 
@@ -176,7 +176,7 @@ def test_import_agent__process_csv_not_soft_deleted(
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.SENTRY_DSN = "SENTRY_DSN"
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
 
@@ -217,7 +217,7 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
 
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.SENTRY_DSN = "SENTRY_DSN"
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
 
@@ -385,7 +385,7 @@ def test_updates_agent__process_csv_reward_code_fails_non_validating_rows(
 
     capture_message_spy = mocker.spy(file_agent_sentry_sdk, "capture_message")
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
     blob_name = "/re-test/rewards.update.test.csv"
@@ -420,7 +420,7 @@ def test_updates_agent__process_csv_reward_code_fails_malformed_csv_rows(
 
     capture_message_spy = mocker.spy(file_agent_sentry_sdk, "capture_message")
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
     blob_name = "/re-test/rewards.update.test.csv"
@@ -619,7 +619,7 @@ def test_updates_agent__process_updates_reward_code_not_allocated(
 
     capture_message_spy = mocker.spy(file_agent_sentry_sdk, "capture_message")
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
     mocker.patch.object(reward_agent, "_report_unknown_codes", autospec=True)
@@ -664,7 +664,7 @@ def test_updates_agent__process_updates_reward_code_does_not_exist(
     capture_message_spy = mocker.spy(file_agent_sentry_sdk, "capture_message")
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     # mocker.patch.object(RewardUpdatesAgent, "enqueue_reward_updates")
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
     mocker.patch.object(reward_agent, "_process_unallocated_codes", autospec=True)
@@ -783,7 +783,7 @@ def test_process_blobs_not_csv(setup_rewards: RewardsSetupType, mocker: MockerFi
         ]
     )
     mock_blob_service_client.get_blob_client.return_value = mocker.MagicMock(spec=BlobClient)
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_ERROR_CONTAINER = "ERROR-CONTAINER"
 
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)
@@ -826,7 +826,7 @@ def test_process_blobs_filename_is_duplicate(setup_rewards: RewardsSetupType, mo
         ]
     )
     mock_blob_service_client.get_blob_client.return_value = mocker.MagicMock(spec=BlobClient)
-    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.settings")
+    mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_ERROR_CONTAINER = "ERROR-CONTAINER"
 
     reward_agent.process_blobs(reward_config.retailer, db_session=db_session)

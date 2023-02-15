@@ -15,12 +15,12 @@ from cosmos.accounts.api.schemas import (
     GetAccountHolderByCredentials,
     MarketingPreference,
 )
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
 from cosmos.core.api.crud import create_retry_task
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_task
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.retailers.enums import EmailTemplateTypes
 from cosmos.retailers.schemas import (
@@ -86,7 +86,7 @@ class AccountService(Service):
 
             callback_task = await create_retry_task(
                 self.db_session,
-                task_type_name=settings.ENROLMENT_CALLBACK_TASK_NAME,
+                task_type_name=account_settings.ENROLMENT_CALLBACK_TASK_NAME,
                 params={
                     "account_holder_id": account_holder.id,
                     "callback_url": request_payload.callback_url,
@@ -95,7 +95,7 @@ class AccountService(Service):
             )
             welcome_email_task = await create_retry_task(
                 self.db_session,
-                task_type_name=settings.SEND_EMAIL_TASK_NAME,
+                task_type_name=account_settings.SEND_EMAIL_TASK_NAME,
                 params={
                     "account_holder_id": account_holder.id,
                     "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
@@ -104,7 +104,7 @@ class AccountService(Service):
             )
             activation_task = await create_retry_task(
                 self.db_session,
-                task_type_name=settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+                task_type_name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
                 params={
                     "account_holder_id": account_holder.id,
                     "callback_retry_task_id": callback_task.retry_task_id,

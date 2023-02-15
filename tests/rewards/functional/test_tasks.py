@@ -113,7 +113,7 @@ def test_reward_issuance_no_reward_and_allocation_is_requeued(
     mock_queue.return_value = fake_now
     from cosmos.rewards.tasks.issuance import sentry_sdk as mock_sentry_sdk
 
-    mock_settings = mocker.patch("cosmos.rewards.tasks.issuance.settings")
+    mock_settings = mocker.patch("cosmos.rewards.tasks.issuance.reward_settings")
     mock_settings.MESSAGE_IF_NO_PRE_LOADED_REWARDS = True
     sentry_spy = mocker.spy(mock_sentry_sdk, "capture_message")
 

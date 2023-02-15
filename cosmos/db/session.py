@@ -3,22 +3,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from cosmos.core.config import settings
+from cosmos.db.config import db_settings
 
-null_pool = {"poolclass": NullPool} if settings.db.USE_NULL_POOL or settings.TESTING else {}  # pragma: no cover
+null_pool = {"poolclass": NullPool} if db_settings.USE_NULL_POOL or db_settings.TESTING else {}  # pragma: no cover
 
 # application_name
 CONNECT_ARGS = {"application_name": "cosmos"}
 
 # future=True enables sqlalchemy core 2.0
 async_engine = create_async_engine(
-    settings.db.SQLALCHEMY_DATABASE_URI_ASYNC, pool_pre_ping=True, future=True, echo=settings.db.SQL_DEBUG, **null_pool
+    db_settings.SQLALCHEMY_DATABASE_URI_ASYNC, pool_pre_ping=True, future=True, echo=db_settings.SQL_DEBUG, **null_pool
 )
 sync_engine = create_engine(
-    settings.db.SQLALCHEMY_DATABASE_URI,
+    db_settings.SQLALCHEMY_DATABASE_URI,
     connect_args=CONNECT_ARGS,
     pool_pre_ping=True,
-    echo=settings.db.SQL_DEBUG,
+    echo=db_settings.SQL_DEBUG,
     future=True,
     **null_pool
 )

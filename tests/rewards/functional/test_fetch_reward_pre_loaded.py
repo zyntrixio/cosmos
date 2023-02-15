@@ -6,7 +6,7 @@ import pytest
 
 from retry_tasks_lib.db.models import RetryTask
 
-from cosmos.core.config import settings
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward import issue_agent_specific_reward
 from cosmos.rewards.fetch_reward.base import BaseAgent
 from cosmos.rewards.schemas import IssuanceTaskParams
@@ -74,7 +74,8 @@ def test_get_allocable_reward_ok(
     assert reward.issued_date == now.replace(tzinfo=None)
     assert reward.expiry_date == (now + timedelta(days=validity_days)).replace(tzinfo=None)
     assert (
-        reward.associated_url == f"{settings.PRE_LOADED_REWARD_BASE_URL}/reward?retailer={reward_config.retailer.slug}&"
+        reward.associated_url
+        == f"{reward_settings.PRE_LOADED_REWARD_BASE_URL}/reward?retailer={reward_config.retailer.slug}&"
         f"reward={reward.reward_uuid}"
     )
 

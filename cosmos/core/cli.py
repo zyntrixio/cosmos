@@ -13,10 +13,11 @@ from retry_tasks_lib.reporting import report_anomalous_tasks, report_queue_lengt
 from retry_tasks_lib.utils.error_handler import job_meta_handler
 from rq import Worker
 
-from cosmos.core.config import redis_raw, settings
+from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.db.session import SyncSessionMaker
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
 
 app = typer.Typer()
@@ -41,17 +42,17 @@ def api(
 @app.command()
 def task_worker(burst: bool = False) -> None:  # pragma: no cover
 
-    if settings.ACTIVATE_TASKS_METRICS:
+    if reward_settings.core.ACTIVATE_TASKS_METRICS:
         # -------- this is the prometheus monkey patch ------- #
         values.ValueClass = values.MultiProcessValue(os.getppid)
         # ---------------------------------------------------- #
         registry = CollectorRegistry()
         MultiProcessCollector(registry)
         logger.info("Starting prometheus metrics server...")
-        start_prometheus_server(settings.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
+        start_prometheus_server(reward_settings.core.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
 
     worker = Worker(
-        queues=settings.TASK_QUEUES,
+        queues=reward_settings.core.TASK_QUEUES,
         connection=redis_raw,
         log_job_description=True,
         exception_handlers=[job_meta_handler],
@@ -69,14 +70,14 @@ def cron_scheduler(
     if imports:
         scheduler.add_job(
             RewardImportAgent().do_import,
-            schedule_fn=lambda: settings.BLOB_IMPORT_SCHEDULE,
+            schedule_fn=lambda: reward_settings.BLOB_IMPORT_SCHEDULE,
             coalesce_jobs=True,
         )
 
     if updates:
         scheduler.add_job(
             RewardUpdatesAgent().do_import,
-            schedule_fn=lambda: settings.BLOB_IMPORT_SCHEDULE,
+            schedule_fn=lambda: reward_settings.BLOB_IMPORT_SCHEDULE,
             coalesce_jobs=True,
         )
 
@@ -84,22 +85,26 @@ def cron_scheduler(
         registry = CollectorRegistry()
         MultiProcessCollector(registry)
         logger.info("Starting prometheus metrics server...")
-        start_prometheus_server(settings.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
+        start_prometheus_server(reward_settings.core.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
 
         scheduler.add_job(
             report_anomalous_tasks,
-            kwargs={"session_maker": SyncSessionMaker, "project_name": settings.PROJECT_NAME, "gauge": task_statuses},
-            schedule_fn=lambda: settings.REPORT_ANOMALOUS_TASKS_SCHEDULE,
+            kwargs={
+                "session_maker": SyncSessionMaker,
+                "project_name": reward_settings.core.PROJECT_NAME,
+                "gauge": task_statuses,
+            },
+            schedule_fn=lambda: reward_settings.core.REPORT_ANOMALOUS_TASKS_SCHEDULE,
             coalesce_jobs=True,
         )
         scheduler.add_job(
             report_tasks_summary,
             kwargs={
                 "session_maker": SyncSessionMaker,
-                "project_name": settings.PROJECT_NAME,
+                "project_name": reward_settings.core.PROJECT_NAME,
                 "gauge": tasks_summary,
             },
-            schedule_fn=lambda: settings.REPORT_TASKS_SUMMARY_SCHEDULE,
+            schedule_fn=lambda: reward_settings.core.REPORT_TASKS_SUMMARY_SCHEDULE,
             coalesce_jobs=True,
         )
 
@@ -108,11 +113,11 @@ def cron_scheduler(
             report_queue_lengths,
             kwargs={
                 "redis": redis_raw,
-                "project_name": settings.PROJECT_NAME,
-                "queue_names": settings.TASK_QUEUES,
+                "project_name": reward_settings.core.PROJECT_NAME,
+                "queue_names": reward_settings.core.TASK_QUEUES,
                 "gauge": job_queue_summary,
             },
-            schedule_fn=lambda: settings.REPORT_JOB_QUEUE_LENGTH_SCHEDULE,
+            schedule_fn=lambda: reward_settings.core.REPORT_JOB_QUEUE_LENGTH_SCHEDULE,
             coalesce_jobs=True,
         )
 

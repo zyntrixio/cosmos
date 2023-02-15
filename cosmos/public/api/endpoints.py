@@ -7,16 +7,16 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import get_session
-from cosmos.core.config import settings
 from cosmos.public.api.schemas import RewardMicrositeResponseSchema
 from cosmos.public.api.service import PublicService
+from cosmos.public.config import public_settings
 
 if TYPE_CHECKING:
     from cosmos.db.models import Reward
 
 logger = logging.getLogger("opt-out-marketing")
 
-public_router = APIRouter(prefix=f"{settings.API_PREFIX}/public")
+public_router = APIRouter(prefix=public_settings.PUBLIC_API_PREFIX)
 
 
 @public_router.get(

@@ -6,6 +6,7 @@ from fastapi_prometheus_metrics.middleware import MetricsSecurityMiddleware, Pro
 from starlette.exceptions import HTTPException
 
 from cosmos.campaigns.api.endpoints import api_router
+from cosmos.campaigns.config import campaign_settings
 from cosmos.core.api.exception_handlers import (
     http_exception_handler,
     request_validation_handler,
@@ -15,12 +16,11 @@ from cosmos.core.api.exception_handlers import (
 )
 from cosmos.core.api.healthz import healthz_router
 from cosmos.core.api.service import ServiceError, ServiceListError
-from cosmos.core.config import settings
 
 
 def create_app() -> FastAPI:
     fapi = FastAPI(title="Campaign Management API")
-    fapi.include_router(api_router, prefix=f"{settings.API_PREFIX}/campaigns")
+    fapi.include_router(api_router, prefix=campaign_settings.CAMPAIGN_API_PREFIX)
     fapi.include_router(healthz_router)
     fapi.include_router(metrics_router)
     fapi.add_exception_handler(RequestValidationError, request_validation_handler)

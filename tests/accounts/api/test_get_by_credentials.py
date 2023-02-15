@@ -7,9 +7,9 @@ from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
-from cosmos.core.config import settings
 from cosmos.core.utils import generate_account_number
 from cosmos.db.models import Campaign, CampaignBalance
 from cosmos.retailers.enums import RetailerStatuses
@@ -95,7 +95,7 @@ def test_account_holder_get_by_credentials(
         )
 
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
         json={"email": account_holder.email, "account_number": account_holder.account_number},
         headers=accounts_auth_headers,
     )
@@ -167,7 +167,7 @@ def test_account_holder_get_by_credentials_no_balances(setup: SetupType, mock_ac
         db_session.commit()
 
         resp = client.post(
-            f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+            f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
             json={"email": account_holder.email, "account_number": account_holder.account_number},
             headers=accounts_auth_headers,
         )
@@ -193,7 +193,7 @@ def test_account_holder_get_by_credentials_inactive_account(setup: SetupType, mo
     db_session.commit()
 
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
         json={"email": account_holder.email, "account_number": account_holder.account_number},
         headers=accounts_auth_headers,
     )
@@ -204,7 +204,7 @@ def test_account_holder_get_by_credentials_inactive_account(setup: SetupType, mo
 
 def test_account_holder_get_by_credentials_invalid_retailer(mock_activity: "MagicMock") -> None:
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/INVALID/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/INVALID/accounts/getbycredentials",
         json={"email": "test@mail.com", "account_number": "will fail before this"},
         headers=accounts_auth_headers,
     )
@@ -217,7 +217,7 @@ def test_account_holder_get_by_credentials_missing_user(setup: SetupType, mock_a
     retailer = setup.retailer
 
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
         json={"email": "test@mail.com", "account_number": "DOESNOTEXISTS"},
         headers=accounts_auth_headers,
     )
@@ -230,7 +230,7 @@ def test_account_holder_get_by_credentials_mangled_json(setup: SetupType) -> Non
     retailer = setup.retailer
 
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
         data=b"{",
         headers=accounts_auth_headers,
     )
@@ -246,7 +246,7 @@ def test_account_holder_get_by_credentials_invalid_token(setup: SetupType, mock_
     _, retailer, account_holder = setup
 
     resp = client.post(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/getbycredentials",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
         json={"email": account_holder.email, "account_number": account_holder.account_number},
         headers={"Authorization": "Token wrong token e.g. potato"},
     )

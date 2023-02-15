@@ -31,7 +31,7 @@ from sqlalchemy.schema import Index
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
-from cosmos.core.config import settings
+from cosmos.core.config import core_settings
 from cosmos.core.utils import pence_integer_to_currency_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
@@ -68,7 +68,7 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     @property
     def marketing_opt_out_link(self) -> str:
         return (
-            f"{settings.PUBLIC_URL}{settings.API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe"
+            f"{core_settings.PUBLIC_URL}{core_settings.API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe"
             f"?u={self.opt_out_token}"
         )
 

@@ -7,9 +7,9 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
-from cosmos.core.config import settings
 from cosmos.db.models import Campaign, CampaignBalance
 from cosmos.retailers.enums import RetailerStatuses
 from tests.accounts import accounts_auth_headers, client, validate_error_response
@@ -91,7 +91,7 @@ def test_account_holder_get_by_id(
 
     num_tx_histories = 5
     resp = client.get(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/{account_holder.account_holder_uuid}"
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}"
         f"?tx_qty={num_tx_histories}",
         headers=accounts_auth_headers,
     )
@@ -164,7 +164,7 @@ def test_account_holder_get_by_id_no_balances(setup: SetupType, mock_activity: "
         db_session.commit()
 
         resp = client.get(
-            f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/{account_holder.account_holder_uuid}?tx_qty=5",
+            f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}?tx_qty=5",
             headers=accounts_auth_headers,
         )
 
@@ -207,7 +207,7 @@ def test_account_holder_get_by_id_pending_reward_count_more_than_one(
     )
 
     resp = client.get(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
         headers=accounts_auth_headers,
     )
 
@@ -229,7 +229,7 @@ def test_account_holder_get_by_id_inactive_account(setup: SetupType, mock_activi
     db_session.commit()
 
     resp = client.get(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
         headers=accounts_auth_headers,
     )
 
@@ -241,7 +241,7 @@ def test_account_holder_get_by_id_malformed_uuid(setup: SetupType, mock_activity
     retailer = setup.retailer
 
     resp = client.get(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/NOT-A-VALID-UUID",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/NOT-A-VALID-UUID",
         headers=accounts_auth_headers,
     )
 
@@ -253,7 +253,7 @@ def test_get_account_holder_get_by_id_invalid_token(setup: SetupType, mock_activ
     _, retailer, account_holder = setup
 
     resp = client.get(
-        f"{settings.API_PREFIX}/loyalty/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
         headers={"Authorization": "Token wrong token e.g. potato"},
     )
 

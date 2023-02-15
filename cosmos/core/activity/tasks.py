@@ -4,11 +4,11 @@ from typing import Iterable
 
 from cosmos_message_lib import get_connection_and_exchange, verify_payload_and_send_activity
 
-from cosmos.core.config import settings
+from cosmos.core.config import core_settings
 
 connection, exchange = get_connection_and_exchange(
-    rabbitmq_dsn=settings.RABBITMQ_DSN,
-    message_exchange_name=settings.MESSAGE_EXCHANGE_NAME,
+    rabbitmq_dsn=core_settings.RABBITMQ_DSN,
+    message_exchange_name=core_settings.MESSAGE_EXCHANGE_NAME,
 )
 
 

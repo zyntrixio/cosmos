@@ -24,22 +24,22 @@ from admin.activity_utils.schemas import (
     RewardRuleUpdatedActivitySchema,
     RewardStatusWholeActivitySchema,
 )
-from cosmos.core.config import settings
+from admin.config import admin_settings
 from cosmos.core.utils import pence_integer_to_currency_string
 
 
 class ActivityType(Enum):
-    CAMPAIGN = f"activity.{settings.ADMIN_PROJECT_NAME}.campaign.change"
-    EARN_RULE = f"activity.{settings.ADMIN_PROJECT_NAME}.earn_rule.change"
-    REWARD_RULE = f"activity.{settings.ADMIN_PROJECT_NAME}.reward_rule.change"
-    BALANCE_CHANGE = f"activity.{settings.ADMIN_PROJECT_NAME}.balance.change"
-    CAMPAIGN_MIGRATION = f"activity.{settings.ADMIN_PROJECT_NAME}.campaign.migration"
-    RETAILER_CREATED = f"activity.{settings.ADMIN_PROJECT_NAME}.retailer.created"
-    RETAILER_CHANGED = f"activity.{settings.ADMIN_PROJECT_NAME}.retailer.changed"
-    RETAILER_DELETED = f"activity.{settings.ADMIN_PROJECT_NAME}.retailer.deleted"
-    RETAILER_STATUS = f"activity.{settings.ADMIN_PROJECT_NAME}.retailer.status"
-    REWARD_STATUS = f"activity.{settings.ADMIN_PROJECT_NAME}.reward.status"
-    ACCOUNT_DELETED = f"activity.{settings.ADMIN_PROJECT_NAME}.account.deleted"
+    CAMPAIGN = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.campaign.change"
+    EARN_RULE = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.earn_rule.change"
+    REWARD_RULE = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.reward_rule.change"
+    BALANCE_CHANGE = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.balance.change"
+    CAMPAIGN_MIGRATION = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.campaign.migration"
+    RETAILER_CREATED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.created"
+    RETAILER_CHANGED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.changed"
+    RETAILER_DELETED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.deleted"
+    RETAILER_STATUS = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.status"
+    REWARD_STATUS = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.reward.status"
+    ACCOUNT_DELETED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.account.deleted"
 
     @classmethod
     def get_campaign_created_activity_data(

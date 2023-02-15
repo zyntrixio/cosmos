@@ -7,8 +7,9 @@ import requests
 from cryptography.fernet import Fernet
 from fastapi import status
 
-from cosmos.core.config import redis_raw, settings
+from cosmos.core.config import redis_raw
 from cosmos.db.models import Reward
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward.base import AgentError, BaseAgent
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -96,7 +97,7 @@ class Jigsaw(BaseAgent):
     CARD_REF_KEY = "customer_card_ref"
     REVERSAL_CARD_REF_KEY = "reversal_customer_card_ref"
     REVERSAL_FLAG_KEY = "might_need_reversal"
-    REDIS_TOKEN_KEY = f"{settings.REDIS_KEY_PREFIX}:agent:jigsaw:auth_token"
+    REDIS_TOKEN_KEY = f"{reward_settings.core.REDIS_KEY_PREFIX}:agent:jigsaw:auth_token"
     STATUS_CODE_MAP = {
         "5000": status.HTTP_500_INTERNAL_SERVER_ERROR,
         "5003": status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -130,7 +131,7 @@ class Jigsaw(BaseAgent):
         self.base_url: str = self.config["base_url"]
         self.customer_card_ref: str | None = None
         self.reward_config_required_values = reward_config.load_required_fields_values()
-        self.fernet = Fernet(settings.JIGSAW_AGENT_ENCRYPTION_KEY.encode())
+        self.fernet = Fernet(reward_settings.JIGSAW_AGENT_ENCRYPTION_KEY.encode())
         self.special_actions_map: dict[str, "SpecialActionsMap"] = {
             # BPL-439: If Jigsaw returns a 4000 status with a message with isError set as True and the id equal to
             # 40028 the customer_card_ref we provided is not unique and we need to generate a new one and try again.
@@ -336,8 +337,8 @@ class Jigsaw(BaseAgent):
             url_kwargs={"base_url": self.base_url},
             exclude_from_label_url=[],
             json={
-                "Username": settings.JIGSAW_AGENT_USERNAME,
-                "Password": settings.JIGSAW_AGENT_PASSWORD,
+                "Username": reward_settings.JIGSAW_AGENT_USERNAME,
+                "Password": reward_settings.JIGSAW_AGENT_PASSWORD,
             },
         )
 

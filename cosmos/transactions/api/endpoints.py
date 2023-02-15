@@ -3,13 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import RetailerDependency, UserIsAuthorised, get_session
 from cosmos.core.api.service import ServiceError
-from cosmos.core.config import settings
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 from cosmos.transactions.api.service import TransactionService
+from cosmos.transactions.config import tx_settings
 
-user_is_authorised = UserIsAuthorised(expected_token=settings.VELA_API_AUTH_TOKEN)
+user_is_authorised = UserIsAuthorised(expected_token=tx_settings.VELA_API_AUTH_TOKEN)
 api_router = APIRouter(dependencies=[Depends(user_is_authorised)])
 
 

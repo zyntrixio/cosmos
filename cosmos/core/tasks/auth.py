@@ -4,7 +4,7 @@ import requests
 
 from urllib3 import Retry
 
-from cosmos.core.config import settings
+from cosmos.core.config import core_settings
 
 from . import logger, oauth_token_cache  # noqa: F401
 
@@ -22,10 +22,10 @@ def retry_session() -> requests.Session:  # pragma: no cover
 def _get_new_token() -> dict[str, str]:
     try:
         resp = retry_session().get(
-            f"{settings.AZURE_OAUTH2_TOKEN_URL}/metadata/identity/oauth2/token",
+            f"{core_settings.AZURE_OAUTH2_TOKEN_URL}/metadata/identity/oauth2/token",
             params={
                 "api-version": "2019-06-04",
-                "resource": settings.CALLBACK_OAUTH2_RESOURCE,
+                "resource": core_settings.CALLBACK_OAUTH2_RESOURCE,
             },
             headers={"Metadata": "true"},
         )

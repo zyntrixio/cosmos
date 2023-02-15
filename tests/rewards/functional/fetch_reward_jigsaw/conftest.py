@@ -8,7 +8,8 @@ from cryptography.fernet import Fernet
 from retry_tasks_lib.db.models import TaskTypeKey, TaskTypeKeyValue
 from sqlalchemy.future import select
 
-from cosmos.core.config import redis_raw, settings
+from cosmos.core.config import redis_raw
+from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward.jigsaw import Jigsaw
 
 if TYPE_CHECKING:
@@ -25,13 +26,13 @@ def clean_redis() -> Generator:
 
 @pytest.fixture(scope="module", autouse=True)
 def populate_fernet_key() -> Generator:
-    setattr(settings, "JIGSAW_AGENT_ENCRYPTION_KEY", Fernet.generate_key().decode())  # noqa: B010
+    setattr(reward_settings, "JIGSAW_AGENT_ENCRYPTION_KEY", Fernet.generate_key().decode())  # noqa: B010
     yield
 
 
 @pytest.fixture(scope="module")
 def fernet() -> Fernet:
-    return Fernet(settings.JIGSAW_AGENT_ENCRYPTION_KEY.encode())
+    return Fernet(reward_settings.JIGSAW_AGENT_ENCRYPTION_KEY.encode())
 
 
 @pytest.fixture(scope="function")
