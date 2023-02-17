@@ -14,6 +14,16 @@ class DatabaseSettings(BaseSettings):
 
         return True if "pytest" in command or any("test" in arg for arg in args) else v
 
+    REDIS_URL: str
+
+    @validator("REDIS_URL")
+    @classmethod
+    def assemble_redis_url(cls, v: str, values: dict) -> str:
+        if values["TESTING"]:
+            base_url, db_n = v.rsplit("/", 1)
+            return f"{base_url}/{int(db_n) + 1}"
+        return v
+
     SQL_DEBUG: bool = False
     USE_NULL_POOL: bool = False
     POSTGRES_HOST: str = "localhost"

@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings
+from cosmos.core.key_vault import key_vault
 
 
 class AdminSettings(BaseSettings):
@@ -31,8 +32,8 @@ class AdminSettings(BaseSettings):
 
     @validator("SECRET_KEY", always=True, pre=False)
     @classmethod
-    def fetch_admin_secret_key(cls, v: str, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-event-horizon-secret-key")
+    def fetch_admin_secret_key(cls, v: str) -> str:
+        return v or key_vault.get_secret("bpl-event-horizon-secret-key")
 
     ## AAD SSO
     OAUTH_REDIRECT_URI: str | None = None
@@ -45,8 +46,8 @@ class AdminSettings(BaseSettings):
 
     @validator("EVENT_HORIZON_CLIENT_SECRET")
     @classmethod
-    def fetch_admin_client_secret(cls, v: str | None, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-event-horizon-sso-client-secret")
+    def fetch_admin_client_secret(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-event-horizon-sso-client-secret")
 
     class Config:
         case_sensitive = True

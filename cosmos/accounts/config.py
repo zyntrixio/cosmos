@@ -1,6 +1,7 @@
 from pydantic import BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings
+from cosmos.core.key_vault import key_vault
 
 
 class AccountSettings(BaseSettings):
@@ -11,8 +12,8 @@ class AccountSettings(BaseSettings):
 
     @validator("POLARIS_API_AUTH_TOKEN")
     @classmethod
-    def fetch_polaris_api_auth_token(cls, v: str | None, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-polaris-api-auth-token")
+    def fetch_polaris_api_auth_token(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-polaris-api-auth-token")
 
     ACCOUNT_HOLDER_ACTIVATION_TASK_NAME: str = "account-holder-activation"
     ENROLMENT_CALLBACK_TASK_NAME: str = "enrolment-callback"

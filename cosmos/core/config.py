@@ -14,7 +14,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-from cosmos.core.key_vault import KeyVault
+from cosmos.core.key_vault import key_vault
 from cosmos.db.config import DatabaseSettings, db_settings
 from cosmos.version import __version__
 
@@ -44,24 +44,6 @@ class CoreSettings(BaseSettings):
     API_PREFIX: str = "/api"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    TESTING: bool = False
-
-    @validator("TESTING")
-    @classmethod
-    def is_test(cls, v: bool) -> bool:
-        command = sys.argv[0]
-        args = sys.argv[1:] if len(sys.argv) > 1 else []
-
-        return True if "pytest" in command or any("test" in arg for arg in args) else v
-
-    MIGRATING: bool = False
-
-    @validator("MIGRATING")
-    @classmethod
-    def is_migration(cls, v: bool) -> bool:
-        command = sys.argv[0]
-        return True if "alembic" in command else v
-
     PUBLIC_URL: AnyHttpUrl
 
     PROJECT_NAME: str = "cosmos"
@@ -82,32 +64,11 @@ class CoreSettings(BaseSettings):
 
     db: DatabaseSettings = db_settings
 
-    KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
-    KEY_VAULT: KeyVault = None  # type: ignore [assignment]
-
-    @validator("KEY_VAULT", pre=True, always=True)
-    @classmethod
-    def load_key_vault(cls, _: None, values: dict[str, Any]) -> KeyVault:
-        if key_vault_uri := values.get("KEY_VAULT_URI"):
-            return KeyVault(key_vault_uri, values["TESTING"] or values["MIGRATING"])
-
-        raise KeyError("required var KEY_VAULT_URI is not set.")
-
     HTTP_REQUEST_RETRY_TIMES: int = 3
 
     CALLBACK_OAUTH2_RESOURCE: str = "api://midas-nonprod"
 
     AZURE_OAUTH2_TOKEN_URL: str = "http://169.254.169.254"
-
-    REDIS_URL: str
-
-    @validator("REDIS_URL")
-    @classmethod
-    def assemble_redis_url(cls, v: str, values: dict[str, Any]) -> str:
-        if values["TESTING"]:
-            base_url, db_n = v.rsplit("/", 1)
-            return f"{base_url}/{int(db_n) + 1}"
-        return v
 
     TASK_QUEUE_PREFIX: str = "cosmos:"
     TASK_QUEUES: list[str] | None = None
@@ -140,13 +101,13 @@ class CoreSettings(BaseSettings):
 
     @validator("MAILJET_API_PUBLIC_KEY")
     @classmethod
-    def fetch_mailjet_api_public_key(cls, v: str, values: dict) -> str:
-        return v or values["KEY_VAULT"].get_secret("bpl-mailjet-api-public-key")
+    def fetch_mailjet_api_public_key(cls, v: str) -> str:
+        return v or key_vault.get_secret("bpl-mailjet-api-public-key")
 
     @validator("MAILJET_API_SECRET_KEY")
     @classmethod
-    def fetch_mailjet_api_secret_key(cls, v: str, values: dict) -> str:
-        return v or values["KEY_VAULT"].get_secret("bpl-mailjet-api-secret-key")
+    def fetch_mailjet_api_secret_key(cls, v: str) -> str:
+        return v or key_vault.get_secret("bpl-mailjet-api-secret-key")
 
     class Config:
         case_sensitive = True
@@ -221,7 +182,7 @@ dictConfig(
 # >>> redis.get('test')
 # 'hello'
 redis = Redis.from_url(
-    core_settings.REDIS_URL,
+    core_settings.db.REDIS_URL,
     socket_connect_timeout=3,
     socket_keepalive=True,
     retry_on_timeout=False,
@@ -235,7 +196,7 @@ redis = Redis.from_url(
 # >>> redis.get('test')
 # b'hello'
 redis_raw = Redis.from_url(
-    core_settings.REDIS_URL,
+    core_settings.db.REDIS_URL,
     socket_connect_timeout=3,
     socket_keepalive=True,
     retry_on_timeout=False,

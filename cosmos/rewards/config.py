@@ -3,6 +3,7 @@ import logging
 from pydantic import AnyHttpUrl, BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings
+from cosmos.core.key_vault import key_vault
 
 
 class RewardSettings(BaseSettings):
@@ -24,15 +25,15 @@ class RewardSettings(BaseSettings):
 
     @validator("JIGSAW_AGENT_PASSWORD", pre=True, always=True)
     @classmethod
-    def fetch_jigsaw_agent_password(cls, v: str | None, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-carina-agent-jigsaw-password")
+    def fetch_jigsaw_agent_password(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-carina-agent-jigsaw-password")
 
     JIGSAW_AGENT_ENCRYPTION_KEY: str = None  # type: ignore [assignment]
 
     @validator("JIGSAW_AGENT_ENCRYPTION_KEY", pre=True, always=True)
     @classmethod
-    def fetch_jigsaw_agent_encryption_key(cls, v: str | None, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-carina-agent-jigsaw-encryption-key")
+    def fetch_jigsaw_agent_encryption_key(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-carina-agent-jigsaw-encryption-key")
 
     REWARD_ISSUANCE_TASK_NAME = "reward-issuance"
     REWARD_ISSUANCE_REQUEUE_BACKOFF_SECONDS: int = 60 * 60 * 12  # 12 hours

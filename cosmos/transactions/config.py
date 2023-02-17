@@ -1,6 +1,7 @@
 from pydantic import BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings
+from cosmos.core.key_vault import key_vault
 
 
 class TxSettings(BaseSettings):
@@ -12,8 +13,8 @@ class TxSettings(BaseSettings):
 
     @validator("VELA_API_AUTH_TOKEN")
     @classmethod
-    def fetch_vela_api_auth_token(cls, v: str | None, values: dict) -> str:
-        return v or values["core"].KEY_VAULT.get_secret("bpl-vela-api-auth-token")
+    def fetch_vela_api_auth_token(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-vela-api-auth-token")
 
     class Config:
         case_sensitive = True
