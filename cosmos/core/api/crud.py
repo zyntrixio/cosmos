@@ -1,8 +1,6 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from retry_tasks_lib.db.models import RetryTask
-from retry_tasks_lib.utils.asynchronous import async_create_task
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased, joinedload
 
@@ -11,13 +9,6 @@ from cosmos.db.models import AccountHolder, Reward
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-async def create_retry_task(db_session: "AsyncSession", task_type_name: str, params: dict) -> RetryTask:
-    task = await async_create_task(task_type_name=task_type_name, db_session=db_session, params=params)
-    db_session.add(task)
-    await db_session.flush()  # TODO: Check to see if this gets committed in the library. If so, alter the library
-    return task
 
 
 async def commit(db_session: "AsyncSession") -> None:

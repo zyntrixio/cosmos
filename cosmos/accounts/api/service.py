@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import yaml
 
 from pydantic import UUID4, ValidationError
+from retry_tasks_lib.utils.asynchronous import async_create_task
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.accounts.api import crud
@@ -17,7 +18,6 @@ from cosmos.accounts.api.schemas import (
 )
 from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
-from cosmos.core.api.crud import create_retry_task
 from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_task
@@ -84,7 +84,7 @@ class AccountService(Service):
                 result = ErrorCode.ACCOUNT_EXISTS.name
                 return ServiceResult(error=ServiceError(error_code=ErrorCode.ACCOUNT_EXISTS))
 
-            callback_task = await create_retry_task(
+            callback_task = await async_create_task(
                 self.db_session,
                 task_type_name=account_settings.ENROLMENT_CALLBACK_TASK_NAME,
                 params={
@@ -93,7 +93,7 @@ class AccountService(Service):
                     "third_party_identifier": request_payload.third_party_identifier,
                 },
             )
-            welcome_email_task = await create_retry_task(
+            welcome_email_task = await async_create_task(
                 self.db_session,
                 task_type_name=account_settings.SEND_EMAIL_TASK_NAME,
                 params={
@@ -102,7 +102,7 @@ class AccountService(Service):
                     "retailer_id": self.retailer.id,
                 },
             )
-            activation_task = await create_retry_task(
+            activation_task = await async_create_task(
                 self.db_session,
                 task_type_name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
                 params={
