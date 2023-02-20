@@ -115,7 +115,7 @@ class BaseAgent(ABC):
                 reward_slug=self.reward_config.slug,
                 activity_timestamp=issued_date,
                 reward_uuid=reward_uuid,
-                pending_reward_id=self.task_params.pending_reward_id,
+                pending_reward_uuid=self.task_params.pending_reward_uuid,
                 campaign=self.campaign,
                 reason=self.task_params.reason,
             ),

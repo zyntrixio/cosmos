@@ -709,25 +709,26 @@ def create_transaction_earn(db_session: "Session") -> Callable:
 
 @pytest.fixture(scope="function")
 def reward_issuance_task_type(db_session: "Session") -> TaskType:
-    task_type = TaskType(
+    tt = TaskType(
         name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
-        path="path.to.func",
-        error_handler_path="path.to.error_handler",
-        queue_name="queue-name",
+        path="cosmos.rewards.tasks.issuance.issue_reward",
+        error_handler_path="cosmos.core.tasks.error_handlers.default_handler",
+        queue_name="cosmos:default",
     )
-    db_session.add(task_type)
+    db_session.add(tt)
     db_session.flush()
-
-    db_session.add_all(
+    db_session.bulk_save_objects(
         [
-            TaskTypeKey(task_type_id=task_type.task_type_id, name=key_name, type=key_type)
+            TaskTypeKey(task_type_id=tt.task_type_id, name=key_name, type=key_type)
             for key_name, key_type in (
-                ("account_holder_id", "INTEGER"),
                 ("campaign_id", "INTEGER"),
+                ("account_holder_id", "INTEGER"),
                 ("reward_config_id", "INTEGER"),
-                ("pending_reward_id", "STRING"),
+                ("pending_reward_uuid", "STRING"),
                 ("reason", "STRING"),
                 ("agent_state_params_raw", "STRING"),
             )
         ]
     )
+    db_session.commit()
+    return tt

@@ -3,11 +3,10 @@ from typing import TYPE_CHECKING, Callable, Generator, NamedTuple
 import pytest
 
 from pytest_mock import MockerFixture
-from retry_tasks_lib.db.models import RetryTask, TaskType, TaskTypeKey, TaskTypeKeyValue
+from retry_tasks_lib.db.models import RetryTask, TaskType, TaskTypeKeyValue
 
 from cosmos.db.models import RetailerFetchType, Reward, RewardConfig
 from cosmos.rewards.activity.enums import IssuedRewardReasons
-from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward.base import BaseAgent
 
 if TYPE_CHECKING:
@@ -29,33 +28,6 @@ def setup_rewards(
     db_session: "Session", reward_config: RewardConfig, reward: Reward
 ) -> Generator[RewardsSetupType, None, None]:
     yield RewardsSetupType(db_session, reward_config, reward)
-
-
-@pytest.fixture(scope="function")
-def reward_issuance_task_type(db_session: "Session") -> TaskType:
-    tt = TaskType(
-        name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
-        path="cosmos.rewards.tasks.issuance.issue_reward",
-        error_handler_path="cosmos.core.tasks.error_handlers.default_handler",
-        queue_name="cosmos:default",
-    )
-    db_session.add(tt)
-    db_session.flush()
-    db_session.bulk_save_objects(
-        [
-            TaskTypeKey(task_type_id=tt.task_type_id, name=key_name, type=key_type)
-            for key_name, key_type in (
-                ("campaign_id", "INTEGER"),
-                ("account_holder_id", "INTEGER"),
-                ("reward_config_id", "INTEGER"),
-                ("pending_reward_id", "STRING"),
-                ("reason", "STRING"),
-                ("agent_state_params_raw", "STRING"),
-            )
-        ]
-    )
-    db_session.commit()
-    return tt
 
 
 @pytest.fixture(scope="function")

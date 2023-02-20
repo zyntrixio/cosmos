@@ -235,6 +235,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
+        sa.Column("slug", sa.String(), nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("fetch_type_id", sa.BigInteger(), nullable=False),
         sa.Column("active", sa.Boolean(), nullable=False),
@@ -242,7 +243,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["fetch_type_id"], ["fetch_type.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("slug", "retailer_id", name="slug_retailer_unq"),
     )
+    op.create_index(op.f("ix_reward_config_slug"), "reward_config", ["slug"], unique=False)
     op.create_table(
         "task_type_key",
         sa.Column(

@@ -68,7 +68,7 @@ class CampaignService(Service):
             task_type_name=reward_settings.REWARD_ISSUANCE_TASK_NAME,
             params_list=[
                 {
-                    "pending_reward_id": str(pending_reward_uuid),  # FIXME: alter the param to be pending_reward_uuid
+                    "pending_reward_uuid": str(pending_reward_uuid),
                     "account_holder_id": account_holder_id,
                     "campaign_id": campaign.id,
                     "reward_config_id": campaign.reward_rule.reward_config_id,
