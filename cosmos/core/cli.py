@@ -19,6 +19,7 @@ from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
+from cosmos.rewards.scheduled_tasks.pending_rewards import process_pending_rewards
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
@@ -63,7 +64,11 @@ def task_worker(burst: bool = False) -> None:  # pragma: no cover
 
 @app.command()
 def cron_scheduler(
-    imports: bool = True, updates: bool = True, report_tasks: bool = True, report_rq_queues: bool = True
+    imports: bool = True,
+    updates: bool = True,
+    pending_rewards: bool = True,
+    report_tasks: bool = True,
+    report_rq_queues: bool = True,
 ) -> None:  # pragma: no cover
 
     logger.info("Initialising scheduler...")
@@ -78,6 +83,13 @@ def cron_scheduler(
         scheduler.add_job(
             RewardUpdatesAgent().do_import,
             schedule_fn=lambda: reward_settings.BLOB_IMPORT_SCHEDULE,
+            coalesce_jobs=True,
+        )
+
+    if pending_rewards:
+        scheduler.add_job(
+            process_pending_rewards,
+            schedule_fn=lambda: reward_settings.PENDING_REWARDS_SCHEDULE,
             coalesce_jobs=True,
         )
 

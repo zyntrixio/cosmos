@@ -38,6 +38,8 @@ class RewardSettings(BaseSettings):
     REWARD_ISSUANCE_TASK_NAME = "reward-issuance"
     REWARD_ISSUANCE_REQUEUE_BACKOFF_SECONDS: int = 60 * 60 * 12  # 12 hours
 
+    PENDING_REWARDS_SCHEDULE: str = "0 2 * * *"
+
     class Config:
         case_sensitive = True
         env_file = "local.env"
