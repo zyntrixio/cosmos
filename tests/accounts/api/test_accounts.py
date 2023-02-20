@@ -259,3 +259,55 @@ def test_get_account_holder_get_by_id_invalid_token(setup: SetupType, mock_activ
 
     validate_error_response(resp, errors.INVALID_TOKEN)
     mock_activity.assert_not_called()
+
+
+def test_account_holder_get_by_id_tx_history_no_store(
+    setup: SetupType,
+    mocker: MockerFixture,
+    campaign_with_rules: Campaign,
+    create_transaction: Callable,
+    create_transaction_earn: Callable,
+    mock_activity: "MagicMock",
+) -> None:
+
+    db_session, retailer, account_holder = setup
+    account_holder.status = AccountHolderStatuses.ACTIVE
+    db_session.commit()
+
+    now = datetime.now(tz=timezone.utc)
+    mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
+    mock_datetime.now.return_value = now
+    amount = 1000
+    dt = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    tx = create_transaction(
+        account_holder=account_holder,
+        **{"mid": "a-mid", "transaction_id": "tx-id", "amount": amount, "datetime": dt},
+    )
+    create_transaction_earn(
+        tx,
+        earn_amount=amount,
+        loyalty_type=LoyaltyTypes.ACCUMULATOR,
+        earn_rule=campaign_with_rules.earn_rule,
+    )
+
+    resp = client.get(
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
+        headers=accounts_auth_headers,
+    )
+
+    assert resp.status_code == 200
+    resp_json = resp.json()
+    assert resp_json["UUID"] == str(account_holder.account_holder_uuid)
+
+    expected_transaction_history = [
+        {
+            "datetime": int(datetime(2023, 1, 1, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+            "amount": "10.00",
+            "amount_currency": "GBP",
+            "location": "N/A",
+            "loyalty_earned_value": "10.00",
+            "loyalty_earned_type": "ACCUMULATOR",
+        }
+    ]
+
+    assert resp_json["transaction_history"] == expected_transaction_history
