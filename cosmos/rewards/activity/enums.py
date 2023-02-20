@@ -153,19 +153,19 @@ class ActivityType(ActivityTypeMixin, Enum):
         reward_slug: str,
         activity_timestamp: datetime,
         reward_uuid: str,
-        pending_reward_id: str | None,
+        pending_reward_uuid: str | None,
         campaign: "Campaign | None",
         reason: IssuedRewardReasons,
     ) -> dict:
         data_payload = {"new_status": "issued", "reward_slug": reward_slug}
 
         if reason in (IssuedRewardReasons.CONVERTED, IssuedRewardReasons.CAMPAIGN_END):
-            if not (campaign and pending_reward_id):
-                raise ValueError("Pending reward conversion requires a campaign and pending_reward_id")
+            if not (campaign and pending_reward_uuid):
+                raise ValueError("Pending reward conversion requires a campaign and pending_reward_uuid")
 
             summary = f"{retailer.name} Pending Reward issued for {campaign.name}"
             data_payload["original_status"] = "pending"
-            data_payload["pending_reward_id"] = pending_reward_id
+            data_payload["pending_reward_uuid"] = pending_reward_uuid
 
         else:
             summary = f"{retailer.name} Reward issued"

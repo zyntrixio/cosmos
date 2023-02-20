@@ -43,6 +43,19 @@ task_type_data = [
             TaskTypeKeyData(name="third_party_identifier", type=STRING),
         ],
     ),
+    TaskTypeData(
+        name="reward-issuance",
+        path="cosmos.rewards.tasks.issuance.issue_reward",
+        error_handler_path="cosmos.core.tasks.error_handlers.default_handler",
+        keys=[
+            TaskTypeKeyData(name="campaign_id", type=INTEGER),
+            TaskTypeKeyData(name="account_holder_id", type=INTEGER),
+            TaskTypeKeyData(name="reward_config_id", type=INTEGER),
+            TaskTypeKeyData(name="pending_reward_uuid", type=STRING),
+            TaskTypeKeyData(name="reason", type=STRING),
+            TaskTypeKeyData(name="agent_state_params_raw", type=STRING),
+        ],
+    ),
 ]
 
 

@@ -48,42 +48,42 @@ async def test__issue_pending_rewards_for_campaign(
     task_params = [task.get_params() for task in reward_issuance_tasks]
     expected_task_params = [
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_a.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,
             "reason": "CONVERTED",
         },
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_b.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,
             "reason": "CONVERTED",
         },
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_b.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,
             "reason": "CONVERTED",
         },
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_c.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,
             "reason": "CONVERTED",
         },
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_c.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,
             "reason": "CONVERTED",
         },
         {
-            "pending_reward_id": ANY,
+            "pending_reward_uuid": ANY,
             "account_holder_id": account_holder_c.id,
             "campaign_id": campaign_with_rules.id,
             "reward_config_id": campaign_with_rules.reward_rule.reward_config_id,

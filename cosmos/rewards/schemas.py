@@ -21,7 +21,7 @@ class IssuanceTaskParams(BaseModel):
     campaign_id: int
     account_holder_id: int
     reward_config_id: int
-    pending_reward_id: str | None
+    pending_reward_uuid: str | None
     reason: IssuedRewardReasons
 
     @validator("reason", pre=True, always=True)
