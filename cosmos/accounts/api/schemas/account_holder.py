@@ -133,7 +133,7 @@ class TransactionHistorySchema(BaseModel):
     datetime_: int = Field(..., alias="datetime")
     amount: str
     amount_currency: str
-    location: str | None = None
+    location: str = "N/A"
     loyalty_earned_value: str | None = None
     loyalty_earned_type: str | None = None
 
