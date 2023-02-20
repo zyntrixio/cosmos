@@ -377,7 +377,6 @@ click = ">=8.0.0"
 mypy-extensions = ">=0.4.3"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
-tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -516,9 +515,6 @@ category = "dev"
 optional = false
 python-versions = ">=3.7"
 
-[package.dependencies]
-tomli = {version = "*", optional = true, markers = "python_full_version <= \"3.11.0a6\" and extra == \"toml\""}
-
 [package.extras]
 toml = ["tomli"]
 
@@ -624,22 +620,6 @@ url = "https://pypi.tools.uksouth.bink.sh/simple"
 reference = "bink-pypi"
 
 [[package]]
-name = "exceptiongroup"
-version = "1.1.0"
-description = "Backport of PEP 654 (exception groups)"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.extras]
-test = ["pytest (>=6)"]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.tools.uksouth.bink.sh/simple"
-reference = "bink-pypi"
-
-[[package]]
 name = "executing"
 version = "1.2.0"
 description = "Get the currently executing AST node of a frame, and other information"
@@ -738,7 +718,7 @@ reference = "bink-pypi"
 
 [[package]]
 name = "flask-admin"
-version = "1.6.0"
+version = "1.6.1"
 description = "Simple and extensible admin interface framework for Flask"
 category = "main"
 optional = true
@@ -1231,7 +1211,6 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 mypy-extensions = ">=0.4.3"
-tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
 typing-extensions = ">=3.10"
 
 [package.extras]
@@ -1625,11 +1604,9 @@ python-versions = ">=3.7"
 [package.dependencies]
 attrs = ">=19.2.0"
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
-exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
-tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
@@ -1867,7 +1844,6 @@ python-versions = ">=3.10"
 
 [package.dependencies]
 mypy = ">=0.981"
-tomli = {version = ">=2.0.1,<3.0.0", markers = "python_version < \"3.11\""}
 
 [package.source]
 type = "legacy"
@@ -1942,11 +1918,11 @@ reference = "bink-pypi"
 
 [[package]]
 name = "rq"
-version = "1.12.0"
+version = "1.13.0"
 description = "RQ is a simple, lightweight, library for creating background jobs, and processing them."
 category = "main"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [package.dependencies]
 click = ">=5.0.0"
@@ -2197,19 +2173,6 @@ url = "https://pypi.tools.uksouth.bink.sh/simple"
 reference = "bink-pypi"
 
 [[package]]
-name = "tomli"
-version = "2.0.1"
-description = "A lil' TOML parser"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.source]
-type = "legacy"
-url = "https://pypi.tools.uksouth.bink.sh/simple"
-reference = "bink-pypi"
-
-[[package]]
 name = "traitlets"
 version = "5.9.0"
 description = "Traitlets Python configuration system"
@@ -2326,7 +2289,7 @@ reference = "bink-pypi"
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.6"
+version = "6.0.12.7"
 description = "Typing stubs for PyYAML"
 category = "dev"
 optional = false
@@ -2635,8 +2598,8 @@ admin = ["Flask", "Flask-Admin", "Authlib", "Flask-WTF", "cryptography"]
 
 [metadata]
 lock-version = "1.1"
-python-versions = "^3.10"
-content-hash = "75d34ca2b0832d034e0a3d3a7f06eea7abd960eeec2893d46e9779d7ce032460"
+python-versions = "^3.11"
+content-hash = "b1bf0fa73faeeed4fbb2515c3ccf57723da6f2529ff1b64adbbcb7a54d6e8c13"
 
 [metadata.files]
 alembic = [
@@ -3044,10 +3007,6 @@ email-validator = [
     {file = "email_validator-1.3.1-py2.py3-none-any.whl", hash = "sha256:49a72f5fa6ed26be1c964f0567d931d10bf3fdeeacdf97bc26ef1cd2a44e0bda"},
     {file = "email_validator-1.3.1.tar.gz", hash = "sha256:d178c5c6fa6c6824e9b04f199cf23e79ac15756786573c190d2ad13089411ad2"},
 ]
-exceptiongroup = [
-    {file = "exceptiongroup-1.1.0-py3-none-any.whl", hash = "sha256:327cbda3da756e2de031a3107b81ab7b3770a602c4d16ca618298c526f4bec1e"},
-    {file = "exceptiongroup-1.1.0.tar.gz", hash = "sha256:bcb67d800a4497e1b404c2dd44fca47d3b7a5e5433dbab67f96c1a685cdfdf23"},
-]
 executing = [
     {file = "executing-1.2.0-py2.py3-none-any.whl", hash = "sha256:0314a69e37426e3608aada02473b4161d4caf5a4b244d1d0c48072b8fee7bacc"},
     {file = "executing-1.2.0.tar.gz", hash = "sha256:19da64c18d2d851112f09c287f8d3dbbdf725ab0e569077efb6cdcbd3497c107"},
@@ -3066,10 +3025,10 @@ fastapi-prometheus-metrics = [
 ]
 flask = [
     {file = "Flask-2.2.3-py3-none-any.whl", hash = "sha256:c0bec9477df1cb867e5a67c9e1ab758de9cb4a3e52dd70681f59fa40a62b3f2d"},
-    {file = "Flask-2.2.3.tar.gz", hash = "sha256:7eb373984bf1c770023fce9db164ed0c3353cd0b53f130f4693da0ca756a2e6d"},
 ]
 flask-admin = [
-    {file = "Flask-Admin-1.6.0.tar.gz", hash = "sha256:424ffc79b7b0dfff051555686ea12e86e48dffacac14beaa319fb4502ac40988"},
+    {file = "Flask-Admin-1.6.1.tar.gz", hash = "sha256:24cae2af832b6a611a01d7dc35f42d266c1d6c75a426b869d8cb241b78233369"},
+    {file = "Flask_Admin-1.6.1-py3-none-any.whl", hash = "sha256:fd8190f1ec3355913a22739c46ed3623f1d82b8112cde324c60a6fc9b21c9406"},
 ]
 flask-wtf = [
     {file = "Flask-WTF-1.1.1.tar.gz", hash = "sha256:41c4244e9ae626d63bed42ae4785b90667b885b1535d5a4095e1f63060d12aa9"},
@@ -3557,8 +3516,6 @@ psycopg2-binary = [
     {file = "psycopg2_binary-2.9.5-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:e67b3c26e9b6d37b370c83aa790bbc121775c57bfb096c2e77eacca25fd0233b"},
     {file = "psycopg2_binary-2.9.5-cp311-cp311-musllinux_1_1_ppc64le.whl", hash = "sha256:5fc447058d083b8c6ac076fc26b446d44f0145308465d745fba93a28c14c9e32"},
     {file = "psycopg2_binary-2.9.5-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:d892bfa1d023c3781a3cab8dd5af76b626c483484d782e8bd047c180db590e4c"},
-    {file = "psycopg2_binary-2.9.5-cp311-cp311-win32.whl", hash = "sha256:2abccab84d057723d2ca8f99ff7b619285d40da6814d50366f61f0fc385c3903"},
-    {file = "psycopg2_binary-2.9.5-cp311-cp311-win_amd64.whl", hash = "sha256:bef7e3f9dc6f0c13afdd671008534be5744e0e682fb851584c8c3a025ec09720"},
     {file = "psycopg2_binary-2.9.5-cp36-cp36m-macosx_10_14_x86_64.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:6e63814ec71db9bdb42905c925639f319c80e7909fb76c3b84edc79dadef8d60"},
     {file = "psycopg2_binary-2.9.5-cp36-cp36m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:212757ffcecb3e1a5338d4e6761bf9c04f750e7d027117e74aa3cd8a75bb6fbd"},
     {file = "psycopg2_binary-2.9.5-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6f8a9bcab7b6db2e3dbf65b214dfc795b4c6b3bb3af922901b6a67f7cb47d5f8"},
@@ -3786,8 +3743,8 @@ retry-tasks-lib = [
     {file = "retry_tasks_lib-2.2.1.tar.gz", hash = "sha256:566713229dbbb7b6f62888ec0ec10f851a63da56a47d383dbd9b5a6c6372f949"},
 ]
 rq = [
-    {file = "rq-1.12.0-py2.py3-none-any.whl", hash = "sha256:b268947a94a1da7de3c5f3925a59db60bffdede782ca1f23da654bf985a83c7a"},
-    {file = "rq-1.12.0.tar.gz", hash = "sha256:16ebbfa8891ece999485cb7d1e0559550ac576da43585138e6951db23654bbf6"},
+    {file = "rq-1.13.0-py2.py3-none-any.whl", hash = "sha256:621966d7cbf96d5609557a4bd3fd77f749d6d10997d2e353a3e89a14e08eea16"},
+    {file = "rq-1.13.0.tar.gz", hash = "sha256:5bb0380a17597200520731686766bb72faf16ebffb602663560d91ea2c9e7103"},
 ]
 ruff = [
     {file = "ruff-0.0.223-py3-none-macosx_10_7_x86_64.whl", hash = "sha256:7d4f5ba5e4779dcc8ca7e61f96ad867792c205bf961fc486890cd5fd24b73884"},
@@ -3886,10 +3843,6 @@ testfixtures = [
     {file = "testfixtures-7.1.0-py3-none-any.whl", hash = "sha256:d37d8f4ccc7755ab614cc8fb54b2e8b9fe522ab5dcf11b9d141f9be633c200f5"},
     {file = "testfixtures-7.1.0.tar.gz", hash = "sha256:456ce4f393160f27cd6840a5370ecf4a70f1721737f5e67a2af79e6c817804a4"},
 ]
-tomli = [
-    {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
-    {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
-]
 traitlets = [
     {file = "traitlets-5.9.0-py3-none-any.whl", hash = "sha256:9e6ec080259b9a5940c797d58b613b5e31441c2257b87c2e795c5228ae80d2d8"},
     {file = "traitlets-5.9.0.tar.gz", hash = "sha256:f6cde21a9c68cf756af02035f72d5a723bf607e862e7be33ece505abf4a3bad9"},
@@ -3919,8 +3872,8 @@ types-pyopenssl = [
     {file = "types_pyOpenSSL-23.0.0.3-py3-none-any.whl", hash = "sha256:847ab17a16475a882dc29898648a6a35ad0d3e11a5bba5aa8ab2f3435a8647cb"},
 ]
 types-pyyaml = [
-    {file = "types-PyYAML-6.0.12.6.tar.gz", hash = "sha256:24e76b938d58e68645271eeb149af6022d1da99788e481f959bd284b164f39a1"},
-    {file = "types_PyYAML-6.0.12.6-py3-none-any.whl", hash = "sha256:77b74d0874482f2b42dd566b7277b0a220068595e0fb42689d0c0560f3d1ae9e"},
+    {file = "types-PyYAML-6.0.12.7.tar.gz", hash = "sha256:ad40c99142b1812615bac08d5e240d35107a27ec285af501682c685957692f95"},
+    {file = "types_PyYAML-6.0.12.7-py3-none-any.whl", hash = "sha256:91c64379a9ae88471a473d1ce0abf6a09c285700a297621b2177163d506584b8"},
 ]
 types-redis = [
     {file = "types-redis-4.5.1.1.tar.gz", hash = "sha256:c072e4824855f46d0a968509c3e0fa4789fc13b62d472064527bad3d1815aeed"},
@@ -4082,7 +4035,6 @@ watchfiles = [
     {file = "watchfiles-0.18.1.tar.gz", hash = "sha256:4ec0134a5e31797eb3c6c624dbe9354f2a8ee9c720e0b46fc5b7bab472b7c6d4"},
 ]
 wcwidth = [
-    {file = "wcwidth-0.2.6-py2.py3-none-any.whl", hash = "sha256:795b138f6875577cd91bba52baf9e445cd5118fd32723b460e30a0af30ea230e"},
     {file = "wcwidth-0.2.6.tar.gz", hash = "sha256:a5220780a404dbe3353789870978e472cfe477761f06ee55077256e509b156d0"},
 ]
 websockets = [
