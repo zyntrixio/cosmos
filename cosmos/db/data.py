@@ -112,12 +112,12 @@ def add_fetch_types(conn: sa.engine.Connection, metadata: sa.MetaData) -> None:
             {
                 "name": "PRE_LOADED",
                 "required_fields": "validity_days: integer",
-                "path": "TBC",
+                "path": "cosmos.rewards.fetch_reward.pre_loaded.PreLoaded",
             },
             {
                 "name": "JIGSAW_EGIFT",
                 "required_fields": "transaction_value: integer",
-                "path": "TBC",
+                "path": "cosmos.rewards.fetch_reward.jigsaw.Jigsaw",
             },
         ],
     )
