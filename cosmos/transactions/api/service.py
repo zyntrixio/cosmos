@@ -624,7 +624,7 @@ class TransactionService(Service):
             raise
         else:
             if reward_issuance_tasks:
-                self.trigger_asyncio_task(
+                await self.trigger_asyncio_task(
                     enqueue_many_tasks(retry_tasks_ids=[t.retry_task_id for t in reward_issuance_tasks])
                 )
         finally:

@@ -202,7 +202,7 @@ class CampaignService(Service):
 
         await self.commit_db_changes()
         if reward_issuance_tasks:
-            self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
+            await self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
         await self.format_and_send_stored_activities()
         return ServiceResult({})
 
@@ -359,6 +359,6 @@ class CampaignService(Service):
         await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaigns.active)
         await self.commit_db_changes()
         if reward_issuance_tasks:
-            self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
+            await self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
         await self.format_and_send_stored_activities()
         return ServiceResult({})
