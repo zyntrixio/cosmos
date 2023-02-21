@@ -104,8 +104,8 @@ marketing_pref:
         "status": {"default": "TEST", "validators": [Optional()]},
         "balance_lifespan": {
             "description": "Provide a value >0 (in days) if balances are to be periodically reset based on "
-            "this value. 0 implies balances will not be reset.",
-            "validators": [wtforms.validators.NumberRange(min=0)],
+            "this value. Balances will not be reset if left empty.",
+            "validators": [wtforms.validators.NumberRange(min=1)],
         },
         #  FIXME: Add back in once Retailer model has this column
         # "balance_reset_advanced_warning_days": {
@@ -161,7 +161,7 @@ marketing_pref:
     #  FIXME: Add back in once Retailer model has balance_reset_advanced_warning_days column
     # def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
     # validate_balance_reset_advanced_warning_days(form, retailer_status=model.status)
-    # if not is_created and form.balance_lifespan.object_data == 0 and form.balance_lifespan.data > 0:
+    # if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data > 0:
     #     reset_date = (datetime.now(tz=timezone.utc) + timedelta(days=model.balance_lifespan)).date()
     #     stmt = (
     #         update(CampaignBalance)

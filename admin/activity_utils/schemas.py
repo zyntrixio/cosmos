@@ -214,8 +214,8 @@ class RetailerConfigCreatedDataSchema(BaseModel):
     slug: str
     account_number_prefix: str
     loyalty_name: str
-    balance_lifespan: int
-    # balance_reset_advanced_warning_days: int
+    balance_lifespan: int | None
+    # balance_reset_advanced_warning_days: int | None
     enrolment_config: list[dict]
     marketing_preference_config: list[dict] | None
 

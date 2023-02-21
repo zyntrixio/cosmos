@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 from alembic import op
+from cosmos.db.check_constraints import create_check_constaints
 from cosmos.db.data import load_data
 
 # revision identifiers, used by Alembic.
@@ -72,7 +73,7 @@ def upgrade() -> None:
             sa.Enum("TEST", "ACTIVE", "INACTIVE", "DELETED", "ARCHIVED", name="retailerstatuses"),
             nullable=False,
         ),
-        sa.Column("balance_lifespan", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("balance_lifespan", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_retailer_slug"), "retailer", ["slug"], unique=True)
@@ -559,6 +560,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["transaction_id"], ["transaction.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("transaction_id", "earn_rule_id"),
     )
+
+    # create check constraints
+    create_check_constaints()
 
     # load data into tables
     load_data(op.get_bind(), sa.MetaData())

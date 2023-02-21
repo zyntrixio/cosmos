@@ -484,7 +484,13 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     marketing_preference_config = Column(Text, nullable=False)
     loyalty_name = Column(String(64), nullable=False)
     status = Column(Enum(RetailerStatuses), nullable=False)
-    balance_lifespan = Column(Integer, server_default="0", nullable=False)
+    balance_lifespan = Column(
+        Integer,
+        CheckConstraint(
+            "balance_lifespan IS NULL OR balance_lifespan > 0", name="balance_lifespace_positive_int_or_null_check"
+        ),
+        nullable=True,
+    )
 
     account_holders = relationship("AccountHolder", back_populates="retailer")
     campaigns = relationship(Campaign, back_populates="retailer")

@@ -177,7 +177,7 @@ def test__get_active_campaigns(setup: SetupType) -> None:
         assert campaign.slug == expected_slug
 
 
-@pytest.mark.parametrize("balance_lifespan", [10, 0])
+@pytest.mark.parametrize("balance_lifespan", [10, None])
 @httpretty.activate
 def test_account_holder_activation(
     balance_lifespan: int | None,

@@ -13,8 +13,10 @@ from retry_tasks_lib.reporting import report_anomalous_tasks, report_queue_lengt
 from retry_tasks_lib.utils.error_handler import job_meta_handler
 from rq import Worker
 
+from cosmos.accounts.config import account_settings
 from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
+from cosmos.core.scheduled_tasks.balances import reset_balances
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.config import reward_settings
@@ -67,6 +69,7 @@ def cron_scheduler(
     imports: bool = True,
     updates: bool = True,
     pending_rewards: bool = True,
+    balances: bool = True,
     report_tasks: bool = True,
     report_rq_queues: bool = True,
 ) -> None:  # pragma: no cover
@@ -83,6 +86,13 @@ def cron_scheduler(
         scheduler.add_job(
             RewardUpdatesAgent().do_import,
             schedule_fn=lambda: reward_settings.BLOB_IMPORT_SCHEDULE,
+            coalesce_jobs=True,
+        )
+
+    if balances:
+        scheduler.add_job(
+            reset_balances,
+            schedule_fn=lambda: account_settings.RESET_BALANCES_SCHEDULE,
             coalesce_jobs=True,
         )
 

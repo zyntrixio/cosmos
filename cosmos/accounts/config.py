@@ -27,6 +27,7 @@ class AccountSettings(BaseSettings):
     CONVERT_PENDING_REWARDS_TASK_NAME: str = "convert-pending-rewards"
     DELETE_PENDING_REWARDS_TASK_NAME: str = "delete-pending-rewards"
     ANONYMISE_ACCOUNT_HOLDER_TASK_NAME: str = "anonymise-account-holder"
+    RESET_BALANCES_SCHEDULE: str = "0 3 * * *"
     USE_CALLBACK_OAUTH2: bool = True
 
     class Config:

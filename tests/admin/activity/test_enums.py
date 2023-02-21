@@ -933,8 +933,8 @@ def test_get_retailer_config_created_activity_data_without_optionals(mocker: Moc
     account_prefix = "RETB"
     loyalty_name = "mock retailer"
     retailer_status = "TEST"
-    balance_lifespan = 0
-    # balance_reset_advanced_warning_days = 0
+    balance_lifespan = None
+    # balance_reset_advanced_warning_days = None
 
     retailer_enrol_config = """
 email:
@@ -984,8 +984,8 @@ last_name:
                         {"key": "last_name", "required": True, "label": "Last name"},
                     ],
                     "loyalty_name": loyalty_name,
-                    "balance_lifespan": 0,
-                    # "balance_reset_advanced_warning_days": 0,
+                    # "balance_lifespan": None,
+                    # "balance_reset_advanced_warning_days": None,
                 }
             },
         },
