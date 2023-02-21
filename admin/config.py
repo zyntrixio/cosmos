@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings

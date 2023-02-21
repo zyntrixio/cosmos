@@ -63,8 +63,8 @@ jobs:
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
       - run: black --check .
       - run: isort --check .
-      - run: ruff cosmos tests
-      - run: refurb cosmos tests
+      - run: ruff cosmos admin tests
+      - run: refurb cosmos admin tests
       - run: mypy .
       - run: pytest --verbose --cov cosmos --cov-report term-missing
   release_dev:
