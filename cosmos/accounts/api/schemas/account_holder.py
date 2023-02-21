@@ -18,7 +18,7 @@ from .utils import UTCDatetime, utc_datetime_from_timestamp
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic.typing import CallableGenerator
 
-    from cosmos.db.models import CampaignBalance, Transaction
+    from cosmos.db.models import CampaignBalance, Transaction, TransactionEarn
 
 strip_currency_re = re.compile(r"^(-)?[^0-9-]?([0-9,.]+)[^0-9-]*$")
 
@@ -147,9 +147,8 @@ class TransactionHistorySchema(BaseModel):
         obj.amount_currency = "GBP"
         if hasattr(obj, "store") and obj.store is not None:
             obj.location = obj.store.store_name
-        if obj.transaction_earns:
-            transaction_earn = obj.transaction_earns[0]
-            # Only single transaction earn support campaigns
+        if obj.transaction_earn:
+            transaction_earn: "TransactionEarn" = obj.transaction_earn
             obj.loyalty_earned_value = transaction_earn.humanized_earn_amount()
             obj.loyalty_earned_type = transaction_earn.loyalty_type.name
             obj.amount = obj.humanized_transaction_amount()

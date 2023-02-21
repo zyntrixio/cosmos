@@ -15,7 +15,7 @@ from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_many_tasks
 from cosmos.core.error_codes import ErrorCode
-from cosmos.core.utils import pence_integer_to_currency_string
+from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
 from cosmos.rewards.activity.enums import IssuedRewardReasons
@@ -276,9 +276,7 @@ class TransactionService(Service):
                 f"{tx_type}{pence_integer_to_currency_string(adjustment, 'GBP')}"
             )
 
-        stamps_amount = adjustment // 100
-        plural_stamps = "s" if abs(stamps_amount) != 1 else ""
-        return f"{self.retailer.name} - {campaign.name}: {tx_type}{stamps_amount} stamp{plural_stamps}"
+        return f"{self.retailer.name} - {campaign.name}: {tx_type}{raw_stamp_value_to_string(adjustment)}"
 
     async def _process_refund(
         self,

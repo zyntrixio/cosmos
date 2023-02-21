@@ -181,7 +181,7 @@ def test_transaction_duplicated_transaction(
             Transaction.account_holder_id == existing_tx.account_holder_id,
             Transaction.processed.is_(None),
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
     mock_activity.assert_called()
 
 
@@ -419,11 +419,11 @@ def test_transaction_refund(
 
 
 @pytest.mark.parametrize(
-    ("reward_goal", "tx_amount", "increment", "expected_rewards_n", "reward_cap"),
+    ("reward_goal", "tx_amount", "increment", "expected_rewards_n", "reward_cap", "expected_earn_amount"),
     (
-        pytest.param(300, 200, 500, 2, None, id="2 rewards issued"),
-        pytest.param(500, 200, 400, 1, None, id="1 rewards issued"),
-        pytest.param(600, 200, 400, 0, None, id="0 rewards"),
+        pytest.param(300, 200, 500, 2, None, 500, id="2 rewards issued"),
+        pytest.param(500, 200, 400, 1, None, 400, id="1 rewards issued"),
+        pytest.param(600, 200, 400, 0, None, 400, id="0 rewards"),
     ),
 )
 def test_transaction_ok_stamps(
@@ -432,6 +432,7 @@ def test_transaction_ok_stamps(
     increment: int,
     expected_rewards_n: int,
     reward_cap: int | None,
+    expected_earn_amount: int,
     test_client: "TestClient",
     setup: "SetupType",
     sample_payload: dict,
@@ -478,6 +479,14 @@ def test_transaction_ok_stamps(
 
     mock_activity.assert_called()
     db_session.refresh(campaign_balance)
+
+    transaction = db_session.execute(
+        select(Transaction).where(
+            Transaction.account_holder_id == account_holder.id,
+            Transaction.processed.is_(True),
+        )
+    ).scalar_one()
+    assert transaction.transaction_earn.earn_amount == expected_earn_amount
 
     assert campaign_balance.balance == expected_balance
 

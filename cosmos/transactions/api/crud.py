@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import noload
 
+from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.db.base_class import async_run_query
 from cosmos.db.models import CampaignBalance, PendingReward, RetailerStore, Transaction, TransactionEarn
 from cosmos.transactions.api.schemas import CreateTransactionSchema
@@ -13,7 +14,6 @@ from cosmos.transactions.api.schemas import CreateTransactionSchema
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
 
-    from cosmos.campaigns.enums import LoyaltyTypes
     from cosmos.db.models import Campaign
 
 
@@ -107,17 +107,14 @@ async def create_transaction(
 
 async def record_earn(
     db_session: "AsyncSession",
-    loyalty_type: "LoyaltyTypes",
+    loyalty_type: LoyaltyTypes,
     earn_rule_id: int,
     transaction_id: int,
     adjustment: int | None,
 ) -> TransactionEarn:
     async def _query(savepoint: "AsyncSessionTransaction") -> TransactionEarn:
         transaction_campaign = TransactionEarn(
-            transaction_id=transaction_id,
-            earn_rule_id=earn_rule_id,
-            loyalty_type=loyalty_type,
-            earn_amount=adjustment,
+            transaction_id=transaction_id, earn_rule_id=earn_rule_id, loyalty_type=loyalty_type, earn_amount=adjustment
         )
         db_session.add(transaction_campaign)
         await savepoint.commit()
