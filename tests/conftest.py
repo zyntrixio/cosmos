@@ -13,6 +13,7 @@ from testfixtures import LogCapture
 
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
+from cosmos.core.api.service import Service
 from cosmos.core.config import redis
 from cosmos.db.base import Base
 from cosmos.db.models import (
@@ -110,7 +111,7 @@ def setup_redis() -> Generator:
 
 @pytest.fixture(scope="function")
 def mock_activity(mocker: MockerFixture) -> "MagicMock":
-    return mocker.patch("cosmos.core.api.service.format_and_send_activity_in_background")
+    return mocker.patch.object(Service, "_format_and_send_activity_in_background")
 
 
 @pytest.fixture(scope="function")

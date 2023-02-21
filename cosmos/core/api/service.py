@@ -1,19 +1,22 @@
 import asyncio
+import logging
 
-from typing import TYPE_CHECKING, Callable, Coroutine, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Callable, Coroutine, Generic, Iterable, TypeVar, cast
 
-from cosmos.core.activity.utils import format_and_send_activity_in_background
+from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit
 from cosmos.core.error_codes import ErrorCode
 
 if TYPE_CHECKING:
 
     from asyncio import Task
+    from enum import Enum
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from cosmos.core.activity.utils import ActivityEnumType
     from cosmos.db.models import Retailer
+
+    ActivityEnumType = TypeVar("ActivityEnumType", bound="Enum")
 
 
 ServiceResultValue = TypeVar("ServiceResultValue")
@@ -47,6 +50,7 @@ class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
 
 class Service:
     def __init__(self, db_session: "AsyncSession", retailer: "Retailer") -> None:
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.db_session = db_session
         self.retailer = retailer
         self._stored_activities: list[dict] = []
@@ -75,11 +79,39 @@ class Service:
         else:
             self._stored_activities.append(data)
 
+    async def _format_and_send_activity_in_background(
+        self,
+        activity_type: "ActivityEnumType",
+        payload_formatter_fn: Callable[..., dict],
+        formatter_kwargs: list[dict] | dict,
+    ) -> None:
+        async def _background_task(
+            activity_type: "ActivityEnumType",
+            payload_formatter_fn: Callable[..., dict],
+            formatter_kwargs: list[dict] | dict,
+        ) -> None:
+
+            try:
+                payload: Iterable[dict] | dict
+                if isinstance(formatter_kwargs, dict):
+                    payload = payload_formatter_fn(**formatter_kwargs)
+                else:
+                    payload = (payload_formatter_fn(**instance_kwargs) for instance_kwargs in formatter_kwargs)
+
+                await async_send_activity(payload, routing_key=activity_type.value)
+
+            except Exception:  # noqa BLE001
+                self.logger.exception(
+                    "Failed to send %s activities with provided kwargs:\n%r", activity_type.name, formatter_kwargs
+                )
+
+        await self.trigger_asyncio_task(_background_task(activity_type, payload_formatter_fn, formatter_kwargs))
+
     async def format_and_send_stored_activities(self) -> None:
         for stored_activity in self._stored_activities:
-            await format_and_send_activity_in_background(**stored_activity)
+            await self._format_and_send_activity_in_background(**stored_activity)
 
-    def trigger_asyncio_task(self, coro: Coroutine) -> None:
+    async def trigger_asyncio_task(self, coro: Coroutine) -> None:
         task = asyncio.create_task(coro)
         self._asyncio_tasks.add(task)
         task.add_done_callback(self._asyncio_tasks.discard)

@@ -116,6 +116,8 @@ def test__process_callback_http_errors(
     mock_counter_inc: mock.MagicMock,
     run_task_with_metrics: None,
 ) -> None:
+    assert account_settings.core.ACTIVATE_TASKS_METRICS, "ACTIVATE_TASKS_METRICS must be set to True"
+
     account_holder.account_number = "TEST12345"
     db_session.commit()
 
