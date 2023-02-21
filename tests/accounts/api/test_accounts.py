@@ -148,6 +148,72 @@ def test_account_holder_get_by_id(
     )
 
 
+def test_account_holder_get_by_id_stamps_tx_history(
+    setup: SetupType,
+    mocker: MockerFixture,
+    campaign_with_rules: Campaign,
+    create_retailer_store: Callable,
+    create_transaction: Callable,
+    create_transaction_earn: Callable,
+    mock_activity: "MagicMock",
+) -> None:
+
+    db_session, retailer, account_holder = setup
+    account_holder.status = AccountHolderStatuses.ACTIVE
+    db_session.commit()
+
+    now = datetime.now(tz=timezone.utc)
+    mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
+    mock_datetime.now.return_value = now
+    fake_mid = "mid-potato"
+    store = create_retailer_store(retailer_id=retailer.id, mid=fake_mid, store_name="potatoesRus")
+    transactions = []
+
+    total_num_transactions = 10
+    for i in range(1, total_num_transactions + 1):
+        amount = i * 1000
+        dt = datetime(2023, 1, i, tzinfo=timezone.utc)
+        tx = create_transaction(
+            account_holder=account_holder,
+            **{"mid": fake_mid, "transaction_id": f"tx-id-{i}", "amount": amount, "datetime": dt},
+        )
+        transactions.append(tx)
+        create_transaction_earn(
+            tx,
+            earn_amount=amount,
+            loyalty_type=LoyaltyTypes.STAMPS,
+            earn_rule=campaign_with_rules.earn_rule,
+        )
+
+    num_tx_histories = 5
+    resp = client.get(
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}"
+        f"?tx_qty={num_tx_histories}",
+        headers=accounts_auth_headers,
+    )
+
+    assert resp.status_code == 200
+    resp_json = resp.json()
+    assert resp_json["UUID"] == str(account_holder.account_holder_uuid)
+
+    expected_transaction_history = []
+    for i in reversed(range(num_tx_histories + 1, total_num_transactions + 1)):
+        tx_amount = f"{i*1000/100:.2f}"
+        earned = str(int(float(tx_amount)))
+        expected_transaction_history.append(
+            {
+                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+                "amount": tx_amount,
+                "amount_currency": "GBP",
+                "location": store.store_name,
+                "loyalty_earned_value": earned,
+                "loyalty_earned_type": "STAMPS",
+            }
+        )
+
+    assert resp_json["transaction_history"] == expected_transaction_history
+
+
 def test_account_holder_get_by_id_no_balances(setup: SetupType, mock_activity: "MagicMock") -> None:
     db_session, retailer, account_holder = setup
     account_holder.status = AccountHolderStatuses.ACTIVE

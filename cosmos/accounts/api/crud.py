@@ -137,7 +137,7 @@ async def get_account_holder(
                     RetailerStore.store_name,
                     RetailerStore.mid,
                 ),
-                joinedload(Transaction.transaction_earns).load_only(
+                joinedload(Transaction.transaction_earn).load_only(
                     TransactionEarn.earn_amount,
                     TransactionEarn.loyalty_type,
                     TransactionEarn.transaction_id,

@@ -32,7 +32,7 @@ from sqlalchemy.schema import Index
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
 from cosmos.core.config import core_settings
-from cosmos.core.utils import pence_integer_to_currency_string
+from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
 from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
@@ -441,7 +441,7 @@ class Transaction(IdPkMixin, Base, TimestampMixin):
     store = relationship(
         "RetailerStore", uselist=False, primaryjoin="Transaction.mid==RetailerStore.mid", foreign_keys=mid
     )
-    transaction_earns = relationship("TransactionEarn", back_populates="transaction")
+    transaction_earn = relationship("TransactionEarn", uselist=False, back_populates="transaction")
 
     __table_args__ = (
         UniqueConstraint("transaction_id", "retailer_id", "processed", name="transaction_retailer_processed_unq"),
@@ -463,13 +463,13 @@ class TransactionEarn(Base, TimestampMixin):
     earn_amount = Column(Integer, nullable=True)
 
     earn_rule = relationship("EarnRule", uselist=False, back_populates="transaction_earns")
-    transaction = relationship("Transaction", uselist=False, back_populates="transaction_earns")
+    transaction = relationship("Transaction", uselist=False, back_populates="transaction_earn")
 
     def humanized_earn_amount(self, currency_sign: bool = False) -> str:
         return (
             pence_integer_to_currency_string(self.earn_amount, "GBP", currency_sign=currency_sign)
             if self.loyalty_type == LoyaltyTypes.ACCUMULATOR
-            else str(self.earn_amount)
+            else raw_stamp_value_to_string(self.earn_amount, stamp_suffix=currency_sign)
         )
 
 
