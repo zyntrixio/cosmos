@@ -98,7 +98,7 @@ jobs:
           target: admin
           push: true
           tags: |
-            binkcore.azurecr.io/${{ github.event.repository.name }}-admin:${{ steps.date.outputs.date }}
+            binkcore.azurecr.io/${{ github.event.repository.name }}-admin:${{ env.container_tag }}
             binkcore.azurecr.io/${{ github.event.repository.name }}-admin:latest
   release_staging:
     if: github.event_name == 'release' && github.event.action == 'published'
