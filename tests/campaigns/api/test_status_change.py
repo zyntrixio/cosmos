@@ -304,7 +304,7 @@ def test_status_change_activating_a_campaign_ok(
         ).all()
 
     assert get_balances() == []
-    assert retailer.balance_lifespan == 0
+    assert not retailer.balance_lifespan
 
     account_holder.status = AccountHolderStatuses.ACTIVE
     campaign_with_rules.start_date = None

@@ -457,7 +457,7 @@ class ActivityType(Enum):
         enrolment_config: dict,
         marketing_preferences: dict | None,
         loyalty_name: str,
-        balance_lifespan: int,
+        balance_lifespan: int | None,
         # balance_reset_advanced_warning_days: int,
     ) -> dict:
         enrolment_config_data = [{"key": k, **v} for k, v in enrolment_config.items()]

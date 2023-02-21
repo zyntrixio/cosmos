@@ -1,4 +1,7 @@
-from pydantic import BaseModel, Field, NonNegativeInt
+from datetime import date
+
+from cosmos_message_lib.schemas import ActivitySchema
+from pydantic import BaseModel, Field, NonNegativeInt, validator
 
 from cosmos.accounts.api.schemas.utils import UTCDatetime
 
@@ -43,3 +46,16 @@ class RefundNotRecoupedDataSchema(BaseModel):
     amount: int
     amount_recouped: int
     amount_not_recouped: NonNegativeInt
+
+
+class _BalanceResetDataSchema(BalanceChangeDataSchema):
+    reset_date: date | None
+
+    @validator("reset_date", pre=False, always=True)
+    @classmethod
+    def format_date(cls, value: date | None) -> str | None:
+        return value.isoformat() if value else None
+
+
+class BalanceResetWholeDataSchema(ActivitySchema):
+    data: _BalanceResetDataSchema

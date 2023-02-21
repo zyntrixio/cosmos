@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from uuid import UUID
 
@@ -8,6 +8,7 @@ from cosmos.accounts.activity.schemas import (
     AccountEventSchema,
     AccountRequestSchema,
     BalanceChangeDataSchema,
+    BalanceResetWholeDataSchema,
     MarketingPreferenceChangeSchema,
     RefundNotRecoupedDataSchema,
 )
@@ -199,3 +200,34 @@ class ActivityType(ActivityTypeMixin, Enum):
                 amount_not_recouped=amount_not_recouped,
             ).dict(),
         )
+
+    @classmethod
+    def get_balance_reset_activity_data(
+        cls,
+        *,
+        reset_date: date,
+        activity_datetime: datetime,
+        underlying_datetime: datetime,
+        retailer_slug: str,
+        balance_lifespan: int,
+        campaign_slug: str,
+        old_balance: int,
+        account_holder_uuid: str,
+    ) -> dict:
+        return BalanceResetWholeDataSchema(
+            type=ActivityType.BALANCE_CHANGE.name,
+            datetime=activity_datetime,
+            underlying_datetime=underlying_datetime,
+            summary=f"{retailer_slug} {campaign_slug} Balance {old_balance}",
+            reasons=[f"Balance Reset every {balance_lifespan} days"],
+            activity_identifier="N/A",
+            user_id=account_holder_uuid,
+            associated_value=0,
+            retailer=retailer_slug,
+            campaigns=[campaign_slug],
+            data={
+                "reset_date": reset_date,
+                "new_balance": 0,
+                "original_balance": old_balance,
+            },
+        ).dict()

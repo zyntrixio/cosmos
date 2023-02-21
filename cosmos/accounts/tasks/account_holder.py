@@ -26,7 +26,6 @@ from cosmos.core.tasks import send_request_with_metrics
 from cosmos.core.tasks.auth import get_callback_oauth_header
 from cosmos.core.tasks.mailjet import SendEmailFalseError, send_email_to_mailjet
 from cosmos.core.utils import generate_account_number
-from cosmos.db.base_class import sync_run_query
 from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, EmailTemplate, Retailer
 from cosmos.db.session import SyncSessionMaker
 from cosmos.retailers.enums import EmailTemplateKeys, RetailerStatuses
@@ -75,16 +74,13 @@ def _process_callback(task_params: dict, account_holder: AccountHolder) -> dict:
 
 
 def _get_active_campaigns(db_session: "Session", retailer: Retailer) -> list[Campaign]:
-    def _query() -> list:
-        return (
-            db_session.execute(
-                select(Campaign).where(Campaign.retailer_id == retailer.id, Campaign.status == CampaignStatuses.ACTIVE)
-            )
-            .scalars()
-            .all()
+    return (
+        db_session.execute(
+            select(Campaign).where(Campaign.retailer_id == retailer.id, Campaign.status == CampaignStatuses.ACTIVE)
         )
-
-    return sync_run_query(_query, db_session, rollback_on_exc=False)
+        .scalars()
+        .all()
+    )
 
 
 def _activate_account_holder(db_session: "Session", account_holder: AccountHolder, campaigns: list[Campaign]) -> bool:
@@ -134,13 +130,9 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
         ).inc()
 
     task_params = retry_task.get_params()
-    account_holder: AccountHolder = sync_run_query(
-        lambda: db_session.execute(
-            select(AccountHolder).where(AccountHolder.id == task_params["account_holder_id"])
-        ).scalar_one(),
-        db_session,
-        rollback_on_exc=False,
-    )
+    account_holder: AccountHolder = db_session.execute(
+        select(AccountHolder).where(AccountHolder.id == task_params["account_holder_id"])
+    ).scalar_one()
 
     logger.info(f"Getting campaign slugs for {account_holder.retailer.slug}")
     try:
@@ -195,24 +187,20 @@ def enrolment_callback(retry_task: RetryTask, db_session: "Session") -> None:
         ).inc()
 
     task_params = retry_task.get_params()
-    account_holder: AccountHolder = sync_run_query(
-        lambda: db_session.execute(
-            select(AccountHolder).where(AccountHolder.id == task_params["account_holder_id"])
-        ).scalar_one(),
-        db_session,
-        rollback_on_exc=False,
-    )
+    account_holder: AccountHolder = db_session.execute(
+        select(AccountHolder).where(AccountHolder.id == task_params["account_holder_id"])
+    ).scalar_one()
 
     response_audit = _process_callback(task_params, account_holder)
 
-    def _update_account_holder_and_task() -> None:
+    def _update_account_holder_and_task(db_session: "Session") -> None:
         retry_task.status = RetryTaskStatuses.SUCCESS
         retry_task.next_attempt_time = None
         retry_task.audit_data.append(response_audit)
         flag_modified(retry_task, "audit_data")
         db_session.commit()
 
-    sync_run_query(_update_account_holder_and_task, db_session, rollback_on_exc=False)
+    _update_account_holder_and_task(db_session)
 
 
 def _validate_email_variables(account_holder: AccountHolder, task_params: dict, email_template: EmailTemplate) -> dict:
@@ -254,27 +242,19 @@ def send_email(retry_task: RetryTask, db_session: "Session") -> None:
         ).inc()
 
     task_params = retry_task.get_params()
-    account_holder: AccountHolder = sync_run_query(
-        lambda: db_session.execute(
-            select(AccountHolder)
-            .options(joinedload(AccountHolder.profile))
-            .where(
-                AccountHolder.id == task_params["account_holder_id"],
-            )
-        ).scalar_one(),
-        db_session,
-        rollback_on_exc=False,
-    )
-    email_template: EmailTemplate = sync_run_query(
-        lambda: db_session.execute(
-            select(EmailTemplate).where(
-                EmailTemplate.retailer_id == task_params["retailer_id"],
-                EmailTemplate.type == task_params["template_type"],
-            )
-        ).scalar_one(),
-        db_session,
-        rollback_on_exc=False,
-    )
+    account_holder: AccountHolder = db_session.execute(
+        select(AccountHolder)
+        .options(joinedload(AccountHolder.profile))
+        .where(
+            AccountHolder.id == task_params["account_holder_id"],
+        )
+    ).scalar_one()
+    email_template: EmailTemplate = db_session.execute(
+        select(EmailTemplate).where(
+            EmailTemplate.retailer_id == task_params["retailer_id"],
+            EmailTemplate.type == task_params["template_type"],
+        )
+    ).scalar_one()
 
     try:
         email_variables = _validate_email_variables(

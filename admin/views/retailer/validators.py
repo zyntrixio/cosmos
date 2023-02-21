@@ -131,10 +131,17 @@ def validate_account_number_prefix(_: wtforms.Form, field: wtforms.Field) -> Non
 def _active_retailer_validation(original_warning_days: int, new_warning_days: int, balance_lifespan: int) -> None:
     if new_warning_days != original_warning_days != 0:
         raise wtforms.ValidationError("You cannot change this field for an active retailer")
-    if balance_lifespan != 0 and new_warning_days == 0:
+    if balance_lifespan and new_warning_days is None:
         raise wtforms.ValidationError(
             "You must set both the balance_lifespan with the balance_reset_advanced_warning_days for active retailers"
         )
+
+
+def _new_warning_days_validation(original_warning_days: int, new_warning_days: int, balance_lifespan: int) -> None:
+    if new_warning_days and not balance_lifespan:
+        raise wtforms.ValidationError("There must be a balance_lifespan set")
+    if original_warning_days or balance_lifespan and not new_warning_days:
+        raise wtforms.ValidationError("The balance_reset_advanced_warning_days must be >0")
 
 
 def validate_balance_reset_advanced_warning_days(
@@ -152,11 +159,8 @@ def validate_balance_reset_advanced_warning_days(
         if retailer_status == RetailerStatuses.ACTIVE:
             _active_retailer_validation(original_warning_days, new_warning_days, balance_lifespan)
         if original_warning_days != new_warning_days:
-            if balance_lifespan <= 0 != new_warning_days:
-                raise wtforms.ValidationError("There must be a balance_lifespan set")
-            if new_warning_days <= 0 not in {original_warning_days, balance_lifespan}:
-                raise wtforms.ValidationError("The balance_reset_advanced_warning_days must be >0")
-        if balance_lifespan <= new_warning_days != 0:
+            _new_warning_days_validation(original_warning_days, new_warning_days, balance_lifespan)
+        if balance_lifespan <= new_warning_days is not None:
             raise wtforms.ValidationError(
                 "The balance_reset_advanced_warning_days must be less than the balance_lifespan"
             )
