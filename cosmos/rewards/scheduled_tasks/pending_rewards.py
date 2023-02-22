@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
 from sqlalchemy.future import select
 
+from cosmos.core.config import redis_raw
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
 from cosmos.db.models import PendingReward, RewardRule
 from cosmos.db.session import SyncSessionMaker
@@ -80,7 +81,7 @@ def process_pending_rewards() -> None:
                 return
 
             try:
-                enqueue_many_retry_tasks(db_session, retry_tasks_ids=tasks_ids)
+                enqueue_many_retry_tasks(db_session, retry_tasks_ids=tasks_ids, connection=redis_raw)
             except Exception as ex:  # noqa: BLE001
                 logger.exception(
                     "Failed to enqueue %s RetryTasks with ids: %r.",
