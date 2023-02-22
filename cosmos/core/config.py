@@ -168,7 +168,7 @@ dictConfig(
                 "level": core_settings.QUERY_LOG_LEVEL or logging.WARN,
             },
             "alembic": {
-                "level": "INFO",
+                "level": logging.INFO,
                 "handlers": ["stderr"],
                 "propagate": False,
             },
