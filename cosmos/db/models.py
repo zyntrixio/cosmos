@@ -205,7 +205,7 @@ class EmailTemplate(IdPkMixin, Base, TimestampMixin):
 
     template_id = Column(String, nullable=False)
     type = Column(Enum(EmailTemplateTypes), nullable=False)  # noqa: A003
-    retailer_id = Column(BigInteger, ForeignKey("retailer.id"), index=True)
+    retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), index=True)
 
     retailer = relationship("Retailer", back_populates="email_templates")
 
