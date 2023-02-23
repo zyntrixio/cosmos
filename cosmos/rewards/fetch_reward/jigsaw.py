@@ -377,6 +377,7 @@ class Jigsaw(BaseAgent):
             reward_uuid=self.customer_card_ref,
             code=reward_code,
             account_holder_id=self.account_holder.id,
+            campaign_id=self.campaign.id,
             deleted=False,
             reward_config_id=self.reward_config.id,
             retailer_id=self.reward_config.retailer_id,
