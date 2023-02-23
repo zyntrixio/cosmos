@@ -43,8 +43,12 @@ class PreLoaded(BaseAgent):
             Reward.__table__.update()
             .values(
                 account_holder_id=self.account_holder.id,
+                campaign_id=self.campaign.id,
                 issued_date=now,
-                expiry_date=case((Reward.expiry_date.is_(None), expiry_date)),
+                expiry_date=case(
+                    [(Reward.expiry_date.is_(None), expiry_date)],
+                    else_=Reward.expiry_date,
+                ),
                 associated_url=func.format(associated_url_template, Reward.reward_uuid),
             )
             .where(Reward.id == available_reward.c.id)
