@@ -9,6 +9,23 @@ from cosmos.core.key_vault import key_vault
 class AdminSettings(BaseSettings):
     core: CoreSettings = core_settings
 
+    ENV_NAME: str = ""
+
+    @validator("ENV_NAME", always=True, pre=False)
+    @classmethod
+    def parse_env_name(cls, v: str, values: dict) -> str:
+        if v:
+            return v
+
+        sentry_env: str | None = values["core"].SENTRY_ENV
+        match (env := sentry_env.lower() if sentry_env else "N/A"):
+            case "local" | "develop" | "staging" | "sandbox":
+                return env
+            case "production" | "prod":
+                return "production"
+
+        return "unknown"
+
     ADMIN_PROJECT_NAME: str = "cosmos-admin"
     ADMIN_ROUTE_BASE: str = "/admin"
     FLASK_ADMIN_SWATCH: str = "simplex"
@@ -47,6 +64,18 @@ class AdminSettings(BaseSettings):
         return (
             v or urlparse(values["core"].db.SQLALCHEMY_DATABASE_URI)._replace(path=f'/{values["ACTIVITY_DB"]}').geturl()
         )
+
+    BPL_USER_NAMES: list[str] = [
+        "Alyson",
+        "Jess",
+        "Francesco",
+        "Haffi",
+        "Lewis",
+        "Stewart",
+        "Susanne",
+        "Rupal",
+        "Bhasker",
+    ]
 
     class Config:
         case_sensitive = True

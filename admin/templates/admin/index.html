@@ -10,11 +10,28 @@
         <p class="lead">Welcome to the admin site for the <strong>Bink Provided Loyalty (BPL)</strong>
           project.</p>
         <p>This is a <a href="https://flask-admin.readthedocs.io/en/latest/" target="_blank">Flask-Admin</a> project
-          incorporating views upon the data of the two primary BPL projects:</p>
+          incorporating views upon the data of the two primary BPL projects:
+          <br />
+          <small>
+            <strong>NB:</strong> These links point to BinkHQ's private GitHib repositories, 
+            a github account member of BinkHQ is needed to see the source code.
+          </small>
+        </p>
         <ul>
           <li><strong><a href="https://github.com/binkhq/cosmos">Cosmos</a></strong> - Core BPL system</li>
           <li><strong><a href="https://github.com/binkhq/hubble">Hubble</a></strong> - Activity</li>
         </ul>
+      </div>
+      <div class="row">
+        {% set user_name = session.get("user", {}).get("name", "").split(" ", 1)[0] %}
+        {% if config.get('ENV_NAME') != 'production' and user_name in config.get("BPL_USER_NAMES") %}
+          <span style="margin-bottom: 10px;">
+            <h3>The Mortal Wombat is watching you {{ user_name }}</h3>
+          </span>
+          <span>
+            <img src='{{ url_for("eh.static", filename="img/mortal-wombat.png") }}' alt="MW">
+          </span>
+        {% endif %}
       </div>
     </div>
     <div class="col-md-4">

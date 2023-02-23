@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, literal
+from sqlalchemy import Date, func, literal
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload, noload, selectinload
@@ -127,15 +127,19 @@ async def campaign_status_change(
 
 async def create_campaign_balances(db_session: "AsyncSession", retailer: Retailer, campaign: Campaign) -> None:
     balance_reset_date = (
-        (datetime.now(tz=timezone.utc) + timedelta(days=retailer.balance_lifespan)).date()
+        literal((datetime.now(tz=timezone.utc) + timedelta(days=retailer.balance_lifespan)).date(), Date)
         if retailer.balance_lifespan
         else None
     )
 
     async def _query(savepoint: "AsyncSessionTransaction") -> int:
-        select_stmt = select(AccountHolder.id, literal(campaign.id), literal(0), balance_reset_date).where(
-            AccountHolder.retailer_id == retailer.id,
-            AccountHolder.status == AccountHolderStatuses.ACTIVE,
+        select_stmt = (
+            select(AccountHolder.id, literal(campaign.id), literal(0), balance_reset_date)
+            .select_from(AccountHolder)
+            .where(
+                AccountHolder.retailer_id == retailer.id,
+                AccountHolder.status == AccountHolderStatuses.ACTIVE,
+            )
         )
         res = await db_session.execute(
             insert(CampaignBalance)

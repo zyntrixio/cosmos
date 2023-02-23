@@ -38,12 +38,12 @@ info "xenon"
 xenon --no-assert -a A -m B -b B .
 
 info "ruff"
-ruff cosmos tests
+ruff cosmos tests admin
 
 info "mypy"
 mypy .
 
 info "refurb"
-refurb cosmos tests
+refurb cosmos tests admin
 
 success "all checks completed."
