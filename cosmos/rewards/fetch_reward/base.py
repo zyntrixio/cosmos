@@ -14,6 +14,7 @@ from cosmos.rewards.activity.enums import ActivityType
 
 if TYPE_CHECKING:  # pragma: no cover
     from inspect import Traceback
+    from uuid import UUID
 
     from retry_tasks_lib.db.models import RetryTask
     from sqlalchemy.orm import Session
@@ -106,7 +107,7 @@ class BaseAgent(ABC):
                 f"for RetryTask: {self.retry_task.retry_task_id}."
             ) from ex
 
-    def _send_issued_reward_activity(self, reward_uuid: str, issued_date: datetime) -> None:  # pragma: no cover
+    def _send_issued_reward_activity(self, reward_uuid: "UUID", issued_date: datetime) -> None:  # pragma: no cover
 
         sync_send_activity(
             ActivityType.get_issued_reward_status_activity_data(
@@ -114,7 +115,7 @@ class BaseAgent(ABC):
                 retailer=self.reward_config.retailer,
                 reward_slug=self.reward_config.slug,
                 activity_timestamp=issued_date,
-                reward_uuid=reward_uuid,
+                reward_uuid=str(reward_uuid),
                 pending_reward_uuid=self.task_params.pending_reward_uuid,
                 campaign=self.campaign,
                 reason=self.task_params.reason,
