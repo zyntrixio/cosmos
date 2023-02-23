@@ -16,8 +16,7 @@ def generate_account_number(prefix: str, number_length: int = MINIMUM_ACCOUNT_NU
 
 
 def pence_integer_to_currency_string(value: int, currency: str, currency_sign: bool = True) -> str:
-    extras = {} if currency_sign else {"format": "#,##0.##"}
-    return format_currency(value / 100, currency, locale="en_GB", **extras)
+    return format_currency(value / 100, currency, locale="en_GB", format=None if currency_sign else "#,##0.##")
 
 
 def raw_stamp_value_to_string(value: int, stamp_suffix: bool = True) -> str:

@@ -1,17 +1,64 @@
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from flask import Markup, flash, redirect, url_for
 from flask_admin.actions import action
-from sqlalchemy.orm import joinedload
+from flask_admin.contrib.sqla.filters import FilterEqual
+from sqlalchemy import or_
+from sqlalchemy.future import select
+from sqlalchemy.orm import Query, joinedload
 
+from admin.activity_utils.enums import ActivityType
 from admin.helpers.custom_formatters import account_holder_export_repr, account_holder_repr
 from admin.views.campaign_reward.validators import validate_required_fields_values_yaml, validate_retailer_fetch_type
 from admin.views.model_views import BaseModelView
 from cosmos.campaigns.enums import CampaignStatuses
-from cosmos.db.models import RewardConfig, RewardRule
+from cosmos.core.activity.tasks import sync_send_activity
+from cosmos.db.models import Retailer, Reward, RewardConfig, RewardRule
 
 if TYPE_CHECKING:
     from werkzeug.wrappers import Response
+
+
+class RewardStatusFilter(FilterEqual):
+    def get_filters_from_status(self, value: str) -> tuple:
+        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+
+        match Reward.RewardStatuses(value):
+            case Reward.RewardStatuses.UNALLOCATED:
+                return (Reward.account_holder_id.is_(None),)
+            case Reward.RewardStatuses.ISSUED:
+                return (
+                    Reward.account_holder_id.is_not(None),
+                    Reward.redeemed_date.is_(None),
+                    Reward.cancelled_date.is_(None),
+                    or_(
+                        Reward.expiry_date > now,
+                        Reward.expiry_date.is_(None),
+                    ),
+                )
+            case Reward.RewardStatuses.CANCELLED:
+                return (
+                    Reward.account_holder_id.is_not(None),
+                    Reward.cancelled_date.is_not(None),
+                )
+            case Reward.RewardStatuses.REDEEMED:
+                return (
+                    Reward.account_holder_id.is_not(None),
+                    Reward.redeemed_date.is_not(None),
+                    Reward.cancelled_date.is_(None),
+                )
+            case Reward.RewardStatuses.EXPIRED:
+                return (
+                    Reward.account_holder_id.is_not(None),
+                    Reward.expiry_date <= now,
+                    Reward.redeemed_date.is_(None),
+                )
+            case _:
+                raise ValueError(f"unexpected status value {value}")
+
+    def apply(self, query: Query, value: str, alias: str | None = None) -> Query:  # noqa: ARG002
+        return query.where(*self.get_filters_from_status(value))
 
 
 class RewardConfigAdmin(BaseModelView):
@@ -73,12 +120,6 @@ class RewardConfigAdmin(BaseModelView):
 
 class RewardAdmin(BaseModelView):
     can_create = False
-    column_searchable_list = (
-        "account_holder.id",
-        "account_holder.email",
-        "account_holder.account_holder_uuid",
-        "code",
-    )
     column_list = (
         "account_holder",
         "reward_uuid",
@@ -92,13 +133,22 @@ class RewardAdmin(BaseModelView):
         "associated_url",
         "campaign",
     )
-    column_labels = {"account_holder": "Account Holder", "retailer": "Retailer Slug", "campaign": "Campaign slug"}
     column_filters = (
-        "account_holder.retailer.slug",
+        "account_holder.id",
+        "account_holder.email",
         "retailer.slug",
         "campaign.slug",
+        "reward_config.slug",
         "issued_date",
-        # "status", # FIXME: Need custom filter. Flask-admin can find it as a 'column', as its a model property
+        RewardStatusFilter(
+            "status",
+            "Status",
+            options=[(opt.value, opt.name) for opt in Reward.RewardStatuses],
+        ),
+    )
+    column_searchable_list = (
+        "account_holder.account_holder_uuid",
+        "code",
     )
     column_formatters = {"account_holder": account_holder_repr}
     form_widget_args = {
@@ -121,6 +171,55 @@ class RewardAdmin(BaseModelView):
             return redirect(url_for("ro-rewards.index_view"))
 
         return super().inaccessible_callback(name, **kwargs)
+
+    def is_action_allowed(self, name: str) -> bool:
+        return self.is_read_write_user if name == "delete-rewards" else False
+
+    def _get_rewards_from_ids(self, reward_ids: list[str]) -> list[Reward]:
+        return self.session.execute(select(Reward).where(Reward.id.in_(reward_ids))).scalars().all()
+
+    def _get_retailer_by_id(self, retailer_id: int) -> Retailer:
+        return self.session.execute(select(Retailer).where(Retailer.id == retailer_id)).scalar_one()
+
+    @action(
+        "delete-rewards",
+        "Delete",
+        "This action can only be carried out on non allocated and non soft deleted rewards."
+        "This action is unreversible. Proceed?",
+    )
+    def delete_rewards(self, reward_ids: list[str]) -> None:
+        # Get rewards for all selected ids
+        rewards = self._get_rewards_from_ids(reward_ids)
+
+        selected_retailer_id: int = rewards[0].retailer_id
+        for reward in rewards:
+            # Fail if all rewards are not eligible for deletion
+            if reward.retailer_id != selected_retailer_id:
+                self.session.rollback()
+                flash("Not all selected rewards are for the same retailer", category="error")
+                return
+
+            if reward.status == Reward.RewardStatuses.ISSUED or reward.deleted:
+                self.session.rollback()
+                flash("Not all selected rewards are eligible for deletion", category="error")
+                return
+
+            self.session.delete(reward)
+
+        self.session.commit()
+
+        # Synchronously send activity for rewards deleted if successfully deleted
+        rewards_deleted_count = len(rewards)
+        retailer = self._get_retailer_by_id(selected_retailer_id)
+        activity_payload = ActivityType.get_reward_deleted_activity_data(
+            activity_datetime=datetime.now(tz=timezone.utc),
+            retailer_name=retailer.name,
+            retailer_slug=retailer.slug,
+            sso_username=self.sso_username,
+            rewards_deleted_count=rewards_deleted_count,
+        )
+        sync_send_activity(activity_payload, routing_key=ActivityType.REWARD_DELETED.value)
+        flash("Successfully deleted selected rewards")
 
 
 class ReadOnlyRewardAdmin(RewardAdmin):

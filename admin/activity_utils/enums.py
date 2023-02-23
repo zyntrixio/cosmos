@@ -39,6 +39,7 @@ class ActivityType(Enum):
     RETAILER_DELETED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.deleted"
     RETAILER_STATUS = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.retailer.status"
     REWARD_STATUS = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.reward.status"
+    REWARD_DELETED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.reward.deleted"
     ACCOUNT_DELETED = f"activity.{admin_settings.ADMIN_PROJECT_NAME}.account.deleted"
 
     @classmethod
@@ -641,3 +642,28 @@ class ActivityType(Enum):
             campaigns=[],
             data={},
         ).dict()
+
+    @classmethod
+    def get_reward_deleted_activity_data(
+        cls,
+        *,
+        activity_datetime: datetime,
+        retailer_name: str,
+        retailer_slug: str,
+        sso_username: str,
+        rewards_deleted_count: int,
+    ) -> dict:
+
+        return {
+            "type": cls.REWARD_DELETED.name,
+            "datetime": datetime.now(tz=timezone.utc),
+            "underlying_datetime": activity_datetime,
+            "summary": f"{retailer_name} reward(s) deleted",
+            "reasons": ["Reward(s) deleted"],
+            "activity_identifier": "N/A",
+            "user_id": sso_username,
+            "associated_value": "Deleted",
+            "retailer": retailer_slug,
+            "campaigns": [],
+            "data": {"rewards_deleted": rewards_deleted_count},
+        }

@@ -45,14 +45,16 @@ BPL - {{ super() }}
 {% endblock %}
 
 {% block page_body %}
-{% if config.get('SENTRY_ENV') == 'production' %}
-<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: red;">PRODUCTION</p>
-{% elif config.get('SENTRY_ENV') == 'sandbox' %}
-<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: lightskyblue;">PERFORMANCE</p>
-{% elif config.get('SENTRY_ENV') == 'staging' %}
-<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: orange;">STAGING</p>
+{% if config.get('ENV_NAME') == 'production' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: red;">PRODUCTION</p>
+{% elif config.get('ENV_NAME') == 'sandbox' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: lightskyblue;">PERFORMANCE</p>
+{% elif config.get('ENV_NAME') == 'staging' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: orange;">STAGING</p>
+{% elif config.get('ENV_NAME') == 'local' %}
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: gray;">LOCAL</p>
 {% else %}
-<p style="font-weight: bold; text-align: center; color: #ffffff; background-color: green;">DEVELOPMENT</p>
+    <p style="font-weight: bold; text-align: center; color: #ffffff; background-color: green;">DEVELOPMENT</p>
 {% endif %}
 {{ super() }}
 {% endblock %}

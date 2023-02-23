@@ -27,50 +27,53 @@
 {% endmacro %}
 
 <section class="container">
-    <div class="col-md-8 panel-group">
-        <div class="col-md-8 panel panel-default">
-            <div class="panel-heading">
-                <h4 class="panel-title">Selected Campaigns</h4>
-            </div>
-            <div class="panel-body">
-                <span>
-                    <strong>active:</strong>
-                    <ul class="list-group">
-                        <li class="list-group-item">
-                            {{ active_campaign.slug }} (id: {{ active_campaign.id }}) {{ active_campaign.type }}
-                        </li>
-                    </ul>
-                </span>
-                {% if draft_campaign %}
-                <div>
-                    <strong>draft:</strong>
-                    <ul class="list-group">
-                        <li class="list-group-item">
-                            {{ draft_campaign.slug }} (id: {{ draft_campaign.id }}) {{ draft_campaign.type }}
-                        </li>
-                    </ul>
+    <div class="row">
+        <div class="col-md-8 panel-group">
+            <div class="col-md-8 panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">Selected Campaigns</h4>
                 </div>
-                {% endif %}
-            </div>
-        </div>
-        <div class="col-md-8 panel panel-default">
-            <div class="panel-heading">
-                <h4 class="panel-title">Campaign End Action Configuration</h4>
-            </div>
-            <div class="panel-body">
-                <form method="POST" class="form-group" name="endCampaignForm">
-                    {% for field in form %}
-                    {{ render_field(field) }}
-                    {% endfor %}
-                </form>
-                <div>
-                    <button class="btn btn-default" type="submit" onClick='confirmAction();'>
-                        Submit
-                    </button>
+                <div class="panel-body">
+                    <span>
+                        <strong>active:</strong>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                {{ active_campaign.campaign_slug }} (id: {{ active_campaign.campaign_id }}) {{
+                                active_campaign.campaign_type.name }}
+                            </li>
+                        </ul>
+                    </span>
+                    {% if draft_campaign %}
+                    <div>
+                        <strong>draft:</strong>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                {{ draft_campaign.campaign_slug }} (id: {{ draft_campaign.campaign_id }}) {{
+                                draft_campaign.campaign_type.name }}
+                            </li>
+                        </ul>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
+            <div class="col-md-8 panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">Campaign End Action Configuration</h4>
+                </div>
+                <div class="panel-body">
+                    <form method="POST" class="form-group" name="endCampaignForm">
+                        {% for field in form %}
+                        {{ render_field(field) }}
+                        {% endfor %}
+                    </form>
+                    <div>
+                        <button class="btn btn-default" type="submit" onClick='confirmAction();'>
+                            Submit
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-
         {% if easter_egg %}
         <div class="col-md-4 panel panel-default">
             <div class="panel-heading">
@@ -81,9 +84,8 @@
             </div>
         </div>
         {% endif %}
-
-
     </div>
+
 </section>
 <script>
     function confirmAction() {

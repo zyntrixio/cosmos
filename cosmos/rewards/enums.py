@@ -24,3 +24,7 @@ class PendingRewardMigrationActions(Enum):
     REMOVE = "remove"
     CONVERT = "convert"
     TRANSFER = "transfer"
+
+    @classmethod
+    def get_choices(cls, allow_transfer: bool) -> list[str]:
+        return [attr.value for attr in cls if attr != cls.TRANSFER or allow_transfer]

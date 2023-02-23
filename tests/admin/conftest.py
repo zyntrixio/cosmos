@@ -39,6 +39,7 @@ def test_client(app: Flask) -> Generator["FlaskClient", None, None]:
             AuthorisedModelView,
             "user_info",
             {
+                "name": "Test User",
                 "roles": {"Admin"},
                 "exp": (datetime.now(tz=timezone.utc) + timedelta(days=1)).timestamp(),
             },
