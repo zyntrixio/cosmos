@@ -13,6 +13,7 @@ from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.prometheus import invalid_marketing_opt_out, microsite_reward_requests
 from cosmos.public.api import crud
+from cosmos.public.config import public_settings
 from cosmos.retailers.crud import get_retailer_by_slug
 
 if TYPE_CHECKING:
@@ -42,7 +43,9 @@ class PublicService(Service):
             try:
                 opt_out_uuid = UUID(u)
             except ValueError:
-                invalid_marketing_opt_out.labels(unknown_retailer=False, invalid_token=True).inc()
+                invalid_marketing_opt_out.labels(
+                    app=public_settings.core.PROJECT_NAME, unknown_retailer=False, invalid_token=True
+                ).inc()
                 html_resp = RESPONSE_TEMPLATE.format(msg=msg)
                 return ServiceResult(value=html_resp)
 
@@ -50,9 +53,13 @@ class PublicService(Service):
                 self.db_session, opt_out_uuid=opt_out_uuid
             )
             if data is None:
-                invalid_marketing_opt_out.labels(unknown_retailer=False, invalid_token=True).inc()
+                invalid_marketing_opt_out.labels(
+                    app=public_settings.core.PROJECT_NAME, unknown_retailer=False, invalid_token=True
+                ).inc()
             elif data.retailer_slug != self.retailer_slug:
-                invalid_marketing_opt_out.labels(unknown_retailer=True, invalid_token=False).inc()
+                invalid_marketing_opt_out.labels(
+                    app=public_settings.core.PROJECT_NAME, unknown_retailer=True, invalid_token=False
+                ).inc()
             else:
                 updates = await crud.update_boolean_marketing_preferences(
                     self.db_session, account_holder_id=data.account_holder_id
@@ -76,7 +83,9 @@ class PublicService(Service):
                     )
 
         else:
-            invalid_marketing_opt_out.labels(unknown_retailer=False, invalid_token=True).inc()
+            invalid_marketing_opt_out.labels(
+                app=public_settings.core.PROJECT_NAME, unknown_retailer=False, invalid_token=True
+            ).inc()
 
         html_resp = RESPONSE_TEMPLATE.format(msg=msg)
         return ServiceResult(value=html_resp)
@@ -86,6 +95,7 @@ class PublicService(Service):
             valid_reward_uuid = UUID(reward_uuid)
         except ValueError:
             microsite_reward_requests.labels(
+                app=public_settings.core.PROJECT_NAME,
                 response_status=status.HTTP_404_NOT_FOUND,
                 unknown_retailer=False,
                 invalid_reward_uuid=True,
@@ -95,12 +105,16 @@ class PublicService(Service):
         if retailer := await get_retailer_by_slug(self.db_session, retailer_slug=self.retailer_slug):
             if reward := await get_reward(self.db_session, reward_uuid=valid_reward_uuid, retailer_id=retailer.id):
                 microsite_reward_requests.labels(
-                    response_status=status.HTTP_200_OK, unknown_retailer=False, invalid_reward_uuid=False
+                    app=public_settings.core.PROJECT_NAME,
+                    response_status=status.HTTP_200_OK,
+                    unknown_retailer=False,
+                    invalid_reward_uuid=False,
                 ).inc()
                 return ServiceResult(reward)
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_REWARD_FOUND))
 
         microsite_reward_requests.labels(
+            app=public_settings.core.PROJECT_NAME,
             response_status=status.HTTP_404_NOT_FOUND,
             unknown_retailer=retailer is None,
             invalid_reward_uuid=retailer is not None,
