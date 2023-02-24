@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
@@ -12,7 +10,8 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-logging.config.fileConfig(config.config_file_name)  # type: ignore [arg-type]
+# import logging
+# logging.config.fileConfig(config.config_file_name)
 
 
 # add your model's MetaData object here
