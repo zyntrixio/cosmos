@@ -101,10 +101,10 @@ def test_jigsaw_agent_ok(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
@@ -182,10 +182,10 @@ def test_jigsaw_agent_ok_token_already_set(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
@@ -275,10 +275,10 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
@@ -390,10 +390,10 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
@@ -527,10 +527,10 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:

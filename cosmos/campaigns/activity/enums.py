@@ -65,7 +65,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         loyalty_type: LoyaltyTypes,
     ) -> dict:
 
-        match loyalty_type:  # noqa: E999
+        match loyalty_type:
             case LoyaltyTypes.STAMPS:
                 stamp_balance = new_balance // 100
                 associated_value = f"{stamp_balance} stamp" + ("s" if stamp_balance != 1 else "")

@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from datetime import datetime, timezone
-from typing import Generator
 
 from pydantic.datetime_parse import parse_datetime
 

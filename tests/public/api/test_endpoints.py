@@ -1,7 +1,8 @@
 import uuid
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from pytest_mock import MockerFixture
 from starlette import status
@@ -14,8 +15,8 @@ from cosmos.public.config import public_settings
 from tests.conftest import SetupType
 
 if TYPE_CHECKING:
-    from fastapi.testclient import TestClient
 
+    from fastapi.testclient import TestClient
 
 PUBLIC_API_PREFIX = public_settings.PUBLIC_API_PREFIX
 

@@ -1,6 +1,7 @@
 # this file is excluded from coverage as there is no logic to test here beyond calling a library function.
 # if in the future we add any logic worth testing, please remove this file from the coveragerc ignore list.
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import rq
 

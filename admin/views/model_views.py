@@ -71,7 +71,7 @@ class AuthorisedModelView(ModelView, UserSessionMixin):
         return redirect(url_for("auth_views.login"))
 
     def is_action_allowed(self, name: str) -> bool:
-        return self.can_delete if name == "delete" else self.can_edit  # noqa: PLR2004
+        return self.can_delete if name == "delete" else self.can_edit
 
 
 class BaseModelView(AuthorisedModelView):
@@ -106,7 +106,7 @@ class BaseModelView(AuthorisedModelView):
 
             else:
                 flash(resp_json["display_message"], category="error")
-        except Exception as ex:  # noqa: BLE001
+        except Exception as ex:
             msg = f"Unexpected response received: {resp_json}" if resp_json else "Unexpected response received"
             flash(msg, category="error")
             logging.exception(msg, exc_info=ex)

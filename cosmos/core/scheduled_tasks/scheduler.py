@@ -1,9 +1,10 @@
 import logging
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from functools import wraps
 from logging import Logger
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 from uuid import uuid4
 
 from apscheduler.schedulers.background import BlockingScheduler
@@ -40,7 +41,7 @@ def acquire_lock(runner: Runner) -> Callable:
                 # the function without consequence
                 try:
                     func(*args, **kwargs)
-                except Exception as ex:  # noqa: BLE001
+                except Exception as ex:
                     logger.exception("Unexpected error occurred while running '%s'", func.__qualname__, exc_info=ex)
                 finally:
                     redis.delete(func_lock_key)
@@ -66,7 +67,7 @@ class CronScheduler:  # pragma: no cover
     default_schedule = "* * * * *"
     tz = "Europe/London"
 
-    def __init__(self, *, log: Logger = None) -> None:
+    def __init__(self, *, log: Logger | None = None) -> None:
         self.uid = str(uuid4())
         self.log = log if log is not None else logging.getLogger("cron-scheduler")
         self._scheduler = BlockingScheduler()
@@ -79,10 +80,8 @@ class CronScheduler:  # pragma: no cover
             return CronTrigger.from_crontab(schedule, timezone=self.tz)
         except ValueError:
             self.log.error(
-                (
-                    f"Schedule '{schedule}' is not in a recognised format! "
-                    f"Reverting to default of '{self.default_schedule}'."
-                )
+                f"Schedule '{schedule}' is not in a recognised format! "
+                f"Reverting to default of '{self.default_schedule}'."
             )
             return CronTrigger.from_crontab(self.default_schedule, timezone=self.tz)
 
@@ -100,7 +99,7 @@ class CronScheduler:  # pragma: no cover
 
         schedule = schedule_fn()
         if not schedule:
-            self.log.warning((f"No schedule provided! Reverting to default of '{self.default_schedule}'."))
+            self.log.warning(f"No schedule provided! Reverting to default of '{self.default_schedule}'.")
             schedule = self.default_schedule
 
         self._scheduler.add_job(

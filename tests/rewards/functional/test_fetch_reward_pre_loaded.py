@@ -126,7 +126,7 @@ def test_get_allocable_reward_ok(
             f"reward={reward.reward_uuid}"
         )
 
-        match expected_expiry_date:  # noqa: E999
+        match expected_expiry_date:
             case "from_validity_days":
                 assert reward.expiry_date == (now + timedelta(days=validity_days)).replace(tzinfo=None)
             case "from_expiry_date":

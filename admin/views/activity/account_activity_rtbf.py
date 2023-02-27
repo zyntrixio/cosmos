@@ -150,7 +150,7 @@ def anonymise_account_activities(retailer_slug: str, account_holder_uuid: str, a
                     activities_updated,
                     account_holder_uuid,
                 )
-            except Exception as ex:  # noqa: BLE001
+            except Exception as ex:
                 db_session.rollback()
                 logging.exception(
                     "Failed to annonymise activities: %s for account_holder_uuid: %s",

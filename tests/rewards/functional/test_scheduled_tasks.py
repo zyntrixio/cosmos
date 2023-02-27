@@ -1,6 +1,7 @@
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import TYPE_CHECKING
 from unittest.mock import ANY, MagicMock
 
 import pytest

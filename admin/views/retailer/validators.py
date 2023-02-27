@@ -110,7 +110,7 @@ def validate_marketing_config(_: wtforms.Form, field: wtforms.Field) -> None:
         formatted_errors = []
         for err in json.loads(ex.json()):
             loc = err.get("loc")[1:]
-            if loc[0] == "__key__":  # noqa: PLR2004
+            if loc[0] == "__key__":
                 loc[0] = "'key'"
 
             formatted_errors.append(f"{' -> '.join(loc)}: {err.get('msg')}")

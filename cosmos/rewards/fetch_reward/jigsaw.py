@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import requests
@@ -108,11 +109,11 @@ class Jigsaw(BaseAgent):
     def __init__(
         self,
         db_session: "Session",
+        *,
         campaign: "Campaign",
         reward_config: "RewardConfig",
         account_holder: "AccountHolder",
         config: dict,
-        *,
         retry_task: "RetryTask",
         task_params: "IssuanceTaskParams",
     ) -> None:
@@ -235,7 +236,7 @@ class Jigsaw(BaseAgent):
     def _get_response_body_or_raise_for_status(
         self,
         resp: requests.Response,
-        try_again_call: Callable[..., requests.Response] = None,
+        try_again_call: Callable[..., requests.Response] | None = None,
         reversal_allowed: bool = True,
     ) -> dict:
         """Validates a http response based on Jigsaw specific status codes and errors ids."""
@@ -303,7 +304,7 @@ class Jigsaw(BaseAgent):
 
         try:
             return self.fernet.decrypt(raw_token).decode()
-        except Exception as ex:  # noqa: BLE001
+        except Exception as ex:
             self.logger.exception(
                 f"Jigsaw: Unexpected value retrieved from redis for {self.REDIS_TOKEN_KEY}.", exc_info=ex
             )
@@ -318,7 +319,7 @@ class Jigsaw(BaseAgent):
                 self.fernet.encrypt(token.encode()),
                 expires_in,
             )
-        except Exception as ex:  # noqa: BLE001
+        except Exception as ex:
             self.logger.exception("Jigsaw: Unexpected error while encrypting and saving token to redis.", exc_info=ex)
 
     def _get_auth_token(self) -> str:

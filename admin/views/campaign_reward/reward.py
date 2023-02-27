@@ -126,7 +126,7 @@ class RewardAdmin(BaseModelView):
 class ReadOnlyRewardAdmin(RewardAdmin):
     column_details_exclude_list = ["code", "associated_url"]
     column_exclude_list = ["code", "associated_url"]
-    column_export_exclude_list = RewardAdmin.column_export_exclude_list + ["associated_url"]
+    column_export_exclude_list = [*RewardAdmin.column_export_exclude_list, "associated_url"]
 
     def is_accessible(self) -> bool:
         if self.is_read_write_user:

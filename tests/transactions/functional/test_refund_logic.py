@@ -1,6 +1,7 @@
 import uuid
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio

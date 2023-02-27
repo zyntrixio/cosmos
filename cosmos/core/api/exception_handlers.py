@@ -20,7 +20,7 @@ FIELD_VALIDATION_ERROR = "FIELD_VALIDATION_ERROR"
 def _format_validation_errors(payload: list[dict]) -> tuple[int, list[dict] | dict]:
     fields = []
     for error in payload:
-        if error["type"] == "value_error.jsondecode":  # noqa: PLR2004
+        if error["type"] == "value_error.jsondecode":
             return (
                 HTTP_400_BAD_REQUEST,
                 {"display_message": "Malformed request.", "code": "MALFORMED_REQUEST"},

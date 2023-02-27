@@ -81,10 +81,10 @@ def test_jigsaw_agent_register_retry_paths(
         with pytest.raises(requests.RequestException) as exc_info:
             with Jigsaw(
                 db_session,
-                jigsaw_campaign,
-                jigsaw_reward_config,
-                account_holder,
-                agent_config,
+                campaign=jigsaw_campaign,
+                reward_config=jigsaw_reward_config,
+                account_holder=account_holder,
+                config=agent_config,
                 retry_task=jigsaw_reward_issuance_task,
                 task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
             ) as agent:
@@ -149,10 +149,10 @@ def test_jigsaw_agent_register_failure_paths(
     with pytest.raises(requests.RequestException) as exc_info:
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -210,10 +210,10 @@ def test_jigsaw_agent_register_unexpected_error_response(
     with pytest.raises(AgentError) as exc_info:
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -260,10 +260,10 @@ def test_jigsaw_agent_register_timeout_response(
     with pytest.raises(requests.RequestException):
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -395,10 +395,10 @@ def test_jigsaw_agent_register_retry_get_token_success(
 
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -456,7 +456,7 @@ def test_jigsaw_agent_register_retry_get_token_max_retries_exceeded(
         def response_generator(
             self, request: httpretty.core.HTTPrettyRequest, uri: str, response_headers: dict
         ) -> tuple[int, dict, str]:
-            match self._update_calls_and_get_endpoint(uri):  # noqa: E999
+            match self._update_calls_and_get_endpoint(uri):
                 case "register":
                     return (
                         200,
@@ -506,10 +506,10 @@ def test_jigsaw_agent_register_retry_get_token_max_retries_exceeded(
     with pytest.raises(requests.RequestException) as exc_info:
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:

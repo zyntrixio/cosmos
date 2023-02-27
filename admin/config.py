@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from pydantic import BaseSettings, validator
 
 from cosmos.core.config import CoreSettings, core_settings
@@ -36,6 +38,15 @@ class AdminSettings(BaseSettings):
     @classmethod
     def fetch_admin_client_secret(cls, v: str | None) -> str:
         return v or key_vault.get_secret("bpl-event-horizon-sso-client-secret")
+
+    ACTIVITY_SQLALCHEMY_URI: str = ""
+
+    @validator("ACTIVITY_SQLALCHEMY_URI", always=True, pre=False)
+    @classmethod
+    def format_activity_db_uri(cls, v: str, values: dict) -> str:
+        return (
+            v or urlparse(values["core"].db.SQLALCHEMY_DATABASE_URI)._replace(path=f'/{values["ACTIVITY_DB"]}').geturl()
+        )
 
     class Config:
         case_sensitive = True

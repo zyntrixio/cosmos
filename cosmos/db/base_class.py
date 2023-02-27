@@ -1,7 +1,8 @@
 # mypy checks for sqlalchemy core 2.0 require sqlalchemy2-stubs
 import logging
 
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import sentry_sdk
 

@@ -53,7 +53,7 @@ class CampaignAdmin(CanDeleteModelView):
     )
 
     def is_action_allowed(self, name: str) -> bool:
-        return False if name == "delete" else super().is_action_allowed(name)  # noqa: PLR2004
+        return False if name == "delete" else super().is_action_allowed(name)
 
     def after_model_delete(self, model: "Campaign") -> None:
         # Synchronously send activity for a campaign deletion after successful deletion
@@ -73,7 +73,7 @@ class CampaignAdmin(CanDeleteModelView):
                 activity_data,
                 routing_key=ActivityType.CAMPAIGN.value,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logging.exception("Failed to publish CAMPAIGN (deleted) activity", exc_info=exc)
 
     def on_model_change(self, form: wtforms.Form, model: "Campaign", is_created: bool) -> None:
@@ -348,7 +348,7 @@ class RewardRuleAdmin(CanDeleteModelView):
 
             for field in form:
                 if (new_val := getattr(model, field.name)) != field.object_data:
-                    if field.name == "campaign":  # noqa: PLR2004
+                    if field.name == "campaign":
                         new_values["campaign_slug"] = new_val.slug
                         original_values["campaign_slug"] = field.object_data.slug
                     else:

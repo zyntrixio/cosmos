@@ -1,7 +1,8 @@
 import uuid
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture

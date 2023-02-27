@@ -345,7 +345,7 @@ class CampaignService(Service):
             await self._transfer_balance(payload=payload, from_campaign=campaigns.active, to_campaign=campaigns.draft)
 
         reward_issuance_tasks: list["RetryTask"] = []
-        match payload.pending_rewards_action:  # noqa: E999
+        match payload.pending_rewards_action:
             case PendingRewardMigrationActions.TRANSFER:
                 await self._transfer_pending_rewards(from_campaign=campaigns.active, to_campaign=campaigns.draft)
             case PendingRewardMigrationActions.CONVERT:

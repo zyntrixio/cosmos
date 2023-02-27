@@ -46,7 +46,7 @@ class RetailerAdmin(BaseModelView):
         # "balance_reset_advanced_warning_days", #FIXME: Add back in once Retailer model has this column
         "status",
     )
-    column_details_list = ("created_at", "updated_at") + form_create_rules
+    column_details_list = ("created_at", "updated_at", *form_create_rules)
     form_excluded_columns = ("account_holder_collection",)
     form_widget_args = {
         "account_number_length": {"disabled": True},
@@ -240,7 +240,7 @@ marketing_pref:
 
         del_ret_action = DeleteRetailerAction()
 
-        if "action_context" in session and request.method == "POST":  # noqa: PLR2004
+        if "action_context" in session and request.method == "POST":
             del_ret_action.session_data = session["action_context"]
 
         else:

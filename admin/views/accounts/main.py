@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from datetime import datetime, timezone
-from typing import Generator, NamedTuple
+from typing import NamedTuple
 from uuid import UUID
 
 from flask import flash

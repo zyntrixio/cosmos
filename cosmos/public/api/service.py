@@ -1,5 +1,3 @@
-import asyncio
-
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -16,8 +14,10 @@ from cosmos.public.api import crud
 from cosmos.public.config import public_settings
 from cosmos.retailers.crud import get_retailer_by_slug
 
-if TYPE_CHECKING:
-    from cosmos.db.models import Reward  # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
+    from asyncio import Task
+
+    from cosmos.db.models import Reward
 
 RESPONSE_TEMPLATE = """
 <!DOCTYPE HTML>
@@ -36,6 +36,8 @@ class PublicService(Service):
     def __init__(self, db_session: "AsyncSession", retailer_slug: str) -> None:
         self.db_session = db_session
         self.retailer_slug = retailer_slug
+        self._stored_activities: list[dict] = []
+        self._asyncio_tasks: set["Task"] = set()
 
     async def handle_marketing_unsubscribe(self, u: str | None) -> ServiceResult[str, ServiceError]:
         msg = "You have opted out of any further marketing"
@@ -78,7 +80,7 @@ class PublicService(Service):
                         original_value="True",
                         new_value="False",
                     )
-                    asyncio.create_task(
+                    await self.trigger_asyncio_task(
                         async_send_activity(activity_payload, routing_key=AccountsActivityType.ACCOUNT_CHANGE.value)
                     )
 

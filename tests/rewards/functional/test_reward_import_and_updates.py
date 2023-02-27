@@ -2,8 +2,9 @@ import logging
 import uuid
 
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import date, datetime, timezone
-from typing import TYPE_CHECKING, Callable, DefaultDict
+from typing import TYPE_CHECKING, DefaultDict
 
 import pytest
 
@@ -55,7 +56,7 @@ def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Mock
     assert rewards[0] == pre_existing_reward
 
     blob_content = (
-        "\n".join(eligible_reward_codes + [pre_existing_reward.code])
+        "\n".join([*eligible_reward_codes, pre_existing_reward.code])
         + "\nthis,is,a,bad,line"  # this should be reported to sentry (line 5)
         + "\nanother,bad,line"  # this should be reported to sentry (line 6)
     )
@@ -145,7 +146,7 @@ def test_import_agent__process_csv_soft_deleted(
     reward_agent = RewardImportAgent()
     eligible_reward_codes = ["reward1", "reward2", "reward3"]
 
-    blob_content = "\n".join(eligible_reward_codes + [pre_existing_reward.code])
+    blob_content = "\n".join([*eligible_reward_codes, pre_existing_reward.code])
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
@@ -184,7 +185,7 @@ def test_import_agent__process_csv_not_soft_deleted(
     reward_agent = RewardImportAgent()
     eligible_reward_codes = ["reward1", "reward2", "reward3"]
 
-    blob_content = "\n".join(eligible_reward_codes + [pre_existing_reward.code])
+    blob_content = "\n".join([*eligible_reward_codes, pre_existing_reward.code])
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
@@ -225,7 +226,7 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(
     reward_agent = RewardImportAgent()
     eligible_reward_codes = ["reward1", "reward2", "reward3"]
 
-    blob_content = "\n".join(eligible_reward_codes + [pre_existing_reward.code])
+    blob_content = "\n".join([*eligible_reward_codes, pre_existing_reward.code])
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
