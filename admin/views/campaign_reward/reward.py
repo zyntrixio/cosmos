@@ -92,9 +92,10 @@ class RewardAdmin(BaseModelView):
         "associated_url",
         "campaign",
     )
-    column_labels = {"account_holder": "Account Holder", "retailer": "Retailer Slug", "campaign": "Campagin slug"}
+    column_labels = {"account_holder": "Account Holder", "retailer": "Retailer Slug", "campaign": "Campaign slug"}
     column_filters = (
         "account_holder.retailer.slug",
+        "retailer.slug",
         "campaign.slug",
         "issued_date",
         # "status", # FIXME: Need custom filter. Flask-admin can find it as a 'column', as its a model property
