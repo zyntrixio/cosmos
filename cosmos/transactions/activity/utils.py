@@ -14,7 +14,7 @@ def build_tx_history_reasons(tx_amount: int, adjustments: dict[str, "AdjustmentA
         fmt_tx_amount = pence_integer_to_currency_string(abs(tx_amount), currency)
         fmt_threshold = pence_integer_to_currency_string(adjustment.threshold, currency)
 
-        match adjustment.accepted, tx_amount < 0:  # noqa: E999
+        match adjustment.accepted, tx_amount < 0:
             case True, True:
                 reason = f"refund of {fmt_tx_amount} accepted"
             case True, False:

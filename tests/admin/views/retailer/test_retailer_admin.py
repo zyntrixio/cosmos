@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from pytest_mock import MockerFixture
 from sqlalchemy.future import select

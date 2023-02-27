@@ -1,5 +1,6 @@
+from collections.abc import Callable, Generator
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 

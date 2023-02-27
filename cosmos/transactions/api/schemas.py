@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from datetime import datetime, timezone
-from typing import Generator
 
 from pydantic import BaseModel, Field, StrictInt
 from pydantic.types import UUID4

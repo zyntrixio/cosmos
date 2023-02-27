@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -424,7 +425,7 @@ def test_status_change_ending_campaign_ok(
         .unique()
         .all()
     )
-    match pending_rewards_action:  # noqa: E999
+    match pending_rewards_action:
         case "remove":
             assert not reward_issuance_tasks
             mock_trigger_asyncio_task.assert_not_called()

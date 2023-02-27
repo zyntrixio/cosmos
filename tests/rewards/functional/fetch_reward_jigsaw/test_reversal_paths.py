@@ -80,10 +80,10 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_max_retries_exce
     with pytest.raises(AgentError) as exc_info:
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -125,7 +125,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_max_retries_exceede
             self, request: httpretty.core.HTTPrettyRequest, uri: str, response_headers: dict
         ) -> tuple[int, dict, str]:
 
-            match self._update_calls_and_get_endpoint(uri):  # noqa: E999
+            match self._update_calls_and_get_endpoint(uri):
                 case "register":
                     return (
                         200,
@@ -172,10 +172,10 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_max_retries_exceede
     with pytest.raises(AgentError):
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -340,10 +340,10 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_need_new_token(
 
     with Jigsaw(
         db_session,
-        jigsaw_campaign,
-        jigsaw_reward_config,
-        account_holder,
-        agent_config,
+        campaign=jigsaw_campaign,
+        reward_config=jigsaw_reward_config,
+        account_holder=account_holder,
+        config=agent_config,
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
@@ -443,10 +443,10 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_retry_paths(
         with pytest.raises(requests.RequestException) as exc_info:
             with Jigsaw(
                 db_session,
-                jigsaw_campaign,
-                jigsaw_reward_config,
-                account_holder,
-                agent_config,
+                campaign=jigsaw_campaign,
+                reward_config=jigsaw_reward_config,
+                account_holder=account_holder,
+                config=agent_config,
                 retry_task=jigsaw_reward_issuance_task,
                 task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
             ) as agent:
@@ -534,10 +534,10 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_failure_paths(
         with pytest.raises(requests.RequestException) as exc_info:
             with Jigsaw(
                 db_session,
-                jigsaw_campaign,
-                jigsaw_reward_config,
-                account_holder,
-                agent_config,
+                campaign=jigsaw_campaign,
+                reward_config=jigsaw_reward_config,
+                account_holder=account_holder,
+                config=agent_config,
                 retry_task=jigsaw_reward_issuance_task,
                 task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
             ) as agent:

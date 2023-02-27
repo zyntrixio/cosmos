@@ -71,10 +71,10 @@ def test_jigsaw_agent_expired_token(
 
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:
@@ -132,10 +132,10 @@ def test_jigsaw_agent_get_token_retry_paths(
 
             with Jigsaw(
                 db_session,
-                jigsaw_campaign,
-                jigsaw_reward_config,
-                account_holder,
-                agent_config,
+                campaign=jigsaw_campaign,
+                reward_config=jigsaw_reward_config,
+                account_holder=account_holder,
+                config=agent_config,
                 retry_task=jigsaw_reward_issuance_task,
                 task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
             ) as agent:
@@ -192,10 +192,10 @@ def test_jigsaw_agent_get_token_failure_paths(
 
             with Jigsaw(
                 db_session,
-                jigsaw_campaign,
-                jigsaw_reward_config,
-                account_holder,
-                agent_config,
+                campaign=jigsaw_campaign,
+                reward_config=jigsaw_reward_config,
+                account_holder=account_holder,
+                config=agent_config,
                 retry_task=jigsaw_reward_issuance_task,
                 task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
             ) as agent:
@@ -251,10 +251,10 @@ def test_jigsaw_agent_get_token_unexpected_error_response(
     with pytest.raises(AgentError) as exc_info:
         with Jigsaw(
             db_session,
-            jigsaw_campaign,
-            jigsaw_reward_config,
-            account_holder,
-            agent_config,
+            campaign=jigsaw_campaign,
+            reward_config=jigsaw_reward_config,
+            account_holder=account_holder,
+            config=agent_config,
             retry_task=jigsaw_reward_issuance_task,
             task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
         ) as agent:

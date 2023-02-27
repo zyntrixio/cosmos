@@ -148,10 +148,8 @@ class BlobFileAgent:
             db_session.rollback()
         except RewardConfigNotActiveError as ex:
             logger.error(
-                (
-                    f"Received invalid set of {retailer.slug} reward codes to import due to non-active reward "
-                    f"type: {ex.slug}, moving to errors blob container for manual fix"
-                )
+                f"Received invalid set of {retailer.slug} reward codes to import due to non-active reward "
+                f"type: {ex.slug}, moving to errors blob container for manual fix"
             )
             self.move_blob(reward_settings.BLOB_ERROR_CONTAINER, blob_client, lease)
             db_session.rollback()
@@ -240,7 +238,7 @@ class RewardImportAgent(BlobFileAgent):
 
     @staticmethod
     def _get_expiry_date(sub_blob_name: str, blob_name: str) -> date | None:
-        if ".expires." in sub_blob_name:  # noqa: PLR2004
+        if ".expires." in sub_blob_name:
             try:
                 extracted_date = sub_blob_name.split(".expires.")[1].split(".")[0]
                 expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()

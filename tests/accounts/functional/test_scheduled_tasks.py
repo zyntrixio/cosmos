@@ -1,5 +1,6 @@
+from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable, Iterable
+from typing import TYPE_CHECKING
 from unittest import mock
 from zoneinfo import ZoneInfo
 
@@ -76,7 +77,7 @@ def test_reset_balances_ok_ratailer_has_lifespan(
     for balance in balances:
         db_session.refresh(balance)
 
-        match balance.id:  # noqa [E999]
+        match balance.id:
             case 1 | 3:
                 assert balance.balance == 0
                 assert balance.reset_date == today + timedelta(account_holder.retailer.balance_lifespan)

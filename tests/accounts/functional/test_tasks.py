@@ -1,7 +1,7 @@
 import json
 
+from collections.abc import Callable, Generator
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Generator
 from unittest import mock
 
 import httpretty

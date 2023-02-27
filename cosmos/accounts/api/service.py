@@ -1,5 +1,3 @@
-import asyncio
-
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -119,7 +117,7 @@ class AccountService(Service):
         else:
             await self.commit_db_changes()
             result = "Accepted"
-            asyncio.create_task(enqueue_task(retry_task_id=activation_task.retry_task_id))
+            await self.trigger_asyncio_task(enqueue_task(retry_task_id=activation_task.retry_task_id))
             return ServiceResult({})
         finally:
             account_request_activity_payload = {

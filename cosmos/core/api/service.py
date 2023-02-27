@@ -1,7 +1,8 @@
 import asyncio
 import logging
 
-from typing import TYPE_CHECKING, Callable, Coroutine, Generic, Iterable, TypeVar, cast
+from collections.abc import Callable, Coroutine, Iterable
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit
@@ -24,7 +25,7 @@ ServiceResultError = TypeVar("ServiceResultError", bound=Exception)
 
 
 class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
-    def __init__(self, value: ServiceResultValue = None, *, error: ServiceResultError | None = None) -> None:
+    def __init__(self, value: ServiceResultValue | None = None, *, error: ServiceResultError | None = None) -> None:
         self.value = value
         self.error = error
 
@@ -45,7 +46,10 @@ class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
         if self.error:
             raise self.error
 
-        return cast(ServiceResultValue, self.value)
+        if self.value is None:
+            raise ValueError("No error or result value provided to %s", self.__class__.__name__)
+
+        return self.value
 
 
 class Service:
@@ -100,7 +104,7 @@ class Service:
 
                 await async_send_activity(payload, routing_key=activity_type.value)
 
-            except Exception:  # noqa BLE001
+            except Exception:
                 self.logger.exception(
                     "Failed to send %s activities with provided kwargs:\n%r", activity_type.name, formatter_kwargs
                 )

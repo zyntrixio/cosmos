@@ -26,7 +26,7 @@ public_router = APIRouter(prefix=public_settings.PUBLIC_API_PREFIX)
 )
 async def opt_out_marketing_preferences(
     retailer_slug: str,
-    u: str = None,
+    u: str | None = None,
     db_session: AsyncSession = Depends(get_session),
 ) -> str:
     service = PublicService(db_session=db_session, retailer_slug=retailer_slug)

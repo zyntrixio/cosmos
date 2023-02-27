@@ -63,13 +63,13 @@ admin = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.10.0"
-mypy = "^0.982"
-isort = "^5.10.1"
+black = "^22.1.0"
+mypy = "^1.0.1"
+isort = "^5.12.0"
 xenon = "^0.9.0"
-refurb = "^1.9.2"
-ipython = "^8.7.0"
-ruff = "^0.0.223"
+refurb = "^1.13.0"
+ipython = "^8.10.0"
+ruff = "^0.0.252"
 types-Flask = "^1.1.6"
 types-PyYAML = "^6.0.12.1"
 types-requests = "^2.28.11.7"
@@ -176,7 +176,7 @@ ignore = [
 # disable unused import error for __init__.py and cosmos/db/base.py
 "__init__.py" = ["F401"]
 "cosmos/db/base.py" = ["F401"]
-"tests/*" = ["S101", "PLR2004", "ARG001"]
+"tests/*" = ["S101", "PLR2004", "ARG001", "PLR0913", "PLR0915", "ARG002"]
 "cosmos/core/config.py" = ["PLR2004"]
 "cosmos/db/config.py" = ["PLR2004"]
 "cosmos/rewards/fetch_reward/jigsaw.py" = ["PLR2004"]

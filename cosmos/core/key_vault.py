@@ -19,7 +19,7 @@ class VaultSettings(BaseSettings):
         command = sys.argv[0]
         args = sys.argv[1:] if len(sys.argv) > 1 else []
 
-        return True if "pytest" in command or any("test" in arg for arg in args) else v  # noqa: PLR2004
+        return True if "pytest" in command or any("test" in arg for arg in args) else v
 
     MIGRATING: bool = False
 
@@ -27,7 +27,7 @@ class VaultSettings(BaseSettings):
     @classmethod
     def is_migration(cls, v: bool) -> bool:
         command = sys.argv[0]
-        return True if "alembic" in command else v  # noqa: PLR2004
+        return True if "alembic" in command else v
 
     class Config:
         case_sensitive = True

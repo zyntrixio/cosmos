@@ -434,7 +434,13 @@ class TransactionService(Service):
         )
 
     async def _process_rewards(
-        self, transaction: Transaction, campaign: Campaign, rewards_achieved_n: int, trc_reached: bool, adjustment: int
+        self,
+        *,
+        transaction: Transaction,
+        campaign: Campaign,
+        rewards_achieved_n: int,
+        trc_reached: bool,
+        adjustment: int,
     ) -> tuple[int, list["RetryTask"]]:
         log_suffix = f"(tx_id: {transaction.transaction_id})"
         if trc_reached:

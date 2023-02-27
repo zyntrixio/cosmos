@@ -31,11 +31,11 @@ class BaseAgent(ABC):
     def __init__(
         self,
         db_session: "Session",
+        *,
         campaign: "Campaign",
         reward_config: "RewardConfig",
         account_holder: "AccountHolder",
         config: dict,
-        *,
         retry_task: "RetryTask",
         task_params: "IssuanceTaskParams",
     ) -> None:

@@ -71,7 +71,7 @@ class ActivityType(ActivityTypeMixin, Enum):
 
     @staticmethod
     def _get_http_error_reason(error: str) -> str:
-        match error:  # noqa: E999
+        match error:
 
             case ErrorCode.NO_ACTIVE_CAMPAIGNS.name:
                 reason = TxImportReasons.NO_ACTIVE_CAMPAIGNS.value

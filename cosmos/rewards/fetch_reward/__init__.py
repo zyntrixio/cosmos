@@ -15,6 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def issue_agent_specific_reward(
     db_session: "Session",
+    *,
     campaign: Campaign,
     reward_config: RewardConfig,
     account_holder: AccountHolder,
@@ -42,10 +43,10 @@ def issue_agent_specific_reward(
 
     with Agent(
         db_session,
-        campaign,
-        reward_config,
-        account_holder,
-        retailer_fetch_type.load_agent_config(),
+        campaign=campaign,
+        reward_config=reward_config,
+        account_holder=account_holder,
+        config=retailer_fetch_type.load_agent_config(),
         retry_task=retry_task,
         task_params=task_params,
     ) as agent:

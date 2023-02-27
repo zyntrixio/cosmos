@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
-from typing import Generator
 from unittest import mock
 
 import pytest

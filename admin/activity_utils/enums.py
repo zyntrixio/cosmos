@@ -309,7 +309,7 @@ class ActivityType(Enum):
         loyalty_type: str,
     ) -> dict:
 
-        match loyalty_type:  # noqa: E999
+        match loyalty_type:
             case "STAMPS":
                 stamp_balance = new_balance // 100
                 associated_value = f"{stamp_balance} stamp" + ("s" if stamp_balance != 1 else "")

@@ -76,13 +76,13 @@ def process_pending_rewards() -> None:
             try:
                 processed_rewards_n += len(ripe_pending_rewards)
                 tasks_ids = _process_batch_deletion(db_session, ripe_pending_rewards, reward_config_ids_map)
-            except Exception as ex:  # noqa: BLE001
+            except Exception as ex:
                 logger.exception("Failed to convert pending rewards.", exc_info=ex)
                 return
 
             try:
                 enqueue_many_retry_tasks(db_session, retry_tasks_ids=tasks_ids, connection=redis_raw)
-            except Exception as ex:  # noqa: BLE001
+            except Exception as ex:
                 logger.exception(
                     "Failed to enqueue %s RetryTasks with ids: %r.",
                     reward_settings.REWARD_ISSUANCE_TASK_NAME,

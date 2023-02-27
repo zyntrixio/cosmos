@@ -1,6 +1,7 @@
 import math
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -190,9 +191,10 @@ def test_migration_invalid_status_requested(
     if from_campaign_status != "ACTIVE" or retailer_status != "TEST":
         expected_errors[ErrorCodeDetails.INVALID_STATUS_REQUESTED] = [endable_campaign.slug]
     if to_campaign_status != "DRAFT":
-        expected_errors[ErrorCodeDetails.INVALID_STATUS_REQUESTED] = expected_errors.get(
-            ErrorCodeDetails.INVALID_STATUS_REQUESTED, []
-        ) + [activable_campaign.slug]
+        expected_errors[ErrorCodeDetails.INVALID_STATUS_REQUESTED] = [
+            *expected_errors.get(ErrorCodeDetails.INVALID_STATUS_REQUESTED, []),
+            activable_campaign.slug,
+        ]
         expected_errors[ErrorCodeDetails.MISSING_CAMPAIGN_COMPONENTS] = [activable_campaign.slug]
 
     resp = test_client.post(
@@ -342,7 +344,7 @@ def test_migration_ok(
         .unique()
         .all()
     )
-    match pending_rewards_action:  # noqa: E999
+    match pending_rewards_action:
         case "remove":
             assert not reward_issuance_tasks
             mock_trigger_asyncio_task.assert_not_called()

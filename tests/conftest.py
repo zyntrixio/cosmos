@@ -1,6 +1,7 @@
+from collections.abc import AsyncGenerator, Callable, Generator
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Generator, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 from uuid import uuid4
 
 import pytest

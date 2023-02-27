@@ -1,5 +1,5 @@
+from collections.abc import AsyncGenerator
 from contextlib import suppress
-from typing import AsyncGenerator
 
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +44,7 @@ class RetailerDependency:
 def get_authorization_token(authorization: str = Header(None)) -> str:
     with suppress(ValueError, AttributeError):
         token_type, token_value = authorization.split(" ")
-        if token_type.lower() == "token":  # noqa: PLR2004
+        if token_type.lower() == "token":
             return token_value
 
     raise HTTPException(

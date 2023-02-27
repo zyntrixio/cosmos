@@ -37,7 +37,7 @@ def api(
     try:
         importlib.import_module(mod)
         uvicorn.run(f"{mod}:app", port=port, reload=dev)
-    except Exception as exc:  # noqa BLE001
+    except Exception as exc:
         logger.exception(f"Could not start {mod_name} service", exc_info=exc)
         raise typer.Abort() from exc
 
@@ -65,7 +65,7 @@ def task_worker(burst: bool = False) -> None:  # pragma: no cover
 
 
 @app.command()
-def cron_scheduler(
+def cron_scheduler(  # noqa: PLR0913
     imports: bool = True,
     updates: bool = True,
     pending_rewards: bool = True,

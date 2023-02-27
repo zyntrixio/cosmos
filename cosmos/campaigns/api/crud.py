@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload, noload, selectinload
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.db.base_class import async_run_query
-from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, PendingReward, Retailer, Transaction
+from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer, Transaction
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import NamedTuple
@@ -38,7 +38,7 @@ async def get_campaign_by_slug(
 ) -> Campaign | None:
     async def _query() -> Campaign:
 
-        match load_rules, lock_row:  # noqa: E999
+        match load_rules, lock_row:
             case True, False:
                 option = joinedload
             case True, True:
@@ -63,7 +63,7 @@ async def get_campaign_by_slug(
 
 
 async def get_active_campaigns(
-    db_session: "AsyncSession", retailer: Retailer, transaction: Transaction = None, join_rules: bool = False
+    db_session: "AsyncSession", retailer: Retailer, transaction: Transaction | None = None, join_rules: bool = False
 ) -> list[Campaign]:
 
     opt = [joinedload(Campaign.earn_rule), joinedload(Campaign.reward_rule)] if join_rules else []
