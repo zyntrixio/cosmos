@@ -61,9 +61,9 @@ class BlobFileAgent:
         )
         # type hints for blob storage still not working properly, remove ignores if it gets fixed.
         with suppress(ResourceExistsError):
-            self.blob_service_client.create_container(self.container_name)  # type: ignore
+            self.blob_service_client.create_container(self.container_name)
 
-        self.container_client = self.blob_service_client.get_container_client(self.container_name)  # type: ignore
+        self.container_client = self.blob_service_client.get_container_client(self.container_name)
 
     def _blob_name_is_duplicate(self, db_session: "Session", file_name: str) -> bool:
         file_name = db_session.execute(
