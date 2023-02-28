@@ -6,7 +6,7 @@
 - `poetry install`
 - To include admin dependencies, `poetry install -E admin`
 - To include all dependencies (including admin, dev, test):
-  - `poetry install -E admin --with dev --with pytest --sync`
+  - `poetry install --all-extras`
 - create a `local.env` file in the root directory (below)
 
 ### Example `local.env`

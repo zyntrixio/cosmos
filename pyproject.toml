@@ -21,7 +21,7 @@ python = "^3.11"
 sqlalchemy = {version = "^1.4.43", extras = ["asyncio"]}
 pydantic = {version = "^1.10.2", extras = ["email"]}
 PyYAML = "^6.0"
-sentry-sdk = "^1.10.1"
+sentry-sdk = {version = "^1.10.1", extras = ["flask"]}
 azure-identity = "^1.11.0"
 azure-keyvault = "^4.2.0"
 rq = "^1.11.1"
@@ -59,7 +59,6 @@ admin = [
     "Flask", 
     "Flask-Admin", 
     "Authlib",
-    "sentry-sdk[flask]",
     "Flask-WTF",
 ]
 
