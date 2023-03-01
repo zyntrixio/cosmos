@@ -4,6 +4,7 @@ import enum
 class EmailTemplateTypes(enum.Enum):
     WELCOME_EMAIL = enum.auto()
     REWARD_ISSUANCE = enum.auto()
+    BALANCE_RESET = enum.auto()
 
 
 class EmailTemplateKeys(enum.Enum):

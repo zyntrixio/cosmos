@@ -839,7 +839,7 @@ def test_get_balance_change_activity_data(mocker: MockFixture) -> None:
 #     }
 
 
-def test_get_retailer_config_created_activity_data(mocker: MockFixture) -> None:
+def test_get_retailer_created_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("admin.activity_utils.enums.datetime")
     fake_now = datetime.now(tz=timezone.utc)
     mock_datetime.now.return_value = fake_now
@@ -852,7 +852,7 @@ def test_get_retailer_config_created_activity_data(mocker: MockFixture) -> None:
     loyalty_name = "mock retailer"
     retailer_status = "TEST"
     balance_lifespan = 30
-    # balance_reset_advanced_warning_days = 10
+    balance_reset_advanced_warning_days = 10
 
     retailer_enrol_config = """
 email:
@@ -883,7 +883,7 @@ marketing_pref:
         marketing_preferences=yaml.safe_load(marketing_pref_config),
         loyalty_name=loyalty_name,
         balance_lifespan=balance_lifespan,
-        # balance_reset_advanced_warning_days=balance_reset_advanced_warning_days,
+        balance_reset_advanced_warning_days=balance_reset_advanced_warning_days,
     )
 
     assert payload == {
@@ -914,14 +914,14 @@ marketing_pref:
                     ],
                     "loyalty_name": loyalty_name,
                     "balance_lifespan": 30,
-                    # "balance_reset_advanced_warning_days": 10,
+                    "balance_reset_advanced_warning_days": 10,
                 }
             },
         },
     }
 
 
-def test_get_retailer_config_created_activity_data_without_optionals(mocker: MockFixture) -> None:
+def test_get_retailer_created_activity_data_without_optionals(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("admin.activity_utils.enums.datetime")
     fake_now = datetime.now(tz=timezone.utc)
     mock_datetime.now.return_value = fake_now
@@ -934,7 +934,7 @@ def test_get_retailer_config_created_activity_data_without_optionals(mocker: Moc
     loyalty_name = "mock retailer"
     retailer_status = "TEST"
     balance_lifespan = None
-    # balance_reset_advanced_warning_days = None
+    balance_reset_advanced_warning_days = None
 
     retailer_enrol_config = """
 email:
@@ -957,7 +957,7 @@ last_name:
         marketing_preferences=yaml.safe_load(""),
         loyalty_name=loyalty_name,
         balance_lifespan=balance_lifespan,
-        # balance_reset_advanced_warning_days=balance_reset_advanced_warning_days,
+        balance_reset_advanced_warning_days=balance_reset_advanced_warning_days,
     )
 
     assert payload == {
@@ -984,8 +984,6 @@ last_name:
                         {"key": "last_name", "required": True, "label": "Last name"},
                     ],
                     "loyalty_name": loyalty_name,
-                    # "balance_lifespan": None,
-                    # "balance_reset_advanced_warning_days": None,
                 }
             },
         },

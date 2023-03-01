@@ -16,7 +16,7 @@ from rq import Worker
 from cosmos.accounts.config import account_settings
 from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
-from cosmos.core.scheduled_tasks.balances import reset_balances
+from cosmos.core.scheduled_tasks.balances import reset_balances, send_balance_reset_nudges
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.config import reward_settings
@@ -93,6 +93,11 @@ def cron_scheduler(
         scheduler.add_job(
             reset_balances,
             schedule_fn=lambda: account_settings.RESET_BALANCES_SCHEDULE,
+            coalesce_jobs=True,
+        )
+        scheduler.add_job(
+            send_balance_reset_nudges,
+            schedule_fn=lambda: account_settings.RESET_BALANCE_NUDGES_SCHEDULE,
             coalesce_jobs=True,
         )
 
