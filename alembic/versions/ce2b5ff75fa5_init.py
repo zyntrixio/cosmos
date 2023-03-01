@@ -74,6 +74,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("balance_lifespan", sa.Integer(), nullable=True),
+        sa.Column("balance_reset_advanced_warning_days", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_retailer_slug"), "retailer", ["slug"], unique=True)

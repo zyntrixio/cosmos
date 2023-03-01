@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 import wtforms
@@ -7,6 +7,7 @@ import yaml
 from flask import Markup, flash, redirect, request, session, url_for
 from flask_admin import expose
 from flask_admin.actions import action
+from sqlalchemy import update
 from sqlalchemy.future import select
 from wtforms.validators import DataRequired, Optional
 
@@ -15,6 +16,7 @@ from admin.views.model_views import BaseModelView, CanDeleteModelView
 from admin.views.retailer.custom_actions import DeleteRetailerAction
 from admin.views.retailer.validators import (
     validate_account_number_prefix,
+    validate_balance_reset_advanced_warning_days,
     validate_marketing_config,
     validate_optional_yaml,
     validate_retailer_config,
@@ -22,7 +24,7 @@ from admin.views.retailer.validators import (
 )
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.tasks import sync_send_activity
-from cosmos.db.models import Campaign, Retailer
+from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer
 from cosmos.retailers.enums import RetailerStatuses
 
 if TYPE_CHECKING:
@@ -43,7 +45,7 @@ class RetailerAdmin(BaseModelView):
         "marketing_preference_config",
         "loyalty_name",
         "balance_lifespan",
-        # "balance_reset_advanced_warning_days", #FIXME: Add back in once Retailer model has this column
+        "balance_reset_advanced_warning_days",
         "status",
     )
     column_details_list = ("created_at", "updated_at", *form_create_rules)
@@ -60,7 +62,7 @@ class RetailerAdmin(BaseModelView):
         "marketing_preference_config",
         "loyalty_name",
         "balance_lifespan",
-        # "balance_reset_advanced_warning_days", #FIXME: Add back in once Retailer model has this column
+        "balance_reset_advanced_warning_days",
     )
 
     profile_config_placeholder = """
@@ -107,12 +109,11 @@ marketing_pref:
             "this value. Balances will not be reset if left empty.",
             "validators": [wtforms.validators.NumberRange(min=1)],
         },
-        #  FIXME: Add back in once Retailer model has this column
-        # "balance_reset_advanced_warning_days": {
-        #     "description": "Number of days ahead of account holder balance reset "
-        #     "date that a balance reset nudge should be sent.",
-        #     "validators": [wtforms.validators.NumberRange(min=0)],
-        # },
+        "balance_reset_advanced_warning_days": {
+            "description": "Number of days ahead of account holder balance reset "
+            "date that a balance reset nudge should be sent.",
+            "validators": [wtforms.validators.NumberRange(min=1)],
+        },
     }
     column_formatters = {
         "profile_config": lambda _v, _c, model, _p: Markup("<pre>")
@@ -126,7 +127,6 @@ marketing_pref:
     def after_model_change(self, form: wtforms.Form, model: Retailer, is_created: bool) -> None:
         if is_created:
             # Synchronously send activity for retailer creation
-            #  FIXME: Fix once Retailer model has balance_reset_advanced_warning_days column
             sync_send_activity(
                 ActivityType.get_retailer_created_activity_data(
                     sso_username=self.sso_username,
@@ -139,7 +139,7 @@ marketing_pref:
                     marketing_preferences=yaml.safe_load(model.marketing_preference_config),
                     loyalty_name=model.loyalty_name,
                     balance_lifespan=model.balance_lifespan,
-                    # balance_reset_advanced_warning_days=model.balance_reset_advanced_warning_days,
+                    balance_reset_advanced_warning_days=model.balance_reset_advanced_warning_days,
                 ),
                 routing_key=ActivityType.RETAILER_CREATED.value,
             )
@@ -158,23 +158,22 @@ marketing_pref:
                     routing_key=ActivityType.RETAILER_CHANGED.value,
                 )
 
-    #  FIXME: Add back in once Retailer model has balance_reset_advanced_warning_days column
-    # def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
-    # validate_balance_reset_advanced_warning_days(form, retailer_status=model.status)
-    # if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data > 0:
-    #     reset_date = (datetime.now(tz=timezone.utc) + timedelta(days=model.balance_lifespan)).date()
-    #     stmt = (
-    #         update(CampaignBalance)
-    #         .where(
-    #             CampaignBalance.account_holder_id == AccountHolder.id,
-    #             AccountHolder.retailer_id == model.id,
-    #         )
-    #         .values(reset_date=reset_date)
-    #         .execution_options(synchronize_session=False)
-    #     )
-    #     self.session.execute(stmt)
+    def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
+        validate_balance_reset_advanced_warning_days(form, retailer_status=model.status)
+        if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data > 0:
+            reset_date = (datetime.now(tz=timezone.utc) + timedelta(days=model.balance_lifespan)).date()
+            stmt = (
+                update(CampaignBalance)
+                .where(
+                    CampaignBalance.account_holder_id == AccountHolder.id,
+                    AccountHolder.retailer_id == model.id,
+                )
+                .values(reset_date=reset_date)
+                .execution_options(synchronize_session=False)
+            )
+            self.session.execute(stmt)
 
-    # return super().on_model_change(form, model, is_created)
+        return super().on_model_change(form, model, is_created)
 
     def _get_retailer_by_id(self, retailer_id: int) -> Retailer:
         return self.session.execute(select(Retailer).where(Retailer.id == retailer_id)).scalar_one()

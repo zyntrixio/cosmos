@@ -473,6 +473,23 @@ class TransactionEarn(Base, TimestampMixin):
         )
 
 
+RETAILER_BALANCE_RESET_ADVANCED_WARNING_DAYS_CHECK = """(
+            (
+                (balance_reset_advanced_warning_days > 0)
+                AND (
+                balance_reset_advanced_warning_days < balance_lifespan
+                AND balance_lifespan IS NOT NULL
+                OR balance_reset_advanced_warning_days = NULL
+                )
+            ) AND
+            (
+                (balance_lifespan > 0 AND balance_reset_advanced_warning_days > 0)
+                OR (balance_lifespan = NULL AND balance_reset_advanced_warning_days = NULL)
+            )
+        )
+        """
+
+
 class Retailer(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "retailer"
 
@@ -488,6 +505,14 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
         Integer,
         CheckConstraint(
             "balance_lifespan IS NULL OR balance_lifespan > 0", name="balance_lifespan_positive_int_or_null_check"
+        ),
+        nullable=True,
+    )
+    balance_reset_advanced_warning_days = Column(
+        Integer,
+        CheckConstraint(
+            RETAILER_BALANCE_RESET_ADVANCED_WARNING_DAYS_CHECK,
+            name="balance_reset_check",
         ),
         nullable=True,
     )
