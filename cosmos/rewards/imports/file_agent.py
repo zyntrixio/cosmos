@@ -384,7 +384,7 @@ class RewardUpdatesAgent(BlobFileAgent):
                 data = RewardUpdateSchema(
                     code=row[0].strip(),
                     date=row[1].strip(),
-                    status=RewardUpdateStatuses(row[2].strip()),
+                    status=RewardUpdateStatuses(row[2].strip().lower()),
                 )
             except (ValidationError, IndexError, ValueError) as ex:
                 invalid_rows.append((row_num, ex))

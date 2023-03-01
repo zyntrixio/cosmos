@@ -320,7 +320,7 @@ def test_updates_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Moc
     content = """
 TEST12345678,2021-07-30,cancelled
 TEST87654321,2021-07-21,redeemed
-TEST87654322,2021-07-30,cancelled
+TEST87654322,2021-07-30,CANCELLED
 TEST87654322,2021-07-30,redeemed
 """.strip()
 
