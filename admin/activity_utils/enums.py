@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Literal
 
 from cosmos_message_lib.schemas import utc_datetime
 
@@ -25,6 +24,7 @@ from admin.activity_utils.schemas import (
     RewardStatusWholeActivitySchema,
 )
 from admin.config import admin_settings
+from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.utils import pence_integer_to_currency_string
 
 
@@ -51,7 +51,7 @@ class ActivityType(Enum):
         sso_username: str,
         activity_datetime: datetime,
         campaign_slug: str,
-        loyalty_type: str,
+        loyalty_type: LoyaltyTypes,
         start_date: utc_datetime | None = None,
         end_date: utc_datetime | None = None,
     ) -> dict:
@@ -73,7 +73,7 @@ class ActivityType(Enum):
                         "name": campaign_name,
                         "slug": campaign_slug,
                         "status": "draft",
-                        "loyalty_type": loyalty_type.title(),
+                        "loyalty_type": loyalty_type.name,
                         "start_date": start_date,
                         "end_date": end_date,
                     }
@@ -161,7 +161,7 @@ class ActivityType(Enum):
         sso_username: str,
         activity_datetime: datetime,
         campaign_slug: str,
-        loyalty_type: Literal["STAMPS", "ACCUMULATOR"],
+        loyalty_type: LoyaltyTypes,
         threshold: int,
         increment: int,
         increment_multiplier: Decimal,
@@ -170,7 +170,7 @@ class ActivityType(Enum):
         new_values = {"threshold": threshold, "increment_multiplier": increment_multiplier}
         if max_amount:
             new_values["max_amount"] = max_amount
-        if loyalty_type == "STAMPS":
+        if loyalty_type == LoyaltyTypes.STAMPS:
             new_values["increment"] = increment
 
         return {
@@ -185,7 +185,7 @@ class ActivityType(Enum):
             "retailer": retailer_slug,
             "campaigns": [campaign_slug],
             "data": EarnRuleCreatedActivitySchema(
-                loyalty_type=loyalty_type,
+                loyalty_type=loyalty_type.name,
                 earn_rule={"new_values": new_values},
             ).dict(exclude_unset=True),
         }

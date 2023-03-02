@@ -7,11 +7,13 @@ import pytest
 from bs4 import BeautifulSoup
 from deepdiff import DeepDiff
 from flask import url_for
+from sqlalchemy.future import select
 
 from admin.views.campaign_reward.campaign import CampaignAdmin
 from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStatusChangeSchema
 from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import CampaignStatuses
+from cosmos.db.models import Campaign
 from cosmos.rewards.enums import PendingRewardActions, PendingRewardMigrationActions
 
 if TYPE_CHECKING:
@@ -19,8 +21,9 @@ if TYPE_CHECKING:
 
     from flask.testing import FlaskClient
     from pytest_mock import MockerFixture
+    from sqlalchemy.orm import Session
 
-    from cosmos.db.models import Campaign, Retailer
+    from cosmos.db.models import Retailer
 
 
 @httpretty.activate
@@ -244,3 +247,138 @@ def test_campaign_end_action_different_retailer(
     )
     mock_status_chang_fn.assert_not_called()
     mock_migration_fn.assert_not_called()
+
+
+def test_campaign_clone_action_ok(
+    db_session: "Session",
+    test_client: "FlaskClient",
+    create_campaign: "Callable[..., Campaign]",
+    mocker: "MockerFixture",
+) -> None:
+
+    test_campaign = create_campaign(slug="test-campaign")
+    mock_send_activity = mocker.patch("admin.views.campaign_reward.campaign.sync_send_activity")
+
+    # check expected form fields are present and set Session cookie.
+    resp = test_client.post(
+        url_for("campaigns.action_view"),
+        data={
+            "url": url_for("campaigns.index_view"),
+            "action": "clone-campaign",
+            "rowid": [test_campaign.id],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert mock_send_activity.call_count == 3
+
+    cloned_campaign = db_session.execute(
+        select(Campaign).where(Campaign.slug == f"CLONE_{test_campaign.slug}")
+    ).scalar_one_or_none()
+
+    assert cloned_campaign
+    assert cloned_campaign.reward_rule
+    assert cloned_campaign.earn_rule
+    assert cloned_campaign.status == CampaignStatuses.DRAFT
+
+
+@pytest.mark.parametrize(
+    "missing_rule",
+    (
+        pytest.param("earn_rule", id="missing earn rule"),
+        pytest.param("reward_rule", id="missing reward rule"),
+    ),
+)
+def test_campaign_clone_action_missing_rule(
+    missing_rule: str,
+    db_session: "Session",
+    test_client: "FlaskClient",
+    create_campaign: "Callable[..., Campaign]",
+    mocker: "MockerFixture",
+) -> None:
+
+    test_campaign = create_campaign(slug="test-campaign")
+
+    db_session.delete(getattr(test_campaign, missing_rule))
+    db_session.commit()
+
+    mock_send_activity = mocker.patch("admin.views.campaign_reward.campaign.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.campaign_reward.campaign.flash")
+
+    # check expected form fields are present and set Session cookie.
+    resp = test_client.post(
+        url_for("campaigns.action_view"),
+        data={
+            "url": url_for("campaigns.index_view"),
+            "action": "clone-campaign",
+            "rowid": [test_campaign.id],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    mock_flash.assert_called_once_with("Unable to clone, missing earn or reward rule.", category="error")
+    mock_send_activity.assert_not_called()
+    assert not db_session.execute(
+        select(Campaign).where(Campaign.slug == f"CLONE_{test_campaign.slug}")
+    ).scalar_one_or_none()
+
+
+def test_campaign_clone_action_resulting_slug_exists_already(
+    test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
+) -> None:
+
+    test_campaign = create_campaign(slug="test-campaign")
+    cloned_campaign = create_campaign(slug="CLONE_test-campaign")
+
+    mock_send_activity = mocker.patch("admin.views.campaign_reward.campaign.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.campaign_reward.campaign.flash")
+
+    # check expected form fields are present and set Session cookie.
+    resp = test_client.post(
+        url_for("campaigns.action_view"),
+        data={
+            "url": url_for("campaigns.index_view"),
+            "action": "clone-campaign",
+            "rowid": [test_campaign.id],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    mock_flash.assert_called_once_with(
+        f"Another campaign with slug '{cloned_campaign.slug}' already exists, "
+        "please update it before trying to clone this campaign again.",
+        category="error",
+    )
+    mock_send_activity.assert_not_called()
+
+
+def test_campaign_clone_action_resulting_slug_too_long(
+    test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
+) -> None:
+
+    # setup a slug which is 99 char long
+    test_campaign = create_campaign(slug="test-campaign" + ("-" * 82))
+
+    resulting_slug = f"CLONE_{test_campaign.slug}"
+
+    assert len(resulting_slug) > 100
+
+    mock_send_activity = mocker.patch("admin.views.campaign_reward.campaign.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.campaign_reward.campaign.flash")
+
+    # check expected form fields are present and set Session cookie.
+    resp = test_client.post(
+        url_for("campaigns.action_view"),
+        data={
+            "url": url_for("campaigns.index_view"),
+            "action": "clone-campaign",
+            "rowid": [test_campaign.id],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    mock_flash.assert_called_once_with(
+        f"Cloned campaign slug '{resulting_slug}' would exceed max slug length of 100 characters.",
+        category="error",
+    )
+    mock_send_activity.assert_not_called()

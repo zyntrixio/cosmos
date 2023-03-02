@@ -8,6 +8,7 @@ import yaml
 from pytest_mock import MockFixture
 
 from admin.activity_utils.enums import ActivityType
+from cosmos.campaigns.enums import LoyaltyTypes
 
 
 def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
@@ -18,7 +19,7 @@ def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
-    loyalty_type = "ACCUMULATOR"
+    loyalty_type = LoyaltyTypes.ACCUMULATOR
     retailer_slug = "test-retailer"
     activity_datetime = datetime.now(tz=timezone.utc)
     start_date = datetime.now(tz=timezone.utc)
@@ -52,7 +53,7 @@ def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
                     "name": campaign_name,
                     "slug": campaign_slug,
                     "status": "draft",
-                    "loyalty_type": loyalty_type.title(),
+                    "loyalty_type": loyalty_type.name,
                     "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
                     "end_date": end_date.strftime("%Y-%m-%d %H:%M:%S"),
                 }
@@ -216,7 +217,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
 
     for loyalty_type, max_amount, expected_new_values in (
         (
-            "STAMPS",
+            LoyaltyTypes.STAMPS,
             0,
             {
                 "threshold": threshold,
@@ -225,7 +226,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
             },
         ),
         (
-            "STAMPS",
+            LoyaltyTypes.STAMPS,
             10,
             {
                 "threshold": threshold,
@@ -235,7 +236,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
             },
         ),
         (
-            "ACCUMULATOR",
+            LoyaltyTypes.ACCUMULATOR,
             0,
             {
                 "threshold": threshold,
@@ -243,7 +244,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
             },
         ),
         (
-            "ACCUMULATOR",
+            LoyaltyTypes.ACCUMULATOR,
             10,
             {
                 "threshold": threshold,
@@ -259,7 +260,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
             sso_username=user_name,
             activity_datetime=activity_datetime,
             campaign_slug=campaign_slug,
-            loyalty_type=loyalty_type,  # type: ignore
+            loyalty_type=loyalty_type,
             threshold=threshold,
             increment=increment,
             increment_multiplier=increment_multiplier,
@@ -278,7 +279,7 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
             "retailer": retailer_slug,
             "campaigns": [campaign_slug],
             "data": {
-                "loyalty_type": loyalty_type,
+                "loyalty_type": loyalty_type.name,
                 "earn_rule": {
                     "new_values": expected_new_values,
                 },

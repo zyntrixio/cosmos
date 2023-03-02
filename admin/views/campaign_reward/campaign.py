@@ -414,6 +414,10 @@ class CampaignAdmin(CanDeleteModelView):
             flash(error_msg, category="error")
             return None
 
+        if not (campaign.earn_rule and campaign.reward_rule):
+            flash("Unable to clone, missing earn or reward rule.", category="error")
+            return None
+
         earn_rule: EarnRule = clone_instance(campaign.earn_rule)
         earn_rule.campaign_id = new_campaign.id
         self.session.add(earn_rule)
