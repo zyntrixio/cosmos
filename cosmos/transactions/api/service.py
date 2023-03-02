@@ -20,7 +20,7 @@ from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, 
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
 from cosmos.rewards.activity.enums import IssuedRewardReasons
 from cosmos.rewards.config import reward_settings
-from cosmos.transactions.activity.enums import ActivityType
+from cosmos.transactions.activity.enums import ActivityType as TransactionActivityType
 from cosmos.transactions.api import crud
 from cosmos.transactions.api.schemas import CreateTransactionSchema
 
@@ -124,8 +124,8 @@ class TransactionService(Service):
     ) -> None:
         if amount_not_recouped > 0:
             await self.store_activity(
-                activity_type=ActivityType.REFUND_NOT_RECOUPED,
-                payload_formatter_fn=ActivityType.get_refund_not_recouped_activity_data,
+                activity_type=TransactionActivityType.REFUND_NOT_RECOUPED,
+                payload_formatter_fn=TransactionActivityType.get_refund_not_recouped_activity_data,
                 formatter_kwargs={
                     "account_holder_uuid": account_holder_uuid,
                     "retailer": self.retailer,
@@ -145,9 +145,7 @@ class TransactionService(Service):
                 formatter_kwargs={
                     "account_holder_uuid": account_holder_uuid,
                     "retailer_slug": self.retailer.slug,
-                    "summary": await self._get_summary_for_balance_change(
-                        campaign, adjustment_amount, original_balance, new_balance
-                    ),
+                    "summary": await self._get_summary_for_balance_change(campaign, adjustment_amount),
                     "original_balance": original_balance,
                     "new_balance": new_balance,
                     "campaigns": [campaign.slug],
@@ -266,10 +264,8 @@ class TransactionService(Service):
             accepted=adjustment_amount is not None,
         )
 
-    async def _get_summary_for_balance_change(
-        self, campaign: Campaign, adjustment: int, original_balance: int, current_balance: int
-    ) -> str:
-        tx_type = "+" if current_balance > original_balance else ""
+    async def _get_summary_for_balance_change(self, campaign: Campaign, adjustment: int) -> str:
+        tx_type = "+" if adjustment > 0 else ""
         if campaign.loyalty_type == LoyaltyTypes.ACCUMULATOR:
             return (
                 f"{self.retailer.name} - {campaign.name}: "
@@ -587,9 +583,10 @@ class TransactionService(Service):
             active_campaigns, transaction, account_holder
         )
         await self.store_activity(
-            activity_type=ActivityType.TX_HISTORY,
-            payload_formatter_fn=ActivityType.get_processed_tx_activity_data,
+            activity_type=TransactionActivityType.TX_HISTORY,
+            payload_formatter_fn=TransactionActivityType.get_processed_tx_activity_data,
             formatter_kwargs={
+                "account_holder_uuid": account_holder.account_holder_uuid,
                 "processed_tx": transaction,
                 "retailer": self.retailer,
                 "adjustment_amounts": adjustment_amounts,
@@ -600,7 +597,8 @@ class TransactionService(Service):
 
         is_refund = transaction.amount < 0
         accepted_adjustments = any(adjustment.accepted for adjustment in adjustment_amounts.values())
-        tx_import_activity_data["valid_refund"] = accepted_adjustments or not is_refund
+
+        tx_import_activity_data["invalid_refund"] = is_refund and not accepted_adjustments
 
         await self.commit_db_changes()
         return ServiceResult(self._get_transaction_response(accepted_adjustments, is_refund)), reward_issuance_tasks
@@ -612,15 +610,15 @@ class TransactionService(Service):
 
         try:
             tx_import_activity_data = {
-                "retailer_name": self.retailer.name,
-                "retailer_slug": self.retailer.slug,
+                "retailer": self.retailer,
                 "campaign_slugs": [],
-                "valid_refund": False,
+                "invalid_refund": False,
             }
             service_result, reward_issuance_tasks = await self._handle_incoming_transaction(
                 request_payload, tx_import_activity_data
             )
-            tx_import_activity_data["error"] = service_result.error.error_code.name if service_result.error else None
+            if service_result.error:
+                tx_import_activity_data["error"] = service_result.error.error_code.name
 
         except Exception as exc:
             await self.clear_stored_activities()
@@ -634,8 +632,8 @@ class TransactionService(Service):
         finally:
             tx_import_activity_data["request_payload"] = request_payload.dict()
             await self.store_activity(
-                activity_type=ActivityType.TX_IMPORT,
-                payload_formatter_fn=ActivityType.get_tx_import_activity_data,
+                activity_type=TransactionActivityType.TX_IMPORT,
+                payload_formatter_fn=TransactionActivityType.get_tx_import_activity_data,
                 formatter_kwargs=tx_import_activity_data,
                 prepend=True,
             )
