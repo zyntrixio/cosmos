@@ -39,6 +39,7 @@ class ActivityType(ActivityTypeMixin, Enum):
     def get_processed_tx_activity_data(
         cls,
         *,
+        account_holder_uuid: "str | UUID",
         processed_tx: "Transaction",
         retailer: "Retailer",
         adjustment_amounts: dict[str, "AdjustmentAmount"],
@@ -54,7 +55,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             summary=f"{retailer.slug} Transaction Processed for {store_name} (MID: {processed_tx.mid})",
             reasons=build_tx_history_reasons(processed_tx.amount, adjustment_amounts, currency),
             activity_identifier=processed_tx.transaction_id,
-            user_id=processed_tx.account_holder_uuid,
+            user_id=str(account_holder_uuid),
             associated_value=pence_integer_to_currency_string(processed_tx.amount, currency),
             retailer_slug=retailer.slug,
             campaigns=list(adjustment_amounts.keys()),
@@ -88,25 +89,21 @@ class ActivityType(ActivityTypeMixin, Enum):
     def get_tx_import_activity_data(
         cls,
         *,
-        retailer_name: str,
-        retailer_slug: str,
+        retailer: "Retailer",
         campaign_slugs: list[str],
         request_payload: dict,
         currency: str = "GBP",
         error: str | None,
-        valid_refund: bool,
+        invalid_refund: bool = False,
     ) -> dict:
 
-        if error:
-            reason = [cls._get_http_error_reason(error=error)]
-            summary = f"{retailer_name} Transaction Import Failed"
-        elif not valid_refund:
-            reason = [TxImportReasons.REFUNDS_NOT_SUPPORTED.value]
-            summary = f"{retailer_name} Transaction Import Failed"
-        else:
-            reason = []
-            summary = f"{retailer_name} Transaction Imported"
-
+        reason = []
+        summary = f"{retailer.name} Transaction Imported"
+        if error or invalid_refund:
+            summary = f"{retailer.name} Transaction Import Failed"
+            reason = (
+                [cls._get_http_error_reason(error=error)] if error else [TxImportReasons.REFUNDS_NOT_SUPPORTED.value]
+            )
         return cls._assemble_payload(
             activity_type=ActivityType.TX_IMPORT.name,
             underlying_datetime=request_payload["transaction_datetime"],
@@ -115,7 +112,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             activity_identifier=request_payload["transaction_id"],
             user_id=request_payload["account_holder_uuid"],
             associated_value=pence_integer_to_currency_string(request_payload["amount"], currency),
-            retailer_slug=retailer_slug,
+            retailer_slug=retailer.slug,
             campaigns=campaign_slugs,
             data=TxImportEventSchema(
                 transaction_id=request_payload["transaction_id"],

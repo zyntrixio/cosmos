@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from unittest import mock
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -14,7 +15,9 @@ from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Transaction
 from cosmos.rewards.config import reward_settings
+from cosmos.transactions.activity.enums import ActivityType
 from cosmos.transactions.api.endpoints import TransactionService
+from cosmos.transactions.api.service import AdjustmentAmount
 from cosmos.transactions.config import tx_settings
 from tests import validate_error_response
 
@@ -25,7 +28,7 @@ if TYPE_CHECKING:
 
     from fastapi.testclient import TestClient
 
-    from cosmos.db.models import Campaign, CampaignBalance
+    from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer
     from tests.conftest import SetupType
 
 
@@ -41,7 +44,70 @@ def sample_payload() -> dict:
     }
 
 
-def test_transaction_mangled_json(test_client: "TestClient", setup: "SetupType") -> None:
+def validate_tx_import_store_activity_call(
+    *,
+    retailer: "Retailer",
+    mock_activity: "MagicMock",
+    tx_payload: dict,
+    campaign_slugs: list[str],
+    error: str | None = None,
+    invalid_refund: bool = False,
+) -> None:
+    assert mock_activity.call_args_list[0][1] == {
+        "activity_type": ActivityType.TX_IMPORT,
+        "formatter_kwargs": {
+            "campaign_slugs": campaign_slugs,
+            "request_payload": {
+                "account_holder_uuid": UUID(tx_payload["loyalty_id"]),
+                "amount": tx_payload["transaction_total"],
+                "mid": tx_payload["MID"],
+                "payment_transaction_id": tx_payload["transaction_id"],
+                "transaction_datetime": datetime.fromtimestamp(tx_payload["datetime"], tz=timezone.utc),
+                "transaction_id": tx_payload["id"],
+            },
+            "retailer": mock.ANY,
+            "invalid_refund": invalid_refund,
+        }
+        | ({"error": error} if error else {}),
+        "payload_formatter_fn": ActivityType.get_tx_import_activity_data,
+    }
+    assert mock_activity.call_args_list[0][1]["formatter_kwargs"]["retailer"].slug == retailer.slug
+
+
+def validate_tx_history_store_activity_call(
+    mock_activity: mock.MagicMock,
+    account_holder: "AccountHolder",
+    tx_payload: dict,
+    campaign: "Campaign",
+    amount: int,
+    accepted: bool,
+) -> None:
+
+    assert mock_activity.call_args_list[1][1] == {  # second call after TX_IMPORT
+        "activity_type": ActivityType.TX_HISTORY,
+        "formatter_kwargs": {
+            "account_holder_uuid": account_holder.account_holder_uuid,
+            "processed_tx": mock.ANY,
+            "retailer": mock.ANY,
+            "adjustment_amounts": {
+                "test-campaign": AdjustmentAmount(
+                    loyalty_type=campaign.loyalty_type,
+                    amount=amount,
+                    threshold=campaign.earn_rule.threshold,
+                    accepted=accepted,
+                )
+            },
+            "store_name": "N/A",
+        },
+        "payload_formatter_fn": ActivityType.get_processed_tx_activity_data,
+    }
+    formatter_kwargs = mock_activity.call_args_list[1][1]["formatter_kwargs"]
+    assert formatter_kwargs["processed_tx"].retailer_id == account_holder.retailer_id
+    assert formatter_kwargs["processed_tx"].transaction_id == tx_payload["id"]
+    assert formatter_kwargs["retailer"].slug == account_holder.retailer.slug
+
+
+def test_transaction_mangled_json(test_client: "TestClient", setup: "SetupType", mock_activity: "MagicMock") -> None:
     retailer = setup.retailer
 
     resp = test_client.post(
@@ -55,9 +121,12 @@ def test_transaction_mangled_json(test_client: "TestClient", setup: "SetupType")
         "display_message": "Malformed request.",
         "code": "MALFORMED_REQUEST",
     }
+    mock_activity.assert_not_called()
 
 
-def test_transaction_invalid_token(test_client: "TestClient", setup: "SetupType", campaign: "Campaign") -> None:
+def test_transaction_invalid_token(
+    test_client: "TestClient", setup: "SetupType", campaign: "Campaign", mock_activity: "MagicMock"
+) -> None:
     retailer = setup.retailer
 
     resp = test_client.post(
@@ -71,9 +140,10 @@ def test_transaction_invalid_token(test_client: "TestClient", setup: "SetupType"
         "display_message": "Supplied token is invalid.",
         "code": "INVALID_TOKEN",
     }
+    mock_activity.assert_not_called()
 
 
-def test_transaction_invalid_retailer(test_client: "TestClient") -> None:
+def test_transaction_invalid_retailer(test_client: "TestClient", mock_activity: "MagicMock") -> None:
 
     resp = test_client.post(
         f"{tx_settings.TX_API_PREFIX}/WRONG-RETAILER",
@@ -82,6 +152,7 @@ def test_transaction_invalid_retailer(test_client: "TestClient") -> None:
     )
 
     validate_error_response(resp, ErrorCode.INVALID_RETAILER)
+    mock_activity.assert_not_called()
 
 
 def test_transaction_account_holder_not_found(
@@ -99,7 +170,13 @@ def test_transaction_account_holder_not_found(
     )
 
     validate_error_response(resp, ErrorCode.USER_NOT_FOUND)
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="USER_NOT_FOUND",
+        campaign_slugs=[],
+    )
 
 
 def test_transaction_user_not_active(
@@ -118,7 +195,13 @@ def test_transaction_user_not_active(
     )
 
     validate_error_response(resp, ErrorCode.USER_NOT_ACTIVE)
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="USER_NOT_ACTIVE",
+        campaign_slugs=[],
+    )
 
 
 def test_transaction_no_active_campaigns(
@@ -140,7 +223,13 @@ def test_transaction_no_active_campaigns(
     )
 
     validate_error_response(resp, ErrorCode.NO_ACTIVE_CAMPAIGNS)
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="NO_ACTIVE_CAMPAIGNS",
+        campaign_slugs=[],
+    )
 
 
 def test_transaction_duplicated_transaction(
@@ -182,7 +271,14 @@ def test_transaction_duplicated_transaction(
             Transaction.processed.is_(None),
         )
     ).scalar_one_or_none()
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="DUPLICATE_TRANSACTION",
+        invalid_refund=False,
+        campaign_slugs=["test-campaign"],
+    )
 
 
 def test_transaction_ok_threshold_not_met(
@@ -211,7 +307,20 @@ def test_transaction_ok_threshold_not_met(
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == "Threshold not met"
 
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        campaign_slugs=[campaign_with_rules.slug],
+    )
+    validate_tx_history_store_activity_call(
+        mock_activity,
+        account_holder,
+        tx_payload=sample_payload,
+        campaign=campaign_with_rules,
+        amount=0,
+        accepted=False,
+    )
     db_session.refresh(campaign_balance)
 
     assert campaign_balance.balance == expected_balance
@@ -250,8 +359,22 @@ def test_transaction_ok_amount_over_max(
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == "Awarded"
 
-    mock_activity.assert_called()
     db_session.refresh(campaign_balance)
+
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        campaign_slugs=[campaign_with_rules.slug],
+    )
+    validate_tx_history_store_activity_call(
+        mock_activity,
+        account_holder,
+        tx_payload=sample_payload,
+        campaign=campaign_with_rules,
+        amount=max_amount,
+        accepted=True,
+    )
 
     assert campaign_balance.balance == expected_balance
     pr: PendingReward = db_session.scalar(
@@ -323,7 +446,20 @@ def test_transaction_ok_accumulator(
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == "Awarded"
 
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        campaign_slugs=[campaign_with_rules.slug],
+    )
+    validate_tx_history_store_activity_call(
+        mock_activity,
+        account_holder,
+        tx_payload=sample_payload,
+        campaign=campaign_with_rules,
+        amount=tx_amount,
+        accepted=True,
+    )
     db_session.refresh(campaign_balance)
 
     assert campaign_balance.balance == expected_balance
@@ -374,8 +510,8 @@ def test_transaction_ok_accumulator(
 @pytest.mark.parametrize(
     ("allocation_window", "expected_balance", "expected_message"),
     (
-        pytest.param("10", 500, "Refund accepted", id="Refund accepted"),
-        pytest.param("0", 1000, "Refunds not accepted", id="Refund not accepted"),
+        pytest.param(10, 500, "Refund accepted", id="Refund accepted"),
+        pytest.param(0, 1000, "Refunds not accepted", id="Refund not accepted"),
     ),
 )
 def test_transaction_refund(
@@ -412,10 +548,25 @@ def test_transaction_refund(
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == expected_message
 
-    mock_activity.assert_called()
     db_session.refresh(campaign_balance)
 
     assert campaign_balance.balance == expected_balance
+
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        campaign_slugs=[campaign_with_rules.slug],
+        invalid_refund=not bool(allocation_window),
+    )
+    validate_tx_history_store_activity_call(
+        mock_activity,
+        account_holder,
+        tx_payload=sample_payload,
+        campaign=campaign_with_rules,
+        amount=sample_payload["transaction_total"] if allocation_window else 0,
+        accepted=bool(allocation_window),
+    )
 
 
 @pytest.mark.parametrize(
@@ -477,7 +628,20 @@ def test_transaction_ok_stamps(
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == "Awarded"
 
-    mock_activity.assert_called()
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        campaign_slugs=[campaign_with_rules.slug],
+    )
+    validate_tx_history_store_activity_call(
+        mock_activity,
+        account_holder,
+        tx_payload=sample_payload,
+        campaign=campaign_with_rules,
+        amount=increment,
+        accepted=True,
+    )
     db_session.refresh(campaign_balance)
 
     transaction = db_session.execute(

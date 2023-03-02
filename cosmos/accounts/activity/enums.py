@@ -2,19 +2,15 @@ from datetime import date, datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import NonNegativeInt
-
 from cosmos.accounts.activity.schemas import (
     AccountEventSchema,
     AccountRequestSchema,
     BalanceChangeDataSchema,
     BalanceResetWholeDataSchema,
     MarketingPreferenceChangeSchema,
-    RefundNotRecoupedDataSchema,
 )
 from cosmos.accounts.config import account_settings
 from cosmos.core.activity.enums import ActivityTypeMixin
-from cosmos.core.utils import pence_integer_to_currency_string
 
 
 class ActivityType(ActivityTypeMixin, Enum):
@@ -24,7 +20,6 @@ class ActivityType(ActivityTypeMixin, Enum):
     ACCOUNT_ENROLMENT = f"activity.{account_settings.core.PROJECT_NAME}.account.enrolment"
     ACCOUNT_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.account.change"
     BALANCE_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.balance.change"
-    REFUND_NOT_RECOUPED = f"activity.{account_settings.core.PROJECT_NAME}.refund.not.recouped"
 
     @classmethod
     def get_account_request_activity_data(
@@ -170,35 +165,6 @@ class ActivityType(ActivityTypeMixin, Enum):
             data=BalanceChangeDataSchema(new_balance=new_balance, original_balance=original_balance).dict(
                 exclude_unset=True
             ),
-        )
-
-    @classmethod
-    def get_refund_not_recouped_activity_data(
-        cls,
-        *,
-        account_holder_uuid: UUID | str,
-        activity_datetime: datetime,
-        retailer_slug: str,
-        campaigns: list[str],
-        adjustment: int,
-        amount_recouped: int,
-        amount_not_recouped: NonNegativeInt,
-    ) -> dict:
-        return cls._assemble_payload(
-            ActivityType.REFUND_NOT_RECOUPED.name,
-            user_id=account_holder_uuid,
-            underlying_datetime=activity_datetime,
-            summary=f"{retailer_slug} Refund transaction caused an account shortfall",
-            reasons=["Account Holder Balance and/or Pending Rewards did not cover the refund"],
-            associated_value=pence_integer_to_currency_string(adjustment, "GBP"),
-            retailer_slug=retailer_slug,
-            campaigns=campaigns,
-            data=RefundNotRecoupedDataSchema(
-                datetime=activity_datetime,
-                amount=adjustment,
-                amount_recouped=amount_recouped,
-                amount_not_recouped=amount_not_recouped,
-            ).dict(),
         )
 
     @classmethod

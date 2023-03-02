@@ -29,7 +29,7 @@ def build_tx_history_reasons(tx_amount: int, adjustments: dict[str, "AdjustmentA
     return reasons
 
 
-def build_tx_history_earns(adjustments: dict[str, "AdjustmentAmount"], currency: str) -> list[dict[str, str]]:
+def build_tx_history_earns(adjustments: dict[str, "AdjustmentAmount"], currency: str) -> list[dict]:
     earns = []
     for adjustment in adjustments.values():
         if adjustment.loyalty_type == LoyaltyTypes.ACCUMULATOR:
@@ -37,6 +37,6 @@ def build_tx_history_earns(adjustments: dict[str, "AdjustmentAmount"], currency:
         else:
             fmt_amount = str(int(adjustment.amount / 100)) if adjustment.amount else "0"
 
-        earns.append({"value": fmt_amount, "type": adjustment.loyalty_type.name})
+        earns.append({"value": fmt_amount, "type": adjustment.loyalty_type})
 
     return earns

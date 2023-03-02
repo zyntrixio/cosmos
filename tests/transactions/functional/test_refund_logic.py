@@ -1,5 +1,3 @@
-import uuid
-
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -13,7 +11,14 @@ from sqlalchemy.orm import joinedload
 from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, PendingReward, Transaction
 from cosmos.transactions.api.service import TransactionService
 
-from .fixtures.refund_logic import ExpectationData, SetupData, now, test_refund_data
+from .fixtures.refund_logic import (
+    ExpectationData,
+    SetupData,
+    canned_account_holder_uuid,
+    canned_transaction_id,
+    now,
+    test_refund_data,
+)
 
 if TYPE_CHECKING:
 
@@ -81,16 +86,20 @@ async def test__process_refund(
     expectation_data: ExpectationData,
 ) -> None:
 
+    mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
+    mock_datetime.now.return_value = now
+
     account_holder.status = "ACTIVE"
+    account_holder.account_holder_uuid = canned_account_holder_uuid
     balance_object.campaign.reward_rule.allocation_window = 10
     transaction = Transaction(
         account_holder_id=account_holder.id,
         retailer_id=account_holder.retailer_id,
-        transaction_id=str(uuid.uuid4()),
+        transaction_id=str(canned_transaction_id),
         amount=setup_data.adjustment,
         mid="TSTMID",
         datetime=now,
-        payment_transaction_id=str(uuid.uuid4()),
+        payment_transaction_id=f"processed:{canned_transaction_id}",
         processed=True,
     )
     async_db_session.add(transaction)
@@ -152,3 +161,7 @@ async def test__process_refund(
             assert payload_count == 1, f"formatted_kwargs len = 1, expected {payload_count}"
         else:
             assert len(formatter_kwargs) == payload_count
+
+    if expectation_data.activity_payloads:
+        for call, payload in zip(mocked_store_activity.mock_calls, expectation_data.activity_payloads, strict=True):
+            assert call.kwargs == payload

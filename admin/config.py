@@ -26,7 +26,6 @@ class AdminSettings(BaseSettings):
 
         return "unknown"
 
-    ADMIN_PROJECT_NAME: str = "cosmos-admin"
     ADMIN_ROUTE_BASE: str = "/admin"
     FLASK_ADMIN_SWATCH: str = "simplex"
     FLASK_DEBUG: bool = False
