@@ -50,8 +50,9 @@ def test_delete_reward_ok(
             "action": "delete-rewards",
             "rowid": rewards_ids,
         },
+        follow_redirects=True,
     )
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     mocks.send_activity.assert_called_once()
     mocks.flash.assert_called_once_with("Successfully deleted selected rewards")
 
@@ -79,8 +80,9 @@ def test_delete_reward_different_retailers(
             "action": "delete-rewards",
             "rowid": rewards_ids,
         },
+        follow_redirects=True,
     )
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     mocks.send_activity.assert_not_called()
     mocks.flash.assert_called_once_with("Not all selected rewards are for the same retailer", category="error")
 
@@ -104,8 +106,9 @@ def test_delete_reward_issued_reward(
             "action": "delete-rewards",
             "rowid": [reward.id],
         },
+        follow_redirects=True,
     )
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     mocks.send_activity.assert_not_called()
     mocks.flash.assert_called_once_with("Not all selected rewards are eligible for deletion", category="error")
 
@@ -129,8 +132,9 @@ def test_delete_reward_deleted_reward(
             "action": "delete-rewards",
             "rowid": [reward.id],
         },
+        follow_redirects=True,
     )
-    assert resp.status_code == 302
+    assert resp.status_code == 200
     mocks.send_activity.assert_not_called()
     mocks.flash.assert_called_once_with("Not all selected rewards are eligible for deletion", category="error")
 
