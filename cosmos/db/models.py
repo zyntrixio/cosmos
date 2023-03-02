@@ -487,7 +487,7 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     balance_lifespan = Column(
         Integer,
         CheckConstraint(
-            "balance_lifespan IS NULL OR balance_lifespan > 0", name="balance_lifespace_positive_int_or_null_check"
+            "balance_lifespan IS NULL OR balance_lifespan > 0", name="balance_lifespan_positive_int_or_null_check"
         ),
         nullable=True,
     )

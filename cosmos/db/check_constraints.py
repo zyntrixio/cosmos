@@ -3,7 +3,7 @@ from alembic import op
 
 def create_check_constaints() -> None:
     op.create_check_constraint(
-        constraint_name="balance_lifespace_positive_int_or_null_check",
+        constraint_name="balance_lifespan_positive_int_or_null_check",
         table_name="retailer",
         condition="balance_lifespan IS NULL OR balance_lifespan > 0",
     )
