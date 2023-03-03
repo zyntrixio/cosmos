@@ -460,7 +460,7 @@ class TransactionEarn(Base, TimestampMixin):
     )
     earn_rule_id = Column(BigInteger, ForeignKey("earn_rule.id", ondelete="SET NULL"), nullable=True, primary_key=True)
     loyalty_type = Column(Enum(LoyaltyTypes), nullable=False)
-    earn_amount = Column(Integer, nullable=True)
+    earn_amount = Column(Integer, nullable=False)
 
     earn_rule = relationship("EarnRule", uselist=False, back_populates="transaction_earns")
     transaction = relationship("Transaction", uselist=False, back_populates="transaction_earn")
