@@ -60,9 +60,9 @@ class ActivityType(ActivityTypeMixin, Enum):
         retailer_slug: str,
         from_campaign_slug: str,
         to_campaign_slug: str,
-        account_holder_uuid: str,
+        account_holder_uuid: str | UUID,
         activity_datetime: datetime,
-        pending_reward_uuid: str,
+        pending_reward_uuid: str | UUID,
     ) -> dict:
 
         return cls._assemble_payload(
@@ -70,7 +70,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             underlying_datetime=activity_datetime,
             summary=f"{retailer_slug} pending reward transferred from {from_campaign_slug} to {to_campaign_slug}",
             reasons=["Pending reward transferred at campaign end"],
-            activity_identifier=pending_reward_uuid,
+            activity_identifier=str(pending_reward_uuid),
             user_id=account_holder_uuid,
             associated_value="N/A",
             retailer_slug=retailer_slug,
