@@ -114,7 +114,10 @@ async def record_earn(
 ) -> TransactionEarn:
     async def _query(savepoint: "AsyncSessionTransaction") -> TransactionEarn:
         transaction_campaign = TransactionEarn(
-            transaction_id=transaction_id, earn_rule_id=earn_rule_id, loyalty_type=loyalty_type, earn_amount=adjustment
+            transaction_id=transaction_id,
+            earn_rule_id=earn_rule_id,
+            loyalty_type=loyalty_type,
+            earn_amount=adjustment or 0,
         )
         db_session.add(transaction_campaign)
         await savepoint.commit()
