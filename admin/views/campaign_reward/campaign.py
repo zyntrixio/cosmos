@@ -162,7 +162,7 @@ class CampaignAdmin(CanDeleteModelView):
                     sso_username=self.sso_username,
                     activity_datetime=datetime.now(tz=timezone.utc),
                     campaign_slug=model.slug,
-                    loyalty_type=model.loyalty_type.name,
+                    loyalty_type=model.loyalty_type,
                     start_date=model.start_date,
                     end_date=model.end_date,
                 ),
