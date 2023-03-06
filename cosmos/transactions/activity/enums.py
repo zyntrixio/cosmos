@@ -93,7 +93,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         campaign_slugs: list[str],
         request_payload: dict,
         currency: str = "GBP",
-        error: str | None,
+        error: str | None = None,
         invalid_refund: bool = False,
     ) -> dict:
 
