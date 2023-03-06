@@ -1,3 +1,5 @@
+# file deepcode ignore NoHardcodedCredentials/test: setting bogus values for a test doesn't count as hardcoded secrets
+
 import uuid
 
 from datetime import datetime, timedelta, timezone

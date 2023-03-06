@@ -28,4 +28,5 @@ def readyz() -> Any:  # noqa: ANN401
         payload = {"postgres": db_errors}
         status_code = 500
 
+    # deepcode ignore ServerInformationExposure: returning the exact error is literally the point here
     return payload, status_code

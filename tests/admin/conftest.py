@@ -25,6 +25,7 @@ def mock_field() -> mock.MagicMock:
 @pytest.fixture(scope="session")
 def app() -> Flask:
     app = create_app(with_activities=False)
+    # deepcode ignore DisablesCSRFProtection/test: this is a test as suggested by it being a pytest fixture
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["ENV"] = "development"
     return app
