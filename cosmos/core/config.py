@@ -92,8 +92,6 @@ class CoreSettings(BaseSettings):
 
     RABBITMQ_DSN: str = "amqp://guest:guest@localhost:5672//"
     MESSAGE_EXCHANGE_NAME: str = "hubble-activities"
-    TX_HISTORY_ROUTING_KEY: str = "activity.vela.tx.processed"
-    MESSAGE_QUEUE_NAME: str = "polaris-transaction-history"
 
     MAILJET_API_URL: str | None = "https://api.mailjet.com/v3.1/send"  # Set in the env
     MAILJET_API_PUBLIC_KEY: str = ""

@@ -39,7 +39,7 @@ class AdminSettings(BaseSettings):
     @validator("SECRET_KEY", always=True, pre=False)
     @classmethod
     def fetch_admin_secret_key(cls, v: str) -> str:
-        return v or key_vault.get_secret("bpl-event-horizon-secret-key")
+        return v or key_vault.get_secret("bpl-cosmos-admin-secret-key")
 
     ## AAD SSO
     OAUTH_REDIRECT_URI: str | None = None
@@ -47,13 +47,13 @@ class AdminSettings(BaseSettings):
     OAUTH_SERVER_METADATA_URL: str = (
         f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/v2.0/.well-known/openid-configuration"
     )
-    EVENT_HORIZON_CLIENT_ID: str = ""
-    EVENT_HORIZON_CLIENT_SECRET: str = ""
+    COSMOS_ADMIN_CLIENT_ID: str = ""
+    COSMOS_ADMIN_CLIENT_SECRET: str = ""
 
-    @validator("EVENT_HORIZON_CLIENT_SECRET")
+    @validator("COSMOS_ADMIN_CLIENT_SECRET")
     @classmethod
     def fetch_admin_client_secret(cls, v: str | None) -> str:
-        return v or key_vault.get_secret("bpl-event-horizon-sso-client-secret")
+        return v or key_vault.get_secret("bpl-cosmos-admin-sso-client-secret")
 
     ACTIVITY_SQLALCHEMY_URI: str = ""
 

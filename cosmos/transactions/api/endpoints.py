@@ -9,7 +9,7 @@ from cosmos.transactions.api.schemas import CreateTransactionSchema
 from cosmos.transactions.api.service import TransactionService
 from cosmos.transactions.config import tx_settings
 
-user_is_authorised = UserIsAuthorised(expected_token=tx_settings.VELA_API_AUTH_TOKEN)
+user_is_authorised = UserIsAuthorised(expected_token=tx_settings.TX_API_AUTH_TOKEN)
 api_router = APIRouter(dependencies=[Depends(user_is_authorised)])
 
 

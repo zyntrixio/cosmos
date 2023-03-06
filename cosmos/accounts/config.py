@@ -8,12 +8,12 @@ class AccountSettings(BaseSettings):
     core: CoreSettings = core_settings
     ACCOUNT_API_PREFIX: str = f"{core.API_PREFIX}/loyalty"
 
-    POLARIS_API_AUTH_TOKEN: str = ""
+    ACCOUNT_API_AUTH_TOKEN: str = ""
 
-    @validator("POLARIS_API_AUTH_TOKEN")
+    @validator("ACCOUNT_API_AUTH_TOKEN")
     @classmethod
-    def fetch_polaris_api_auth_token(cls, v: str | None) -> str:
-        return v or key_vault.get_secret("bpl-polaris-api-auth-token")
+    def fetch_accounts_api_auth_token(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-accounts-api-auth-token")
 
     ACCOUNT_HOLDER_ACTIVATION_TASK_NAME: str = "account-holder-activation"
     ENROLMENT_CALLBACK_TASK_NAME: str = "enrolment-callback"

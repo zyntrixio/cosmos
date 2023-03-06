@@ -19,7 +19,7 @@ from cosmos.db.session import scoped_db_session
 
 oauth = OAuth()
 oauth.register(
-    "event_horizon",  # FIXME: This is the registered app name on Azure AD
+    "cosmos_admin",
     server_metadata_url=admin_settings.OAUTH_SERVER_METADATA_URL,
     client_kwargs={"scope": "openid profile email"},
 )

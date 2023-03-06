@@ -10,7 +10,7 @@ from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
 api_router = APIRouter()
-user_is_authorised = UserIsAuthorised(expected_token=campaign_settings.VELA_API_AUTH_TOKEN)
+user_is_authorised = UserIsAuthorised(expected_token=campaign_settings.CAMPAIGN_API_AUTH_TOKEN)
 get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
 
 

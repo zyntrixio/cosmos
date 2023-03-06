@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from cosmos.db.models import AccountHolder
 
 get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
-user_is_authorised = UserIsAuthorised(expected_token=account_settings.POLARIS_API_AUTH_TOKEN)
+user_is_authorised = UserIsAuthorised(expected_token=account_settings.ACCOUNT_API_AUTH_TOKEN)
 
 router = APIRouter(
     prefix=account_settings.ACCOUNT_API_PREFIX,
