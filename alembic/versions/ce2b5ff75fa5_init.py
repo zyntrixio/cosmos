@@ -184,7 +184,11 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("template_id", sa.String(), nullable=False),
-        sa.Column("type", sa.Enum("WELCOME_EMAIL", "REWARD_ISSUANCE", name="emailtemplatetypes"), nullable=False),
+        sa.Column(
+            "type",
+            sa.Enum("WELCOME_EMAIL", "REWARD_ISSUANCE", "BALANCE_RESET", name="emailtemplatetypes"),
+            nullable=False,
+        ),
         sa.Column("retailer_id", sa.BigInteger(), nullable=True),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
