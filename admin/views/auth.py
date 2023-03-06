@@ -15,7 +15,7 @@ auth_bp = Blueprint("auth_views", __name__, url_prefix=admin_settings.ADMIN_ROUT
 @auth_bp.route("/login/")
 def login() -> "Response":
     redirect_uri = admin_settings.OAUTH_REDIRECT_URI or url_for("auth_views.authorize", _external=True)
-    return oauth.event_horizon.authorize_redirect(redirect_uri)
+    return oauth.cosmos_admin.authorize_redirect(redirect_uri)
 
 
 @auth_bp.route("/logout/")
@@ -29,7 +29,7 @@ def logout() -> "Response":
 @auth_bp.route("/authorize/")
 def authorize() -> "Response":
     try:
-        token = oauth.event_horizon.authorize_access_token()
+        token = oauth.cosmos_admin.authorize_access_token()
     except MismatchingStateError:
         return redirect(url_for("auth_views.login"))
 

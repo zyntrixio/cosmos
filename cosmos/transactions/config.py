@@ -9,12 +9,12 @@ class TxSettings(BaseSettings):
     TX_API_PREFIX: str = f"{core.API_PREFIX}/transactions"
 
     # duplicating this here and in campaigns as we might want to change the token name once we fully deploy cosmos
-    VELA_API_AUTH_TOKEN: str = ""
+    TX_API_AUTH_TOKEN: str = ""
 
-    @validator("VELA_API_AUTH_TOKEN")
+    @validator("TX_API_AUTH_TOKEN")
     @classmethod
-    def fetch_vela_api_auth_token(cls, v: str | None) -> str:
-        return v or key_vault.get_secret("bpl-vela-api-auth-token")
+    def fetch_tx_api_auth_token(cls, v: str | None) -> str:
+        return v or key_vault.get_secret("bpl-transactions-api-auth-token")
 
     class Config:
         case_sensitive = True

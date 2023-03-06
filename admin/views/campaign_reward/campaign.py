@@ -207,7 +207,7 @@ class CampaignAdmin(CanDeleteModelView):
             logging.warning("\n\n %s \n\n", url)
             resp = requests.post(
                 url,
-                headers={"Authorization": f"token {campaign_settings.VELA_API_AUTH_TOKEN}"},
+                headers={"Authorization": f"token {campaign_settings.CAMPAIGN_API_AUTH_TOKEN}"},
                 json=json_payload,
                 timeout=campaign_settings.REQUEST_TIMEOUT,
             )

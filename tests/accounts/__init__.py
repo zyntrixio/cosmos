@@ -10,10 +10,10 @@ if TYPE_CHECKING:
 
 client = TestClient(app)
 accounts_auth_headers = {
-    "Authorization": f"Token {account_settings.POLARIS_API_AUTH_TOKEN}",
+    "Authorization": f"Token {account_settings.ACCOUNT_API_AUTH_TOKEN}",
     "Bpl-User-Channel": "channel",
 }
-bpl_operations_auth_headers = {"Authorization": f"Token {account_settings.POLARIS_API_AUTH_TOKEN}"}
+bpl_operations_auth_headers = {"Authorization": f"Token {account_settings.ACCOUNT_API_AUTH_TOKEN}"}
 test_campaign_slug = "test-campaign-slug"
 
 

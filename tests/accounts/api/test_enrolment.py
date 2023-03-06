@@ -360,7 +360,7 @@ def test_account_holder_enrol_no_channel_header(
     resp = client.post(
         endpoint % retailer.slug,
         json=test_account_holder_enrol,
-        headers={"Authorization": "Token %s" % account_settings.POLARIS_API_AUTH_TOKEN},
+        headers={"Authorization": "Token %s" % account_settings.ACCOUNT_API_AUTH_TOKEN},
     )
 
     validate_error_response(resp, errors.MISSING_BPL_CHANNEL_HEADER)

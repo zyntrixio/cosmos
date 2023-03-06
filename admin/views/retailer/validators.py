@@ -16,7 +16,7 @@ from cosmos.retailers.enums import RetailerStatuses
 if TYPE_CHECKING:
     from cosmos.db.models import Retailer
 
-REQUIRED_POLARIS_JOIN_FIELDS = ["first_name", "last_name", "email"]
+REQUIRED_ACCOUNTS_JOIN_FIELDS = ["first_name", "last_name", "email"]
 
 INVALID_YAML_ERROR = StopValidation("The submitted YAML is not valid.")
 
@@ -25,7 +25,7 @@ def _get_optional_profile_field_names() -> list[str]:  # pragma: no cover
     return [
         str(col.name)
         for col in Base.metadata.tables["account_holder_profile"].c
-        if not col.primary_key and not col.foreign_keys and str(col.name) not in REQUIRED_POLARIS_JOIN_FIELDS
+        if not col.primary_key and not col.foreign_keys and str(col.name) not in REQUIRED_ACCOUNTS_JOIN_FIELDS
     ]
 
 
@@ -52,7 +52,7 @@ def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
     if not isinstance(form_data, dict):
         raise wtforms.ValidationError("The submitted YAML is not valid")
 
-    required_fields = REQUIRED_POLARIS_JOIN_FIELDS + [
+    required_fields = REQUIRED_ACCOUNTS_JOIN_FIELDS + [
         field for field in _get_optional_profile_field_names() if field in form_data
     ]
 
@@ -61,7 +61,7 @@ def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
         __config__=FieldOptionsConfig,
         __validators__={
             f"{field}_validator": validator(field, allow_reuse=True)(ensure_required_true)
-            for field in REQUIRED_POLARIS_JOIN_FIELDS
+            for field in REQUIRED_ACCOUNTS_JOIN_FIELDS
         },
         **{field: (FieldOptions, ...) for field in required_fields},
     )

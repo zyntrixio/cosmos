@@ -48,7 +48,7 @@ def send_request_with_metrics(
     url_kwargs: the values to be substitued into the template.
     ex:
     ```python
-    {"base_url": "http://polaris-api/", "retailer_slug": "asos"}
+    {"base_url": "http://cosmos-api/", "retailer_slug": "asos"}
     ```
 
     exclude_from_label_url: the url_kwargs' keys that we do not want to be substitued in the label url.
@@ -66,14 +66,14 @@ def send_request_with_metrics(
     DO:
     ```python
     url_template="{base_url}/{account_holder_uuid}/sample/url"
-    url_kwargs={"base_url": "http://polaris-api/", "account_holder_uuid": "e3ae1323-8587-4609-b32b-bd3343d42395"}
+    url_kwargs={"base_url": "http://cosmos-api/", "account_holder_uuid": "e3ae1323-8587-4609-b32b-bd3343d42395"}
     exclude_from_label_url=["account_holder_uuid"]
     ```
 
     DO NOT DO:
     ```python
     url_template="{base_url}/{account_holder_uuid}/sample/url"
-    url_kwargs={"base_url": "http://polaris-api/", "account_holder_uuid": "e3ae1323-8587-4609-b32b-bd3343d42395"}
+    url_kwargs={"base_url": "http://cosmos-api/", "account_holder_uuid": "e3ae1323-8587-4609-b32b-bd3343d42395"}
     exclude_from_label_url=["base_url"] | []
     ```
 

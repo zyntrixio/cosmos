@@ -55,7 +55,8 @@ class KeyVault:
             self.client = SecretClient(
                 vault_url=vault_url,
                 credential=DefaultAzureCredential(
-                    additionally_allowed_tenants=["a6e2367a-92ea-4e5a-b565-723830bcc095"]
+                    additionally_allowed_tenants=["a6e2367a-92ea-4e5a-b565-723830bcc095"],
+                    exclude_shared_token_cache_credential=True,
                 ),
             )
 
