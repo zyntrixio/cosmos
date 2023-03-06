@@ -2,9 +2,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from cosmos.accounts.enums import MarketingPreferenceValueTypes
 from cosmos.db.base_class import async_run_query

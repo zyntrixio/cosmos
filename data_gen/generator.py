@@ -68,7 +68,7 @@ def _generate_account_holders_and_rewards_data(
                     batch_end=batch_end,
                     account_holder_type=account_holder_type,
                     retailer_config=retailer,
-                    active_campaigns=active_campaigns,
+                    active_campaigns=list(active_campaigns),
                     max_val=max_val,
                     bar=progress_bar,
                     progress_counter=progress_counter,

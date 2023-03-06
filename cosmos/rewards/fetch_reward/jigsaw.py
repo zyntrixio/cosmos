@@ -447,7 +447,7 @@ class Jigsaw(BaseAgent):
             expiry_date=expiry,
             associated_url=response_payload["data"]["voucher_url"],
         )
-        self._send_issued_reward_activity(reward_uuid=reward.reward_uuid, issued_date=reward.issued_date)
+        self._send_issued_reward_activity(reward_uuid=reward.reward_uuid, issued_date=issued)
         return reward.associated_url
 
     def fetch_balance(self) -> int:  # pragma: no cover

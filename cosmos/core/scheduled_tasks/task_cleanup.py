@@ -28,11 +28,13 @@ def cleanup_old_tasks() -> None:
     db_session: "Session"
     with SyncSessionMaker() as db_session:
         res = db_session.execute(
-            RetryTask.__table__.delete().where(
+            RetryTask.__table__.delete()
+            .where(
                 RetryTask.status.in_(deleteable_task_statuses),
                 RetryTask.created_at < time_reference,
             )
+            .returning(RetryTask.retry_task_id)
         )
         db_session.commit()
 
-    logger.info("Deleted %d tasks. ( °╭ ︿ ╮°)", res.rowcount)
+    logger.info("Deleted %d tasks. ( °╭ ︿ ╮°)", len(res.all()))

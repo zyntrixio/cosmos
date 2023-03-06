@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING
 
 from pydantic import UUID4, EmailStr
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.future import select
 from sqlalchemy.orm import aliased, contains_eager, joinedload, raiseload
 
 from cosmos.accounts.enums import AccountHolderStatuses
@@ -147,7 +146,7 @@ async def get_account_holder(
 
     stmt = stmt.options(raiseload("*"))
 
-    async def _query() -> AccountHolder:
+    async def _query() -> AccountHolder | None:
         return (await db_session.execute(stmt)).unique().scalar_one_or_none()
 
     account_holder = await async_run_query(_query, db_session, rollback_on_exc=False)

@@ -1,9 +1,10 @@
 import logging
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from flask import flash
-from sqlalchemy import func
+from sqlalchemy import delete, func
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.future import select
 
@@ -44,17 +45,17 @@ class DeleteRetailerAction:
     def session_data(self, value: str) -> None:
         self._session_data = SessionData.from_base64_str(value)
 
-    def affected_account_holders_count(self) -> int:  # pragma: no cover
+    def affected_account_holders_count(self) -> int | None:  # pragma: no cover
         return db_session.scalar(
             select(func.count(AccountHolder.id)).where(AccountHolder.retailer_id == self.session_data.retailer_id)
         )
 
-    def affected_transactions_count(self) -> int:  # pragma: no cover
+    def affected_transactions_count(self) -> int | None:  # pragma: no cover
         return db_session.scalar(
             select(func.count(Transaction.id)).where(Transaction.retailer_id == self.session_data.retailer_id)
         )
 
-    def affected_rewards_count(self) -> int:  # pragma: no cover
+    def affected_rewards_count(self) -> int | None:  # pragma: no cover
         return db_session.scalar(
             select(func.count(Reward.id)).where(
                 Reward.account_holder_id == AccountHolder.id,
@@ -62,7 +63,7 @@ class DeleteRetailerAction:
             )
         )
 
-    def affected_campaigns_slugs(self) -> list[str]:  # pragma: no cover
+    def affected_campaigns_slugs(self) -> Sequence[str]:  # pragma: no cover
         return db_session.scalars(
             select(Campaign.slug).where(
                 Campaign.status == CampaignStatuses.ACTIVE,
@@ -71,7 +72,7 @@ class DeleteRetailerAction:
         ).all()
 
     @staticmethod
-    def _get_retailer_by_id(retailer_id: int) -> Retailer:  # pragma: no cover
+    def _get_retailer_by_id(retailer_id: int) -> Retailer | None:  # pragma: no cover
         return db_session.get(Retailer, retailer_id)
 
     def validate_selected_ids(self, ids: list[str]) -> str | None:
@@ -82,6 +83,8 @@ class DeleteRetailerAction:
             return "Only one Retailer allowed for this action"
 
         retailer = self._get_retailer_by_id(int(ids[0]))
+        if not retailer:
+            raise ValueError(f"No retailer found with id {ids[0]}")
 
         if retailer.status == RetailerStatuses.ACTIVE:
             return "Only non active Retailers allowed for this action"
@@ -97,7 +100,7 @@ class DeleteRetailerAction:
         return None
 
     def _delete_retailer_data(self) -> None:  # pragma: no cover
-        db_session.execute(Retailer.__table__.delete().where(Retailer.slug == self.session_data.retailer_slug))
+        db_session.execute(delete(Retailer).where(Retailer.slug == self.session_data.retailer_slug))
         db_session.flush()
 
     def _delete_hubble_retailer_data(self) -> None:  # pragma: no cover

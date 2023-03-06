@@ -84,11 +84,11 @@ class TxHistoryRowsData:
 
 def generate_tx_rows(reward_goal: int, retailer: "Retailer") -> list[TxHistoryRowsData]:
     mids = [store.mid for store in retailer.stores]
-    tx_history_list = [
-        TxHistoryRowsData(int((reward_goal // 4)), choice(mids)),
+    return [
+        TxHistoryRowsData(int(reward_goal // 4), choice(mids)),
         TxHistoryRowsData(int(-(reward_goal // 2)), choice(mids)),
         TxHistoryRowsData(int(reward_goal // 2), choice(mids)),
-        TxHistoryRowsData(int(reward_goal), choice(mids)),
+        TxHistoryRowsData(reward_goal, choice(mids)),
         TxHistoryRowsData(int(-reward_goal), choice(mids)),
         TxHistoryRowsData(int(reward_goal * 1.5), choice(mids)),
         TxHistoryRowsData(int(-(reward_goal * 1.5)), choice(mids)),
@@ -96,7 +96,6 @@ def generate_tx_rows(reward_goal: int, retailer: "Retailer") -> list[TxHistoryRo
         TxHistoryRowsData(int(reward_goal * 2), choice(mids)),
         TxHistoryRowsData(int(-(reward_goal // 4)), choice(mids)),
     ]
-    return tx_history_list
 
 
 def account_holder_payload(
@@ -116,11 +115,7 @@ def account_holder_profile_payload(account_holder: "AccountHolder") -> dict:
     phone_prefix = "0" if randint(0, 1) else "+44"
     address = fake.street_address().split("\n")
     address_1 = address[0]
-    if len(address) > 1:
-        address_2 = address[1]
-    else:
-        address_2 = ""
-
+    address_2 = address[1] if len(address) > 1 else ""
     return {
         "account_holder_id": account_holder.id,
         "date_of_birth": fake.date(),
@@ -157,7 +152,7 @@ def _datetimes_for_reward_by_status(
     old_date = now - timedelta(days=randint(2, 10))
     default_expiry = now + timedelta(weeks=52)
 
-    match reward_status:  # noqa: E999
+    match reward_status:
         case AccountHolderRewardStatuses.REDEEMED:
             dates = RewardDatetime(expiry_date=default_expiry, redeemed_date=old_date)
         case AccountHolderRewardStatuses.CANCELLED:
@@ -166,14 +161,14 @@ def _datetimes_for_reward_by_status(
             dates = RewardDatetime(expiry_date=default_expiry, issued_date=old_date)
         case AccountHolderRewardStatuses.EXPIRED:
             dates = RewardDatetime(expiry_date=old_date)
-        case _:
-            msg = "Couldn't calculate datetimes for reward status"
-            raise Exception(msg)
+        case AccountHolderRewardStatuses.PENDING:
+            raise ValueError(f"Unsupported status: {AccountHolderRewardStatuses.PENDING.name}")
 
     return dates
 
 
 def account_holder_reward_payload(
+    *,
     account_holder_id: int,
     retailer_id: int,
     campaign_id: int,
@@ -203,7 +198,7 @@ def account_holder_reward_payload(
 
 def account_holder_pending_reward_payload(
     account_holder_id: int,
-    campaign_id: str,
+    campaign_id: int,
     refund_window: int,
 ) -> dict:
     now = datetime.now(tz=UTC).replace(microsecond=0)

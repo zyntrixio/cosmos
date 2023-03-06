@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
+from uuid import UUID
 
 import sentry_sdk
 
@@ -8,9 +10,9 @@ from requests.exceptions import HTTPError
 from retry_tasks_lib.db.models import RetryTask
 from retry_tasks_lib.enums import RetryTaskStatuses
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, get_retry_task, retryable_task
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -19,7 +21,7 @@ from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.tasks import sync_send_activity
-from cosmos.core.config import redis
+from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
 from cosmos.core.tasks import send_request_with_metrics
 from cosmos.core.tasks.auth import get_callback_oauth_header
@@ -73,7 +75,9 @@ def _process_callback(task_params: dict, account_holder: AccountHolder) -> dict:
     return response_audit
 
 
-def _activate_account_holder(db_session: "Session", account_holder: AccountHolder, campaigns: list[Campaign]) -> bool:
+def _activate_account_holder(
+    db_session: "Session", account_holder: AccountHolder, campaigns: Sequence[Campaign]
+) -> bool:
     if account_holder.account_number is None:
         while True:
             nested_trans = db_session.begin_nested()
@@ -112,7 +116,11 @@ def _activate_account_holder(db_session: "Session", account_holder: AccountHolde
 
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
 # it is relevantly reflected in the TaskType table
-@retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
+@retryable_task(
+    db_session_factory=SyncSessionMaker,
+    redis_connection=redis_raw,
+    metrics_callback_fn=task_processing_time_callback_fn,
+)
 def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> None:
     if account_settings.core.ACTIVATE_TASKS_METRICS:
         tasks_run_total.labels(
@@ -125,7 +133,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
     ).scalar_one()
 
     logger.info(f"Getting active campaigns for {account_holder.retailer.slug}")
-    campaigns: list[Campaign] = (
+    campaigns: Sequence[Campaign] = (
         db_session.execute(
             select(Campaign).where(
                 Campaign.retailer_id == account_holder.retailer_id, Campaign.status == CampaignStatuses.ACTIVE
@@ -157,7 +165,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
         enqueue_many_retry_tasks(
             db_session=db_session,
             retry_tasks_ids=[welcome_email_retry_task.retry_task_id, callback_retry_task.retry_task_id],
-            connection=redis,
+            connection=redis_raw,
         )
 
         retry_task.update_task(db_session, status=RetryTaskStatuses.SUCCESS, clear_next_attempt_time=True)
@@ -172,7 +180,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
         retry_task.update_task(db_session, status=RetryTaskStatuses.WAITING, clear_next_attempt_time=True)
 
 
-def extract_message_uuid_from_mailjet_response(payload: dict) -> str:
+def extract_message_uuid_from_mailjet_response(payload: dict) -> UUID:
     """
         Extract and returns MessageID from a mailject successful response
 
@@ -199,7 +207,7 @@ def extract_message_uuid_from_mailjet_response(payload: dict) -> str:
     ```
     """
 
-    return payload["Messages"][0]["To"][0]["MessageUUID"]
+    return UUID(payload["Messages"][0]["To"][0]["MessageUUID"])
 
 
 def update_account_holder_email(
@@ -224,7 +232,11 @@ def update_account_holder_email(
 
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
 # it is relevantly reflected in the TaskType table
-@retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
+@retryable_task(
+    db_session_factory=SyncSessionMaker,
+    redis_connection=redis_raw,
+    metrics_callback_fn=task_processing_time_callback_fn,
+)
 def enrolment_callback(retry_task: RetryTask, db_session: "Session") -> None:
     if account_settings.core.ACTIVATE_TASKS_METRICS:
         tasks_run_total.labels(
@@ -291,19 +303,20 @@ def _get_or_create_account_holder_email(
         db_session.commit()
     except IntegrityError:
         db_session.rollback()
-        ahe = cast(
-            AccountHolderEmail,
-            db_session.execute(
-                select(AccountHolderEmail).where(AccountHolderEmail.retry_task_id == retry_task_id)
-            ).scalar_one(),
-        )
+        ahe = db_session.execute(
+            select(AccountHolderEmail).where(AccountHolderEmail.retry_task_id == retry_task_id)
+        ).scalar_one()
 
     return ahe
 
 
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
 # it is relevantly reflected in the TaskType table
-@retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
+@retryable_task(
+    db_session_factory=SyncSessionMaker,
+    redis_connection=redis_raw,
+    metrics_callback_fn=task_processing_time_callback_fn,
+)
 def send_email(retry_task: RetryTask, db_session: "Session") -> None:
     """Generic email sending task"""
     response_audit: dict[str, dict | str | int | None] | str = {}

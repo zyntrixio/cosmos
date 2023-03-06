@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
-from sqlalchemy.future import select
+from sqlalchemy import select
 
 from cosmos.core.config import redis_raw
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def _process_batch_deletion(
-    db_session: "Session", ripe_pending_rewards: list[PendingReward], reward_config_ids_map: dict
+    db_session: "Session", ripe_pending_rewards: Sequence[PendingReward], reward_config_ids_map: dict
 ) -> list[int]:
     campaign_ids = set()
     for pr in ripe_pending_rewards:
@@ -30,7 +31,8 @@ def _process_batch_deletion(
 
     if campaign_ids:
         reward_config_ids_map |= dict(
-            db_session.execute(
+            row.tuple()
+            for row in db_session.execute(
                 select(
                     RewardRule.campaign_id,
                     RewardRule.reward_config_id,
@@ -59,7 +61,7 @@ def _process_batch_deletion(
 
 @acquire_lock(runner=cron_scheduler)
 def process_pending_rewards() -> None:
-    ripe_pending_rewards: list[PendingReward]
+    ripe_pending_rewards: Sequence[PendingReward]
     processed_rewards_n = 0
     reward_config_ids_map: dict = {}
     query = (

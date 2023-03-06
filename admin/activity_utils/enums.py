@@ -153,7 +153,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         campaign_slug: str,
         loyalty_type: LoyaltyTypes,
         threshold: int,
-        increment: int,
+        increment: int | None,
         increment_multiplier: Decimal,
         max_amount: int,
     ) -> dict:
@@ -220,7 +220,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         activity_datetime: datetime,
         campaign_slug: str,
         threshold: int,
-        increment: int,
+        increment: int | None,
         increment_multiplier: Decimal,
         max_amount: int,
     ) -> dict:
@@ -257,7 +257,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         activity_datetime: datetime,
         campaign_slug: str,
         reward_goal: int,
-        refund_window: int,
+        refund_window: int | None,
         reward_cap: int | None,
     ) -> dict:
 

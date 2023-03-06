@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       LOG_FORMATTER: brief
-      SQLALCHEMY_DATABASE_URI: "postgresql://postgres@127.0.0.1:5432/cosmos"
+      SQLALCHEMY_DATABASE_URI: "postgresql+psycopg://postgres@127.0.0.1:5432/cosmos"
       REDIS_URL: redis://127.0.0.1:6379/0
       TESTING: "True"
       PUBLIC_URL: http://fake-cosmos-public-url

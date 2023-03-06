@@ -12,10 +12,13 @@ from pytest_mock import MockerFixture
 from retry_tasks_lib.db.models import RetryTask, TaskType
 from sqlalchemy.future import select
 
+from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.api.endpoints import CampaignService
 from cosmos.campaigns.config import campaign_settings
+from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
 from cosmos.db.models import AccountHolder, CampaignBalance, PendingReward
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.config import reward_settings
 from tests import validate_error_response
 from tests.conftest import SetupType
@@ -149,7 +152,7 @@ def test_migration_campaigns_have_different_loyalty_types(
 ) -> None:
     db_session, retailer, _ = setup
 
-    activable_campaign.loyalty_type = "STAMPS"
+    activable_campaign.loyalty_type = LoyaltyTypes.STAMPS
     db_session.commit()
 
     resp = test_client.post(
@@ -182,9 +185,9 @@ def test_migration_invalid_status_requested(
 ) -> None:
     db_session, retailer, _ = setup
 
-    endable_campaign.status = from_campaign_status
-    activable_campaign.status = to_campaign_status
-    retailer.status = retailer_status
+    endable_campaign.status = CampaignStatuses[from_campaign_status]
+    activable_campaign.status = CampaignStatuses[to_campaign_status]
+    retailer.status = RetailerStatuses[retailer_status]
     db_session.commit()
 
     expected_errors: dict[ErrorCodeDetails, list[str]] = {}
@@ -227,7 +230,7 @@ def test_migration_missing_rules(
     endable_campaign: "Campaign",
 ) -> None:
     db_session, retailer, _ = setup
-    retailer.status = "TEST"
+    retailer.status = RetailerStatuses.TEST
 
     if rule_to_delete in {"reward", "both"}:
         db_session.delete(activable_campaign.reward_rule)
@@ -279,8 +282,8 @@ def test_migration_ok(
     db_session, retailer, account_holder_over_half = setup
     mock_trigger_asyncio_task = mocker.patch.object(CampaignService, "trigger_asyncio_task")
 
-    retailer.status = "TEST"
-    account_holder_over_half.status = "ACTIVE"
+    retailer.status = RetailerStatuses.TEST
+    account_holder_over_half.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
     account_holder_under_half = create_account_holder(email="other@account.holder")
@@ -386,10 +389,10 @@ def test_migration_stamps_campaigns_ok(
 
     db_session, retailer, account_holder_over_half = setup
 
-    retailer.status = "TEST"
-    account_holder_over_half.status = "ACTIVE"
-    activable_campaign.loyalty_type = "STAMPS"
-    endable_campaign.loyalty_type = "STAMPS"
+    retailer.status = RetailerStatuses.TEST
+    account_holder_over_half.status = AccountHolderStatuses.ACTIVE
+    activable_campaign.loyalty_type = LoyaltyTypes.STAMPS
+    endable_campaign.loyalty_type = LoyaltyTypes.STAMPS
     db_session.commit()
 
     account_holder_under_half = create_account_holder(email="other@account.holder")

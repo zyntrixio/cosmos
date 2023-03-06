@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
-from sqlalchemy import case, func
-from sqlalchemy.future import select
+from sqlalchemy import Table, case, func, select
 
 from cosmos.db.models import Reward
 from cosmos.rewards.config import reward_settings
@@ -40,41 +40,42 @@ class PreLoaded(BaseAgent):
         ).cte("available_reward")
 
         res = self.db_session.execute(
-            Reward.__table__.update()
+            cast(Table, Reward.__table__)
+            .update()
             .values(
                 account_holder_id=self.account_holder.id,
                 campaign_id=self.campaign.id,
                 issued_date=now,
                 expiry_date=case(
-                    [(Reward.expiry_date.is_(None), expiry_date)],
+                    (Reward.expiry_date.is_(None), expiry_date),
                     else_=Reward.expiry_date,
                 ),
                 associated_url=func.format(associated_url_template, Reward.reward_uuid),
             )
             .where(Reward.id == available_reward.c.id)
             .returning(Reward.reward_uuid, Reward.issued_date, Reward.expiry_date, Reward.associated_url)
-        )
+        ).all()
 
-        if res.rowcount > 1:  # pragma: no cover
+        if len(res) > 1:  # pragma: no cover
             # this should not be possbile but it's here as safeguard in case we modify db contraints
             self.db_session.rollback()
             raise ValueError("Something went wrong, more than one Reward picked up, rolling back")
 
-        success = bool(res.rowcount)
-        reward_data = res.first()
+        reward_data = res[0] if res else None
 
-        if success and not reward_data.expiry_date:  # pragma: no cover
-            # this should not be possbile but it's here as safeguard in case we modify db contraints
-            self.db_session.rollback()
-            raise ValueError("Both validity_days and expiry_date are None")
+        if reward_data:
 
-        if success:
+            if not reward_data.expiry_date:  # pragma: no cover
+                # this should not be possbile but it's here as safeguard in case we modify db contraints
+                self.db_session.rollback()
+                raise ValueError("Both validity_days and expiry_date are None")
+
             self.db_session.commit()
             self._send_issued_reward_activity(reward_uuid=reward_data.reward_uuid, issued_date=reward_data.issued_date)
         else:
             self.db_session.rollback()
 
-        return reward_data.associated_url if success else None
+        return reward_data.associated_url if reward_data else None
 
     def fetch_balance(self) -> int:  # pragma: no cover
         raise NotImplementedError

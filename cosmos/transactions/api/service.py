@@ -3,7 +3,7 @@ import uuid
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from retry_tasks_lib.utils.asynchronous import async_create_many_tasks
@@ -540,8 +540,9 @@ class TransactionService(Service):
     async def get_active_campaigns(self, transaction_datetime: datetime) -> list[Campaign]:
         return [
             campaign
-            for campaign in cast(list[Campaign], self.retailer.campaigns)
+            for campaign in self.retailer.campaigns
             if campaign.status == CampaignStatuses.ACTIVE
+            and campaign.start_date is not None
             and campaign.start_date <= transaction_datetime
             and (campaign.end_date is None or campaign.end_date > transaction_datetime)
         ]

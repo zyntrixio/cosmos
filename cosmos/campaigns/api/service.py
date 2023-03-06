@@ -62,6 +62,7 @@ class CampaignService(Service):
         return ErrorCode.INVALID_STATUS_REQUESTED if error else None
 
     async def _issue_pending_rewards_for_campaign(self, campaign: Campaign) -> list["RetryTask"]:
+
         del_data = await delete_pending_rewards_for_campaign(db_session=self.db_session, campaign=campaign)
         return await async_create_many_tasks(
             self.db_session,
@@ -126,6 +127,7 @@ class CampaignService(Service):
     ) -> list["RetryTask"]:
 
         reward_issuance_tasks: list["RetryTask"] = []
+
         if campaign.reward_rule.allocation_window and requested_status in (
             CampaignStatuses.ENDED,
             CampaignStatuses.CANCELLED,

@@ -11,7 +11,7 @@ from retry_tasks_lib.utils.synchronous import (
     retryable_task,
     sync_create_task,
 )
-from sqlalchemy.future import select
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from cosmos.campaigns.enums import CampaignStatuses
@@ -33,7 +33,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
 # it is relevantly reflected in the TaskType table
-@retryable_task(db_session_factory=SyncSessionMaker, metrics_callback_fn=task_processing_time_callback_fn)
+@retryable_task(
+    db_session_factory=SyncSessionMaker,
+    redis_connection=redis_raw,
+    metrics_callback_fn=task_processing_time_callback_fn,
+)
 def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
     """Try to fetch and issue a reward, unless the campaign has been cancelled"""
     if reward_settings.core.ACTIVATE_TASKS_METRICS:

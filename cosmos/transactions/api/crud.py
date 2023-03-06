@@ -1,9 +1,10 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.orm import noload
 
 from cosmos.campaigns.enums import LoyaltyTypes
@@ -18,9 +19,9 @@ if TYPE_CHECKING:
 
 
 async def get_balances_for_update(
-    db_session: "AsyncSession", *, account_holder_id: int, campaigns: list["Campaign"]
-) -> list[CampaignBalance]:
-    async def _query() -> list[CampaignBalance]:
+    db_session: "AsyncSession", *, account_holder_id: int, campaigns: Sequence["Campaign"]
+) -> Sequence[CampaignBalance]:
+    async def _query() -> Sequence[CampaignBalance]:
         return (
             (
                 await (
@@ -44,7 +45,7 @@ async def get_balances_for_update(
 async def get_pending_rewards_for_update(
     db_session: "AsyncSession", *, account_holder_id: int, campaign_id: int
 ) -> list[PendingReward]:
-    async def _query() -> list[PendingReward]:
+    async def _query() -> Sequence[PendingReward]:
         return (
             (
                 await db_session.execute(
@@ -62,7 +63,7 @@ async def get_pending_rewards_for_update(
             .all()
         )
 
-    return await async_run_query(_query, db_session, rollback_on_exc=False)
+    return list(await async_run_query(_query, db_session, rollback_on_exc=False))
 
 
 async def delete_pending_reward(db_session: "AsyncSession", pending_reward: PendingReward) -> None:

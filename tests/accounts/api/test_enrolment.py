@@ -193,7 +193,10 @@ def test_account_holder_enrol_lower_cased_email(
     assert resp.json() == {}
 
     # Check that the lower-case email record saved OK
-    account_holder = db_session.query(AccountHolder).filter_by(retailer_id=retailer.id, email=lower_cased_email).first()
+    account_holder = db_session.scalar(
+        select(AccountHolder).where(AccountHolder.retailer_id == retailer.id, AccountHolder.email == lower_cased_email)
+    )
+    assert account_holder
     assert account_holder.email == lower_cased_email
 
 
@@ -360,7 +363,7 @@ def test_account_holder_enrol_no_channel_header(
     resp = client.post(
         endpoint % retailer.slug,
         json=test_account_holder_enrol,
-        headers={"Authorization": "Token %s" % account_settings.ACCOUNT_API_AUTH_TOKEN},
+        headers={"Authorization": f"Token {account_settings.ACCOUNT_API_AUTH_TOKEN}"},
     )
 
     validate_error_response(resp, errors.MISSING_BPL_CHANNEL_HEADER)

@@ -1,5 +1,7 @@
 import sys
 
+from urllib.parse import urlparse
+
 from pydantic import BaseSettings, PostgresDsn, validator
 
 
@@ -32,17 +34,17 @@ class DatabaseSettings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "cosmos"
     SQLALCHEMY_DATABASE_URI: str = ""
-    SQLALCHEMY_DATABASE_URI_ASYNC: str = ""
     DB_CONNECTION_RETRY_TIMES: int = 3
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     @classmethod
     def assemble_db_connection(cls, v: str, values: dict) -> str:
-        db_uri = (
+
+        parsed_uri = urlparse(
             v.format(values["POSTGRES_DB"])
             if v
             else PostgresDsn.build(
-                scheme="postgresql",
+                scheme="postgresql+psycopg",
                 user=values.get("POSTGRES_USER"),
                 password=values.get("POSTGRES_PASSWORD"),
                 host=values.get("POSTGRES_HOST"),
@@ -50,23 +52,14 @@ class DatabaseSettings(BaseSettings):
                 path="/" + values.get("POSTGRES_DB", ""),
             )
         )
+
+        if "+psycopg" not in parsed_uri.scheme:
+            parsed_uri = parsed_uri._replace(scheme=f"{parsed_uri.scheme}+psycopg")
+
         if values["TESTING"]:
-            db_uri += "_test"
+            parsed_uri = parsed_uri._replace(path=f"{parsed_uri.path}_test")
 
-        return db_uri
-
-    @validator("SQLALCHEMY_DATABASE_URI_ASYNC", pre=True)
-    @classmethod
-    def adapt_db_connection_to_async(cls, v: str, values: dict) -> str:
-        return (
-            v.format(values["POSTGRES_DB"])
-            if v
-            else (
-                values["SQLALCHEMY_DATABASE_URI"]
-                .replace("postgresql://", "postgresql+asyncpg://")
-                .replace("sslmode=", "ssl=")
-            )
-        )
+        return parsed_uri.geturl()
 
     class Config:
         case_sensitive = True

@@ -1,5 +1,5 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.orm import contains_eager, joinedload
 
 from cosmos.db.models import Campaign, Retailer

@@ -1,9 +1,9 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Date, literal, tuple_
-from sqlalchemy.future import select
+from sqlalchemy import Date, case, literal, select, tuple_
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.core.activity.tasks import sync_send_activity
@@ -15,16 +15,20 @@ from cosmos.retailers.enums import EmailTypeSlugs
 from . import logger
 
 if TYPE_CHECKING:
+    from sqlalchemy import Table
     from sqlalchemy.engine import Row
     from sqlalchemy.orm import Session
 
 
-def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
+def _retrieve_and_update_balances(db_session: "Session") -> Sequence["Row"]:
     today = datetime.now(tz=ZoneInfo(cron_scheduler.tz)).date()
     balances_to_update = (
         select(
             CampaignBalance.id.label("balance_id"),
-            (literal(today, Date) + Retailer.balance_lifespan).label("reset_date"),
+            case(
+                (Retailer.balance_lifespan.is_not(None), (literal(today, Date) + Retailer.balance_lifespan)),
+                else_=literal(None),
+            ).label("reset_date"),
             CampaignBalance.balance.label("old_balance"),
             Retailer.balance_lifespan,
             Retailer.slug.label("retailer_slug"),
@@ -35,11 +39,12 @@ def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
         .join(AccountHolder)
         .join(Retailer)
         .join(Campaign, CampaignBalance.campaign_id == Campaign.id)
-        .where(CampaignBalance.reset_date <= today, Retailer.balance_lifespan is not None)
-    ).cte("balances_to_update")
-
+        .where(CampaignBalance.reset_date <= today)
+        .cte("balances_to_update")
+    )
     update_stmt = (
-        CampaignBalance.__table__.update()
+        cast("Table", CampaignBalance.__table__)
+        .update()
         .values(balance=0, reset_date=balances_to_update.c.reset_date)
         .where(
             CampaignBalance.id == balances_to_update.c.balance_id,
@@ -61,7 +66,8 @@ def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
     db_session.flush()
     # re-enables BALANCE_RESET nudges for updated account holders.
     db_session.execute(
-        AccountHolderEmail.__table__.update()
+        cast("Table", AccountHolderEmail.__table__)
+        .update()
         .values(allow_re_send=True)
         .where(
             AccountHolderEmail.email_type_id == EmailType.id,

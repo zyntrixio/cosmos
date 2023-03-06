@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import wtforms
 import yaml
@@ -66,7 +67,7 @@ class RetailerAdmin(BaseModelView):
         "balance_reset_advanced_warning_days",
     )
 
-    profile_config_placeholder = """
+    profile_config_placeholder = """\
 email:
   required: true
   label: Email address
@@ -75,14 +76,14 @@ first_name:
   label: Forename
 last_name:
   required: true
-  label: Surname
-""".strip()
+  label: Surname\
+"""
 
-    marketing_config_placeholder = """
+    marketing_config_placeholder = """\
 marketing_pref:
   type: boolean
-  label: Would you like to receive marketing?
-""".strip()
+  label: Would you like to receive marketing?\
+"""
 
     form_args = {
         "profile_config": {
@@ -162,7 +163,7 @@ marketing_pref:
     def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
         validate_balance_lifespan_and_warning_days(form, retailer_status=model.status)
         if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data is not None:
-            reset_date = (datetime.now(tz=UTC) + timedelta(days=model.balance_lifespan)).date()
+            reset_date = (datetime.now(tz=UTC) + timedelta(days=cast(float, model.balance_lifespan))).date()
             stmt = (
                 update(CampaignBalance)
                 .where(
@@ -179,7 +180,7 @@ marketing_pref:
     def _get_retailer_by_id(self, retailer_id: int) -> Retailer:
         return self.session.execute(select(Retailer).where(Retailer.id == retailer_id)).scalar_one()
 
-    def _check_activate_campaign_for_retailer(self, retailer_id: int) -> list[int]:
+    def _check_activate_campaign_for_retailer(self, retailer_id: int) -> Sequence[int]:
         return (
             self.session.execute(
                 select(Campaign.id).where(

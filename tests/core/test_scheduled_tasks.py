@@ -109,7 +109,7 @@ def test_scheduled_email_by_type(
 
     scheduled_email_by_type(email_type_slug="BALANCE_RESET")
 
-    retry_tasks: list[RetryTask] = db_session.scalars(select(RetryTask)).unique().all()
+    retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
     assert len(retry_tasks) == 2
 
     mock_enqueue.assert_called_once_with(
@@ -123,6 +123,9 @@ def test_scheduled_email_by_type(
 
     if task_params_2["account_holder_id"] == eligible_account_holder_1.id:
         task_params_1, task_params_2 = task_params_2, task_params_1
+
+    assert eligible_balance_1.reset_date
+    assert eligible_balance_2.reset_date
 
     assert not DeepDiff(
         task_params_1,
@@ -220,7 +223,7 @@ def test_scheduled_email_by_type_mail_already_sent(
 
     scheduled_email_by_type(email_type_slug="BALANCE_RESET")
 
-    retry_tasks: list[RetryTask] = db_session.scalars(select(RetryTask)).unique().all()
+    retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
     assert len(retry_tasks) == 1
 
     retry_task = retry_tasks[0]
@@ -231,6 +234,7 @@ def test_scheduled_email_by_type_mail_already_sent(
         connection=mocker.ANY,
     )
 
+    assert eligible_balance.reset_date
     assert not DeepDiff(
         retry_task.get_params(),
         {

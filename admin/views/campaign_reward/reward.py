@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -209,7 +210,7 @@ class RewardAdmin(RewardAdminBase):
     def is_action_allowed(self, name: str) -> bool:
         return self.is_read_write_user if name == "delete-rewards" else False
 
-    def _get_rewards_from_ids(self, reward_ids: list[str]) -> list[Reward]:
+    def _get_rewards_from_ids(self, reward_ids: Iterable[int]) -> Sequence[Reward]:
         return self.session.execute(select(Reward).where(Reward.id.in_(reward_ids))).scalars().all()
 
     def _get_retailer_by_id(self, retailer_id: int) -> Retailer:
@@ -223,7 +224,7 @@ class RewardAdmin(RewardAdminBase):
     )
     def delete_rewards(self, reward_ids: list[str]) -> None:
         # Get rewards for all selected ids
-        rewards = self._get_rewards_from_ids(reward_ids)
+        rewards = self._get_rewards_from_ids(map(int, reward_ids))
 
         selected_retailer_id: int = rewards[0].retailer_id
         for reward in rewards:

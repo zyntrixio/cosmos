@@ -7,9 +7,10 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
+from psycopg import OperationalError, ProgrammingError
 from pytest_mock import MockerFixture
 from retry_tasks_lib.db.models import TaskType, TaskTypeKey
-from sqlalchemy_utils import create_database, database_exists, drop_database
+from sqlalchemy import URL, Engine, TextClause, create_engine, make_url, text
 from testfixtures import LogCapture
 
 from cosmos.accounts.enums import AccountHolderStatuses
@@ -45,6 +46,77 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm import Session
+
+
+def get_postgres_db_url_from_db_url(db_url: str | URL) -> URL:
+    return make_url(db_url)._replace(database="postgres")
+
+
+def _get_scalar_result(engine: Engine, sql: TextClause) -> Any:  # noqa: ANN401
+    with engine.connect() as conn:
+        return conn.scalar(sql)
+
+
+def database_exists(url: str | URL) -> bool:
+    url = make_url(url)
+    database = url.database
+    if not database:
+        raise ValueError("No database found in URL")
+    postgres_url = get_postgres_db_url_from_db_url(url)
+    engine = create_engine(postgres_url)
+    dialect = engine.dialect
+    quoted_database = dialect.preparer(dialect).quote(database)
+    try:
+        return bool(
+            _get_scalar_result(
+                engine,
+                text("SELECT 1 FROM pg_database WHERE datname = :quoted_database").bindparams(
+                    quoted_database=quoted_database
+                ),
+            )
+        )
+    except (ProgrammingError, OperationalError):
+        return False
+    finally:
+        if engine:
+            engine.dispose()
+
+
+def drop_database(url: str | URL) -> None:
+    url = make_url(url)
+    database = url.database
+    if not database:
+        raise ValueError("No database found in URL")
+    postgres_url = get_postgres_db_url_from_db_url(url)
+    engine = create_engine(postgres_url, isolation_level="AUTOCOMMIT")
+    dialect = engine.dialect
+    quoted_database = dialect.preparer(dialect).quote(database)
+    with engine.begin() as conn:
+        # Disconnect all users from the database we are dropping.
+        stmt = """
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = :quoted_database
+        AND pid <> pg_backend_pid();
+        """
+        conn.execute(text(stmt).bindparams(quoted_database=quoted_database))
+        # Drop the database.
+        stmt = f"DROP DATABASE {quoted_database}"
+        conn.execute(text(stmt))
+
+
+def create_database(url: str | URL) -> None:
+    url = make_url(url)
+    database = url.database
+    if not database:
+        raise ValueError("No database found in URL")
+    postgres_url = get_postgres_db_url_from_db_url(url)
+    engine = create_engine(postgres_url, isolation_level="AUTOCOMMIT")
+    dialect = engine.dialect
+    quoter = dialect.preparer(dialect)
+    with engine.begin() as conn:
+        stmt = f"CREATE DATABASE {quoter.quote(database)} ENCODING 'utf8' TEMPLATE template1"
+        conn.execute(text(stmt))
 
 
 class SetupType(NamedTuple):

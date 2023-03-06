@@ -156,7 +156,11 @@ def test_account_holder_get_by_credentials_no_balances(setup: SetupType, mock_ac
     db_session, retailer, account_holder = setup
     account_holder.status = AccountHolderStatuses.ACTIVE
     account_holder.account_number = "TEST123456789"
-    db_session.execute(CampaignBalance.__table__.delete().where(CampaignBalance.account_holder_id == account_holder.id))
+    db_session.execute(
+        CampaignBalance.__table__.delete().where(  #  type: ignore [ attr-defined]
+            CampaignBalance.account_holder_id == account_holder.id
+        )
+    )
     db_session.commit()
 
     for retailer_status, expected_balances in (

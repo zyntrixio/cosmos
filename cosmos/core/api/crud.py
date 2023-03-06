@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy.future import select
+from sqlalchemy import select
 from sqlalchemy.orm import aliased, joinedload
 
 from cosmos.db.base_class import async_run_query
@@ -18,8 +18,8 @@ async def commit(db_session: "AsyncSession") -> None:
     await async_run_query(_persist, db_session, rollback_on_exc=False)
 
 
-async def get_reward(db_session: "AsyncSession", reward_uuid: UUID, retailer_id: int) -> Reward:
-    async def _query() -> Reward:
+async def get_reward(db_session: "AsyncSession", reward_uuid: UUID, retailer_id: int) -> Reward | None:
+    async def _query() -> Reward | None:
         ah_alias = aliased(AccountHolder)
         return (
             await db_session.execute(

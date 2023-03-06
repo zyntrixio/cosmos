@@ -23,7 +23,7 @@ FIELD_TYPES = {
 INVALID_YAML_ERROR = StopValidation("The submitted YAML is not valid.")
 
 
-def _count_earn_rules(campaign_id: int, *, has_inc_value: bool) -> int:
+def _count_earn_rules(campaign_id: int, *, has_inc_value: bool) -> int | None:
     stmt = select(func.count()).select_from(EarnRule).join(Campaign).where(Campaign.id == campaign_id)
     stmt = stmt.where(EarnRule.increment.isnot(None)) if has_inc_value else stmt.where(EarnRule.increment.is_(None))
     return scoped_db_session.execute(stmt).scalar()

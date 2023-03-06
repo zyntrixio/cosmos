@@ -8,6 +8,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
+from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, PendingReward, Transaction
 from cosmos.transactions.api.service import TransactionService
 
@@ -89,7 +90,7 @@ async def test__process_refund(
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
     mock_datetime.now.return_value = now
 
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
     account_holder.account_holder_uuid = canned_account_holder_uuid
     balance_object.campaign.reward_rule.allocation_window = 10
     transaction = Transaction(
