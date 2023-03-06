@@ -109,6 +109,51 @@ def test_tx_import_activity_payload(
     }
 
 
+def test_tx_import_activity_payload_optional_params(
+    retailer: Retailer,
+    mocker: MockerFixture,
+) -> None:
+    mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
+    fake_now = datetime.now(tz=timezone.utc)
+    mock_datetime.now.return_value = fake_now
+
+    account_holder_uuid = str(uuid4())
+    transaction_id = str(uuid4())
+    payment_transaction_id = str(uuid4())
+    transaction_datetime = datetime.now(tz=timezone.utc)
+    campaign_slugs = ["slug1", "slug2"]
+
+    assert ActivityType.get_tx_import_activity_data(
+        retailer=retailer,
+        campaign_slugs=campaign_slugs,
+        request_payload={
+            "transaction_id": transaction_id,
+            "payment_transaction_id": payment_transaction_id,
+            "amount": 1500,
+            "transaction_datetime": transaction_datetime,
+            "mid": "amid",
+            "account_holder_uuid": account_holder_uuid,
+        },
+    ) == {
+        "type": ActivityType.TX_IMPORT.name,
+        "datetime": fake_now,
+        "underlying_datetime": transaction_datetime,
+        "summary": "Test Retailer Transaction Imported",
+        "reasons": [],
+        "activity_identifier": transaction_id,
+        "user_id": account_holder_uuid,
+        "associated_value": "£15.00",
+        "retailer": retailer.slug,
+        "campaigns": campaign_slugs,
+        "data": {
+            "transaction_id": transaction_id,
+            "datetime": transaction_datetime,
+            "amount": "15.00",
+            "mid": "amid",
+        },
+    }
+
+
 def test_get_processed_tx_activity_data(account_holder: AccountHolder, mocker: MockerFixture) -> None:
     now = datetime.now(tz=timezone.utc)
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
