@@ -15,8 +15,7 @@ If any change to the function name or path is made, please reflect it in the dat
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, TypedDict
 
-from sqlalchemy import tuple_
-from sqlalchemy.future import select
+from sqlalchemy import select, tuple_
 
 from cosmos.core.utils import get_formatted_balance_by_loyalty_type
 from cosmos.db.models import AccountHolder, AccountHolderEmail, Campaign, CampaignBalance
@@ -88,7 +87,9 @@ def get_balance_reset_nudge_params(
         .join(Campaign, Campaign.id == CampaignBalance.campaign_id)
         .where(
             AccountHolder.retailer_id == retailer.id,
-            tuple_(CampaignBalance.account_holder_id, CampaignBalance.campaign_id).not_in(already_processed),
+            tuple_(CampaignBalance.account_holder_id, CampaignBalance.campaign_id).not_in(
+                already_processed  # type: ignore [arg-type]
+            ),
             CampaignBalance.reset_date == (datetime.now(tz=scheduler_tz) + timedelta(days=advance_days)).date(),
             CampaignBalance.balance > 0,
         )

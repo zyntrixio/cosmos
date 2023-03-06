@@ -2,7 +2,7 @@ import re
 import uuid
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, no_type_check
 
 from pydantic import UUID4, BaseModel, EmailStr, Extra, Field, StrictInt, constr, validator
 from pydantic.validators import str_validator
@@ -66,8 +66,9 @@ class AccountHolderRewardSchema(BaseModel):
     def get_timestamp(cls, dt: datetime | None) -> int | None:
         return int(dt.timestamp()) if dt else None
 
+    @no_type_check
     @classmethod
-    def from_orm(cls, obj: Reward) -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: Reward) -> BaseModel:
         obj.campaign_slug = obj.campaign.slug
         return super().from_orm(obj)
 
@@ -121,7 +122,7 @@ class CampaignBalanceSchema(BaseModel):
 
     @classmethod
     def from_orm(cls, obj: "CampaignBalance") -> BaseModel:  # type: ignore [override]
-        obj.campaign_slug = obj.campaign.slug
+        obj.campaign_slug = obj.campaign.slug  # type: ignore [attr-defined]
         return super().from_orm(obj)
 
     class Config:
@@ -142,8 +143,9 @@ class TransactionHistorySchema(BaseModel):
     def get_timestamp(cls, value: datetime) -> int:
         return int(value.timestamp())
 
+    @no_type_check
     @classmethod
-    def from_orm(cls, obj: "Transaction") -> BaseModel:  # type: ignore [override]
+    def from_orm(cls, obj: "Transaction") -> BaseModel:
         obj.amount_currency = "GBP"
         if hasattr(obj, "store") and obj.store is not None:
             obj.location = obj.store.store_name

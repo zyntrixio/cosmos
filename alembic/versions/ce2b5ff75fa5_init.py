@@ -126,7 +126,7 @@ def upgrade() -> None:
         sa.Column("account_number", sa.String(), nullable=True),
         sa.Column("account_holder_uuid", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("opt_out_token", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("retailer_id", sa.BigInteger(), nullable=True),
+        sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("account_holder_uuid"),
@@ -188,7 +188,7 @@ def upgrade() -> None:
             sa.Enum("WELCOME_EMAIL", "REWARD_ISSUANCE", "BALANCE_RESET", name="emailtemplatetypes"),
             nullable=False,
         ),
-        sa.Column("retailer_id", sa.BigInteger(), nullable=True),
+        sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("type", "retailer_id", name="type_retailer_unq"),
@@ -308,7 +308,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=False),
         sa.Column("first_name", sa.String(), nullable=False),
         sa.Column("last_name", sa.String(), nullable=False),
         sa.Column("date_of_birth", sa.Date(), nullable=True),
@@ -336,8 +336,8 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
-        sa.Column("campaign_id", sa.BigInteger(), nullable=True),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=False),
+        sa.Column("campaign_id", sa.BigInteger(), nullable=False),
         sa.Column("balance", sa.Integer(), nullable=False),
         sa.Column("reset_date", sa.Date(), nullable=True),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
@@ -360,7 +360,7 @@ def upgrade() -> None:
         ),
         sa.Column("threshold", sa.Integer(), nullable=False),
         sa.Column("increment", sa.Integer(), nullable=True),
-        sa.Column("increment_multiplier", sa.Numeric(scale=2), nullable=False),
+        sa.Column("increment_multiplier", sa.Numeric(scale=2), nullable=True),
         sa.Column("max_amount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("campaign_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
@@ -374,8 +374,8 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("email_template_id", sa.Integer(), nullable=False),
-        sa.Column("email_template_key_id", sa.Integer(), nullable=False),
+        sa.Column("email_template_id", sa.BigInteger(), nullable=False),
+        sa.Column("email_template_key_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["email_template_id"], ["email_template.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["email_template_key_id"], ["email_template_key.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("email_template_id", "email_template_key_id"),
@@ -389,7 +389,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=False),
         sa.Column("key_name", sa.String(), nullable=False),
         sa.Column("value", sa.String(), nullable=False),
         sa.Column(
@@ -422,8 +422,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("pending_reward_uuid", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("account_holder_id", sa.BigInteger(), nullable=True),
-        sa.Column("campaign_id", sa.BigInteger(), nullable=True),
+        sa.Column("account_holder_id", sa.BigInteger(), nullable=False),
+        sa.Column("campaign_id", sa.BigInteger(), nullable=False),
         sa.Column("created_date", sa.DateTime(), nullable=False),
         sa.Column("conversion_date", sa.DateTime(), nullable=False),
         sa.Column("value", sa.Integer(), nullable=False),
@@ -483,7 +483,7 @@ def upgrade() -> None:
         sa.Column("allocation_window", sa.Integer(), nullable=True),
         sa.Column("reward_cap", sa.Integer(), nullable=True),
         sa.Column("campaign_id", sa.Integer(), nullable=False),
-        sa.Column("reward_config_id", sa.Integer(), nullable=False),
+        sa.Column("reward_config_id", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["reward_config_id"], ["reward_config.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

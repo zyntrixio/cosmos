@@ -1,20 +1,20 @@
 import logging
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from flask import flash
+from sqlalchemy.engine import Row
 from sqlalchemy.future import select
 
 from admin.activity_utils.enums import ActivityType
 from admin.views.campaign_reward.forms import EndCampaignActionForm, PendingRewardMigrationActions
 from admin.views.utils import SessionDataMethodsMixin
-from cosmos.campaigns.enums import CampaignStatuses
+from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.db.models import Campaign, Retailer
 
 if TYPE_CHECKING:  # pragma: no cover
-    from sqlalchemy.engine import Row
     from sqlalchemy.orm import Session
 
 
@@ -91,7 +91,9 @@ class CampaignEndAction:
         return active_campaign, draft_campaign, errors
 
     @staticmethod
-    def _check_retailer_and_status(campaign_rows: list["Row"]) -> list[str]:
+    def _check_retailer_and_status(
+        campaign_rows: Sequence[Row[tuple[int, str, LoyaltyTypes, CampaignStatuses, str]]]
+    ) -> list[str]:
         errors: list[str] = []
 
         if not campaign_rows:
@@ -108,7 +110,9 @@ class CampaignEndAction:
 
         return errors
 
-    def _get_campaign_rows(self, selected_campaigns_ids: list[str]) -> list["Row"]:
+    def _get_campaign_rows(
+        self, selected_campaigns_ids: list[str]
+    ) -> Sequence[Row[tuple[int, str, LoyaltyTypes, CampaignStatuses, str]]]:
         return self.db_session.execute(
             select(
                 Campaign.id,
@@ -127,7 +131,7 @@ class CampaignEndAction:
     def validate_selected_campaigns(self, selected_campaigns_ids: list[str]) -> None:
         campaign_rows = self._get_campaign_rows(selected_campaigns_ids)
         errors = self._check_retailer_and_status(campaign_rows)
-        active_campaign, draft_campaign, other_errors = self._get_and_validate_campaigns(campaign_rows)
+        active_campaign, draft_campaign, other_errors = self._get_and_validate_campaigns(list(campaign_rows))
         errors += other_errors
 
         if errors or active_campaign is None:

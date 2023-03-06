@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from unittest import mock
@@ -296,7 +296,7 @@ def test_status_change_activating_a_campaign_ok(
     now = datetime.now(tz=UTC)
     db_session, retailer, account_holder = setup
 
-    def get_balances() -> CampaignBalance:
+    def get_balances() -> Sequence[CampaignBalance]:
         return db_session.scalars(
             select(CampaignBalance).where(
                 CampaignBalance.account_holder_id == account_holder.id,

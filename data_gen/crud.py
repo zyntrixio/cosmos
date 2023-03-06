@@ -1,5 +1,6 @@
 import sys
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from random import randint
 from typing import TYPE_CHECKING
@@ -54,12 +55,14 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-def _get_retailer(db_session: "Session", retailer_slug: str) -> Retailer:
+def _get_retailer(db_session: "Session", retailer_slug: str) -> Retailer | None:
     return db_session.execute(select(Retailer).where(Retailer.slug == retailer_slug)).scalar()
 
 
 def get_reward_config_and_retailer(db_session: "Session", retailer_slug: str) -> tuple[RewardConfig, Retailer]:
     retailer = _get_retailer(db_session, retailer_slug)
+    if not retailer:
+        raise ValueError(f"No retailer with slug {retailer_slug} found")
     reward_config = db_session.scalar(select(RewardConfig).where(RewardConfig.retailer_id == retailer.id))
     if not reward_config:
         click.echo(f"No reward config found for retailer: {retailer_slug}")
@@ -91,7 +94,7 @@ def create_unallocated_rewards(
     return unallocated_rewards
 
 
-def _get_fetch_type(db_session: "Session", fetch_type_name: str) -> FetchType:
+def _get_fetch_type(db_session: "Session", fetch_type_name: str) -> FetchType | None:
     if not hasattr(FetchTypesEnum, fetch_type_name):
         raise ValueError(f"Unknown fetch type {fetch_type_name}")
     return db_session.execute(select(FetchType).where(FetchType.name == fetch_type_name)).scalar()
@@ -140,7 +143,7 @@ def batch_create_account_holders_and_rewards(
     db_session.add_all(account_holders_batch)
     db_session.flush()
 
-    for account_holder, i in zip(account_holders_batch, batch_range):
+    for account_holder, i in zip(account_holders_batch, batch_range, strict=True):
         if tx_history:
             transactions = _generate_account_holder_transaction_history(
                 db_session,
@@ -256,7 +259,7 @@ def _generate_account_holder_transaction_history(
     reward_goal: int,
     active_campaigns: list[Campaign],
 ) -> list[Transaction | TransactionEarn]:
-    account_holder_transaction_history: list[Transaction] = []
+    account_holder_transaction_history_objects: list[Transaction | TransactionEarn] = []
     how_many = randint(1, 10)
     tx_history_rows = generate_tx_rows(reward_goal, retailer=retailer)
     for tx_history in tx_history_rows[:how_many]:
@@ -270,13 +273,13 @@ def _generate_account_holder_transaction_history(
         )
         db_session.add(transaction)
         db_session.flush()
-        account_holder_transaction_history.append(transaction)
+        account_holder_transaction_history_objects.append(transaction)
         for campaign in active_campaigns:
             if campaign.loyalty_type.name == "STAMPS":
                 earn_amount = 0 if float(tx_history.tx_amount) <= 0 else 1
             else:
                 earn_amount = tx_history.tx_amount
-            account_holder_transaction_history.append(
+            account_holder_transaction_history_objects.append(
                 TransactionEarn(
                     transaction_id=transaction.id,
                     loyalty_type=campaign.loyalty_type,
@@ -284,7 +287,7 @@ def _generate_account_holder_transaction_history(
                 )
             )
 
-    return account_holder_transaction_history
+    return account_holder_transaction_history_objects
 
 
 def clear_existing_account_holders(db_session: "Session", retailer_id: int) -> None:
@@ -343,6 +346,8 @@ def setup_retailer(
         db_session.delete(retailer)
 
     fetch_type = _get_fetch_type(db_session, fetch_type_name)
+    if fetch_type is None:
+        raise ValueError(f"No fetch type with name {fetch_type_name}")
     retailer = Retailer(**retailer_data(retailer_slug))
     db_session.add(retailer)
     db_session.flush()
@@ -385,7 +390,7 @@ def delete_insert_fetch_types(db_session: "Session") -> None:
     )
 
 
-def get_active_campaigns(db_session: "Session", retailer: Retailer) -> list[Campaign]:
+def get_active_campaigns(db_session: "Session", retailer: Retailer) -> Sequence[Campaign]:
     return (
         db_session.execute(
             select(Campaign).where(

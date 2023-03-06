@@ -2,14 +2,15 @@
 import logging
 
 from collections.abc import Callable, Coroutine
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import sentry_sdk
 
 from retry_tasks_lib.db.models import load_models_to_metadata
-from sqlalchemy import BigInteger, Column, DateTime, exc, text
+from sqlalchemy import BigInteger, exc, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, declarative_base, declarative_mixin
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, declarative_mixin, mapped_column
 
 from cosmos.db.config import db_settings
 
@@ -17,7 +18,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
     from sqlalchemy.orm import SessionTransaction
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
+
 load_models_to_metadata(Base.metadata)
 
 
@@ -30,13 +35,15 @@ ReturnType = TypeVar("ReturnType")
 
 @declarative_mixin
 class IdPkMixin:
-    id = Column(BigInteger, primary_key=True)  # noqa: A003
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # noqa: A003
 
 
 @declarative_mixin
 class TimestampMixin:
-    created_at = Column(DateTime, server_default=utc_timestamp_sql, nullable=False)
-    updated_at = Column(DateTime, server_default=utc_timestamp_sql, onupdate=utc_timestamp_sql, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=utc_timestamp_sql, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=utc_timestamp_sql, onupdate=utc_timestamp_sql, nullable=False
+    )
 
 
 # based on the following stackoverflow answer:

@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
     from cosmos.db.base import Base
 
-    ClonedModel = TypeVar("ClonedModel", bound=Base)
+    T = TypeVar("T", bound=Base)
 
 
 @dataclass
@@ -117,7 +117,7 @@ class CampaignAdmin(CanDeleteModelView):
                 sso_username=self.sso_username,
                 activity_datetime=datetime.now(tz=UTC),
                 campaign_slug=model.slug,
-                loyalty_type=model.loyalty_type,
+                loyalty_type=model.loyalty_type.name,
                 start_date=model.start_date,
                 end_date=model.end_date,
             )
@@ -143,7 +143,7 @@ class CampaignAdmin(CanDeleteModelView):
             )
             validate_retailer_update(
                 old_retailer=form.retailer.object_data,
-                new_retailer=model.retailer,
+                new_retailer=model.retailer.slug,
                 campaign_status=model.status,
             )
             validate_campaign_slug_update(
@@ -381,9 +381,9 @@ class CampaignAdmin(CanDeleteModelView):
         )
 
     def _clone_campaign_and_rules_instances(self, campaign: Campaign) -> Campaign | None:
-        def clone_instance(old_model_instance: "ClonedModel") -> "ClonedModel":
+        def clone_instance(old_model_instance: "T") -> "T":
 
-            mapper = inspect(type(old_model_instance))
+            mapper = inspect(type(old_model_instance), raiseerr=True)
             new_model_instance = type(old_model_instance)()
 
             for name, col in mapper.columns.items():
@@ -397,7 +397,7 @@ class CampaignAdmin(CanDeleteModelView):
         new_slug = f"CLONE_{campaign.slug}"
         new_campaign = clone_instance(campaign)
         new_campaign.slug = new_slug
-        new_campaign.status = "DRAFT"
+        new_campaign.status = CampaignStatuses.DRAFT
         self.session.add(new_campaign)
         try:
             self.session.flush()
@@ -449,7 +449,7 @@ class CampaignAdmin(CanDeleteModelView):
                     joinedload(Campaign.earn_rule),
                     joinedload(Campaign.retailer),
                 )
-                .where(Campaign.id == ids[0])
+                .where(Campaign.id == int(ids[0]))
             )
             .unique()
             .scalar_one()
@@ -466,10 +466,12 @@ class CampaignAdmin(CanDeleteModelView):
             )
 
     def _campaigns_status_change(self, campaign_id: int, requested_status: CampaignStatuses) -> bool:
-        campaign: Campaign = self.session.get(Campaign, campaign_id)
-        return self._send_campaign_status_change_request(
-            campaign.slug, campaign.retailer.slug, requested_status, PendingRewardMigrationActions.REMOVE
-        )
+        if campaign := self.session.get(Campaign, campaign_id):
+            return self._send_campaign_status_change_request(
+                campaign.slug, campaign.retailer.slug, requested_status, PendingRewardMigrationActions.REMOVE
+            )
+        else:
+            raise ValueError(f"No campaign found with id {campaign_id}")
 
     @action(
         "activate-campaigns",

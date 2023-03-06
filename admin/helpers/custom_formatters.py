@@ -98,7 +98,7 @@ def retailer_slug_repr(
     if isinstance(model, (EarnRule, RewardRule)):
         return model.campaign.retailer.slug
     elif isinstance(model, RetailerFetchType):
-        return model.fetch_type.retailer.slug
+        return model.fetch_type.retailer.slug  # type: ignore [union-attr]
     return model.retailer.slug
 
 
@@ -117,4 +117,4 @@ def account_holder_export_repr(
     model: Reward | PendingReward,
     _p: str,
 ) -> str:
-    return model.account_holder.account_holder_uuid
+    return str(model.account_holder.account_holder_uuid)  # type: ignore [union-attr]

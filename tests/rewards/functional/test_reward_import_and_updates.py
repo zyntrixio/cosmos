@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, DefaultDict
 
@@ -29,11 +29,11 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-def _get_reward_update_rows(db_session: "Session", reward_codes: list[str]) -> list[RewardUpdate]:
+def _get_reward_update_rows(db_session: "Session", reward_codes: list[str]) -> Sequence[RewardUpdate]:
     return db_session.execute(select(RewardUpdate).join(Reward).where(Reward.code.in_(reward_codes))).scalars().all()
 
 
-def _get_reward_rows(db_session: "Session") -> list[Reward]:
+def _get_reward_rows(db_session: "Session") -> Sequence[Reward]:
     return db_session.execute(select(Reward)).scalars().all()
 
 
@@ -117,7 +117,7 @@ def test_import_agent__process_csv_with_expiry_date(setup_rewards: RewardsSetupT
     expiry_date = datetime.strptime("2023-01-16", "%Y-%m-%d").replace(tzinfo=UTC).date()
     rewards = _get_reward_rows(db_session)
     for reward in rewards[1:4]:
-        assert reward.expiry_date.date() == expiry_date
+        assert reward.expiry_date and reward.expiry_date.date() == expiry_date
 
 
 def test_import_agent__process_csv_with_bad_expiry_date(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
@@ -385,12 +385,12 @@ def test_updates_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Moc
     reward_agent = RewardUpdatesAgent()
     mock__process_updates = mocker.patch.object(reward_agent, "_process_updates")
     blob_name = "/re-test/rewards.update.test.csv"
-    content = """
+    content = """\
 TEST12345678,2021-07-30,cancelled
 TEST87654321,2021-07-21,redeemed
 TEST87654322,2021-07-30,CANCELLED
-TEST87654322,2021-07-30,redeemed
-""".strip()
+TEST87654322,2021-07-30,redeemed\
+"""
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,

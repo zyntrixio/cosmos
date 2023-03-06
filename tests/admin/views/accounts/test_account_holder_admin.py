@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from werkzeug import Response
 
 
-def _fetch_account_holders(db_session: "Session") -> list[AccountHolder]:
+def _fetch_account_holders(db_session: "Session") -> Sequence[AccountHolder]:
     return db_session.execute(select(AccountHolder)).scalars().all()
 
 
@@ -341,7 +341,9 @@ def test_anonymise_user_action_db_error(setup: SetupType, test_client: "FlaskCli
     mocker.patch("admin.views.accounts.main.activity_scoped_session")
     mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
     mock_flash = mocker.patch("admin.views.accounts.main.flash")
-    mocker.patch("admin.views.accounts.main.sync_create_task", side_effect=DataError("sample error", "test", "test"))
+    mocker.patch(
+        "admin.views.accounts.main.sync_create_task", side_effect=DataError("sample error", "test", Exception("oops"))
+    )
 
     email = account_holder.email
     account_number = "TEST1234"

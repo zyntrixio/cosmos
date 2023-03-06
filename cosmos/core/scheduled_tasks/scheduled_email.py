@@ -5,7 +5,7 @@ import yaml
 
 from retry_tasks_lib.utils import resolve_callable_from_path
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
-from sqlalchemy.future import select
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from cosmos.core.config import core_settings, redis_raw

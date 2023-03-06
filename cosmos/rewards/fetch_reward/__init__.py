@@ -1,7 +1,7 @@
 from importlib import import_module
 from typing import TYPE_CHECKING
 
-from sqlalchemy.future import select
+from sqlalchemy import select
 
 from cosmos.db.models import AccountHolder, Campaign, RetailerFetchType, RewardConfig
 from cosmos.rewards.schemas import IssuanceTaskParams

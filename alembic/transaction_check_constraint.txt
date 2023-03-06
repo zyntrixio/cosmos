@@ -1,5 +1,0 @@
-Alembic does not support addition of CheckConstraint.
-
-Add the the following to the init alembic definition of Transaction:
-
-sa.CheckConstraint("processed IS NULL OR processed IS TRUE", name="processed_null_or_true_check"),

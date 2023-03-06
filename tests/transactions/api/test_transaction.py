@@ -11,6 +11,7 @@ from retry_tasks_lib.db.models import RetryTask, TaskType
 from sqlalchemy import func
 from sqlalchemy.future import select
 
+from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Transaction
@@ -213,7 +214,7 @@ def test_transaction_datetime_before_account_join(
 ) -> None:
     db_session, retailer, account_holder = setup
 
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
     account_holder.created_at = datetime.now()  # noqa: DTZ005
     db_session.commit()
 
@@ -245,7 +246,7 @@ def test_transaction_no_active_campaigns(
 
     assert not retailer.campaigns
 
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
     sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
@@ -275,7 +276,7 @@ def test_transaction_duplicated_transaction(
 ) -> None:
     db_session, retailer, account_holder = setup
 
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
     existing_tx = Transaction(
         account_holder_id=account_holder.id,
         retailer_id=retailer.id,
@@ -324,7 +325,7 @@ def test_transaction_ok_threshold_not_met(
     mock_activity: "MagicMock",
 ) -> None:
     db_session, retailer, account_holder = setup
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
 
     campaign_balance.balance = 0
     campaign_with_rules.earn_rule.threshold = sample_payload["transaction_total"] + 100
@@ -370,7 +371,7 @@ def test_transaction_ok_amount_over_max(
     mock_activity: "MagicMock",
 ) -> None:
     db_session, retailer, account_holder = setup
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
 
     # if there was no max_amount the resulting pending reward should have a count of 2
     max_amount = sample_payload["transaction_total"] - 100
@@ -411,9 +412,10 @@ def test_transaction_ok_amount_over_max(
     )
 
     assert campaign_balance.balance == expected_balance
-    pr: PendingReward = db_session.scalar(
+    pr: PendingReward | None = db_session.scalar(
         select(PendingReward).where(PendingReward.account_holder_id == account_holder.id)
     )
+    assert pr
     assert pr.count == 1
     assert pr.total_cost_to_user == reward_goal
 
@@ -451,7 +453,7 @@ def test_transaction_ok_accumulator(
     assert campaign_with_rules.loyalty_type == LoyaltyTypes.ACCUMULATOR
 
     db_session, retailer, account_holder = setup
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
 
     campaign_balance.balance = 100
     campaign_with_rules.reward_rule.allocation_window = allocation_window
@@ -498,7 +500,7 @@ def test_transaction_ok_accumulator(
 
     assert campaign_balance.balance == expected_balance
 
-    pr: PendingReward = db_session.scalar(
+    pr: PendingReward | None = db_session.scalar(
         select(PendingReward).where(PendingReward.account_holder_id == account_holder.id)
     )
     reward_issuance_task_count = db_session.scalar(
@@ -562,7 +564,7 @@ def test_transaction_refund(
     assert campaign_with_rules.loyalty_type == LoyaltyTypes.ACCUMULATOR
 
     db_session, retailer, account_holder = setup
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
 
     campaign_balance.balance = 1000
     campaign_with_rules.reward_rule.allocation_window = allocation_window
@@ -632,7 +634,7 @@ def test_transaction_ok_stamps(
     assert campaign_with_rules.earn_rule.increment_multiplier == 1
 
     db_session, retailer, account_holder = setup
-    account_holder.status = "ACTIVE"
+    account_holder.status = AccountHolderStatuses.ACTIVE
 
     campaign_balance.balance = 100
     campaign_with_rules.loyalty_type = LoyaltyTypes.STAMPS
@@ -684,6 +686,7 @@ def test_transaction_ok_stamps(
             Transaction.processed.is_(True),
         )
     ).scalar_one()
+    assert transaction.transaction_earn
     assert transaction.transaction_earn.earn_amount == expected_earn_amount
 
     assert campaign_balance.balance == expected_balance

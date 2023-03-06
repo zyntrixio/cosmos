@@ -1,6 +1,6 @@
 import json
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from tests.conftest import SetupType
 
 
-def _fetch_retailers(db_session: "Session") -> list[Retailer]:
+def _fetch_retailers(db_session: "Session") -> Sequence[Retailer]:
     return db_session.execute(select(Retailer)).scalars().all()
 
 

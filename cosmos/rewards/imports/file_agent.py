@@ -3,18 +3,18 @@ import logging
 import string
 
 from collections import defaultdict
+from collections.abc import Sequence
 from contextlib import suppress
 from datetime import UTC, date, datetime
 from io import StringIO
-from typing import TYPE_CHECKING, DefaultDict, NamedTuple
+from typing import TYPE_CHECKING, DefaultDict, NamedTuple, cast
 
 import sentry_sdk
 
 from azure.core.exceptions import HttpResponseError, ResourceExistsError
 from azure.storage.blob import BlobClient, BlobLeaseClient, BlobServiceClient
 from pydantic import ValidationError
-from sqlalchemy import bindparam, update
-from sqlalchemy.future import select
+from sqlalchemy import BindParameter, bindparam, select, update
 from sqlalchemy.sql import and_, not_, or_
 
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
@@ -28,6 +28,7 @@ logger = logging.getLogger("reward-import")
 
 if TYPE_CHECKING:  # pragma: no cover
     from azure.storage.blob import BlobProperties
+    from sqlalchemy import Table
     from sqlalchemy.orm import Session
 
 
@@ -66,14 +67,14 @@ class BlobFileAgent:
         self.container_client = self.blob_service_client.get_container_client(self.container_name)
 
     def _blob_name_is_duplicate(self, db_session: "Session", file_name: str) -> bool:
-        file_name = db_session.execute(
+        result = db_session.execute(
             select(RewardFileLog.file_name).where(
                 RewardFileLog.file_agent_type == self.file_agent_type,
                 RewardFileLog.file_name == file_name,
             )
         ).scalar_one_or_none()
 
-        return file_name is not None
+        return result is not None
 
     @staticmethod
     def _log_warn_and_alert(msg: str) -> None:
@@ -81,7 +82,7 @@ class BlobFileAgent:
         sentry_sdk.capture_message(msg)
 
     @staticmethod
-    def get_retailers(db_session: "Session") -> list[Retailer]:
+    def get_retailers(db_session: "Session") -> Sequence[Retailer]:
         return db_session.execute(select(Retailer)).scalars().all()
 
     def process_csv(
@@ -275,7 +276,7 @@ class RewardImportAgent(BlobFileAgent):
         reward_config: RewardConfig,
         blob_name: str,
         blob_content: str,
-    ) -> tuple[list[str], defaultdict[str, list[int]]]:
+    ) -> tuple[Sequence[str], defaultdict[str, list[int]]]:
         content_reader = csv.reader(StringIO(blob_content), delimiter=",", quotechar="|")
         invalid_rows: list[int] = []
 
@@ -558,9 +559,11 @@ class RewardUpdatesAgent(BlobFileAgent):
         #  * Unallocated rewards (i.e. account_holder_id == NULL) will be ignored
         #  * CANCELLED rewards will be ignored if cancelled_date is not NULL (i.e. previously updated)
         #  * REDEEMED rewards will be ignored if redeemed_date is not NULL (i.e. previously updated)
-        reward_table = Reward.__table__
+        reward_table = cast("Table", Reward.__table__)
 
+        values: dict[str, BindParameter]
         for status, update_rows in update_rows_by_status.items():
+
             params = [{"reward_code": update.data.code, "date": update.data.date_} for update in update_rows]
             if status == RewardUpdateStatuses.CANCELLED:
                 values = {"cancelled_date": bindparam("date")}

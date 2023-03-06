@@ -1,14 +1,14 @@
 import hashlib
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from datetime import UTC, datetime
-from typing import NamedTuple
+from typing import NamedTuple, cast
 from uuid import UUID
 
 from flask import flash
 from flask_admin.actions import action
 from retry_tasks_lib.utils.synchronous import enqueue_retry_task, sync_create_task
-from sqlalchemy import delete
+from sqlalchemy import Row, Table
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import joinedload
 
@@ -82,9 +82,10 @@ class AccountHolderAdmin(BaseModelView):
         activity_payloads: Generator[dict, None, None] | None = None
         account_holders_ids = [int(ah_id) for ah_id in ids]
 
-        result: list[AccountDeletedData] = self.session.execute(
-            delete(AccountHolder)
-            .options(joinedload(Retailer))
+        result: Sequence[Row[tuple[UUID, str, RetailerStatuses, str]]] = self.session.execute(
+            cast(Table, AccountHolder.__table__)
+            .delete()
+            .options(joinedload(AccountHolder.retailer))
             .where(
                 AccountHolder.id.in_(account_holders_ids),
                 AccountHolder.retailer_id == Retailer.id,
@@ -103,7 +104,16 @@ class AccountHolderAdmin(BaseModelView):
             flash("This action is allowed only for account holders that belong to a TEST retailer.", category="error")
             return
 
-        activity_payloads = self._generate_payloads_for_delete_account_holder_activity(result, self.sso_username)
+        del_datas = [
+            AccountDeletedData(
+                account_holder_uuid=res.account_holder_uuid,
+                retailer_name=res.name,
+                retailer_status=res.status,
+                retailer_slug=res.slug,
+            )
+            for res in result
+        ]
+        activity_payloads = self._generate_payloads_for_delete_account_holder_activity(del_datas, self.sso_username)
         sync_send_activity(activity_payloads, routing_key=ActivityType.ACCOUNT_DELETED.value)
         self.session.commit()
 

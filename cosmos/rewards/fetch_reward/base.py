@@ -3,10 +3,10 @@ import logging
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from retry_tasks_lib.db.models import TaskTypeKey, TaskTypeKeyValue
-from sqlalchemy.future import select
+from sqlalchemy import select
 
 from cosmos.core.activity.tasks import sync_send_activity
 from cosmos.core.tasks import send_request_with_metrics
@@ -59,16 +59,13 @@ class BaseAgent(ABC):
 
     def _load_agent_state_params_raw_instance(self) -> None:
         try:
-            self._agent_state_params_raw_instance = cast(
-                TaskTypeKeyValue | None,
-                self.db_session.scalar(
-                    select(TaskTypeKeyValue).where(
-                        TaskTypeKeyValue.retry_task_id == self.retry_task.retry_task_id,
-                        TaskTypeKeyValue.task_type_key_id == TaskTypeKey.task_type_key_id,
-                        TaskTypeKey.task_type_id == self.retry_task.task_type_id,
-                        TaskTypeKey.name == self.AGENT_STATE_PARAMS_RAW_KEY,
-                    )
-                ),
+            self._agent_state_params_raw_instance = self.db_session.scalar(
+                select(TaskTypeKeyValue).where(
+                    TaskTypeKeyValue.retry_task_id == self.retry_task.retry_task_id,
+                    TaskTypeKeyValue.task_type_key_id == TaskTypeKey.task_type_key_id,
+                    TaskTypeKey.task_type_id == self.retry_task.task_type_id,
+                    TaskTypeKey.name == self.AGENT_STATE_PARAMS_RAW_KEY,
+                )
             )
             if self._agent_state_params_raw_instance:
                 self.agent_state_params = json.loads(self._agent_state_params_raw_instance.value)
@@ -111,7 +108,7 @@ class BaseAgent(ABC):
 
         sync_send_activity(
             ActivityType.get_issued_reward_status_activity_data(
-                account_holder_uuid=self.account_holder.account_holder_uuid,
+                account_holder_uuid=str(self.account_holder.account_holder_uuid),
                 retailer=self.reward_config.retailer,
                 reward_slug=self.reward_config.slug,
                 activity_timestamp=issued_date,
