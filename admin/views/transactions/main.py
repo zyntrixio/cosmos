@@ -28,8 +28,19 @@ class TransactionEarnAdmin(BaseModelView):
         "earn_amount",
         "earn_rule_id",
         "loyalty_type",
+        "transaction.payment_transaction_id",
+        "earn_rule.campaign.slug",
         "created_at",
     )
-    column_filters = ("loyalty_type", "created_at")
-    column_searchable_list = ("transaction_id", "earn_rule_id", "transaction.account_holder.account_holder_uuid")
-    column_labels = {"transaction.account_holder.account_holder_uuid": "Account Holder UUID"}
+    column_filters = ("loyalty_type", "created_at", "earn_rule.campaign.slug")
+    column_searchable_list = (
+        "transaction_id",
+        "earn_rule_id",
+        "transaction.account_holder.account_holder_uuid",
+        "transaction.payment_transaction_id",
+    )
+    column_labels = {
+        "transaction.account_holder.account_holder_uuid": "Account Holder UUID",
+        "transaction.payment_transaction_id": "Payment Transaction ID",
+        "earn_rule.campaign.slug": "Campaign Slug",
+    }
