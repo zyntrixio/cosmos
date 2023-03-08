@@ -514,7 +514,6 @@ class TransactionService(Service):
             await crud.record_earn(
                 self.db_session,
                 campaign.loyalty_type,
-                campaign.earn_rule.id,
                 transaction.id,
                 adjustment.amount if adjustment.accepted else None,
             )

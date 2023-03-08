@@ -697,11 +697,9 @@ def create_transaction(db_session: "Session") -> Callable:
 @pytest.fixture
 def create_transaction_earn(db_session: "Session") -> Callable:
     def _create_transaction_earn(
-        transaction: Transaction, earn_amount: str, loyalty_type: LoyaltyTypes, earn_rule: EarnRule
+        transaction: Transaction, earn_amount: str, loyalty_type: LoyaltyTypes
     ) -> TransactionEarn:
-        te = TransactionEarn(
-            transaction_id=transaction.id, earn_amount=earn_amount, loyalty_type=loyalty_type, earn_rule_id=earn_rule.id
-        )
+        te = TransactionEarn(transaction_id=transaction.id, earn_amount=earn_amount, loyalty_type=loyalty_type)
         db_session.add(te)
         db_session.commit()
         return te

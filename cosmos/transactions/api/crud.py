@@ -108,14 +108,12 @@ async def create_transaction(
 async def record_earn(
     db_session: "AsyncSession",
     loyalty_type: LoyaltyTypes,
-    earn_rule_id: int,
     transaction_id: int,
     adjustment: int | None,
 ) -> TransactionEarn:
     async def _query(savepoint: "AsyncSessionTransaction") -> TransactionEarn:
         transaction_campaign = TransactionEarn(
             transaction_id=transaction_id,
-            earn_rule_id=earn_rule_id,
             loyalty_type=loyalty_type,
             earn_amount=adjustment or 0,
         )
