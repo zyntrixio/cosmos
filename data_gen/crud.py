@@ -279,7 +279,6 @@ def _generate_account_holder_transaction_history(
             account_holder_transaction_history.append(
                 TransactionEarn(
                     transaction_id=transaction.id,
-                    earn_rule_id=campaign.earn_rule.id,
                     loyalty_type=campaign.loyalty_type,
                     earn_amount=earn_amount,
                 )

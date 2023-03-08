@@ -92,7 +92,6 @@ def test_account_holder_get_by_credentials(
             tx,
             earn_amount=amount,
             loyalty_type=LoyaltyTypes.ACCUMULATOR,
-            earn_rule=campaign_with_rules.earn_rule,
         )
 
     resp = client.post(
@@ -127,13 +126,14 @@ def test_account_holder_get_by_credentials(
         )
 
     assert resp_json["transaction_history"] == expected_transaction_history
-    assert resp_json["rewards"][0]["code"] == "code1"
-    assert resp_json["rewards"][0]["status"] == "issued"
-    assert resp_json["rewards"][0]["redeemed_date"] is None
+    rewards = sorted(resp_json["rewards"], key=lambda x: x["code"])
+    assert rewards[0]["code"] == "code1"
+    assert rewards[0]["status"] == "issued"
+    assert rewards[0]["redeemed_date"] is None
 
-    assert resp_json["rewards"][1]["code"] == "code2"
-    assert resp_json["rewards"][1]["status"] == "expired"
-    assert resp_json["rewards"][1]["redeemed_date"] is None
+    assert rewards[1]["code"] == "code2"
+    assert rewards[1]["status"] == "expired"
+    assert rewards[1]["redeemed_date"] is None
 
     assert "created_date" in resp_json["pending_rewards"][0]
     assert "conversion_date" in resp_json["pending_rewards"][0]
