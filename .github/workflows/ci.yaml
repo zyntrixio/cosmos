@@ -130,6 +130,17 @@ jobs:
             binkcore.azurecr.io/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}
             binkcore.azurecr.io/${{ github.event.repository.name }}:staging-${{ github.event.release.tag_name }}
             binkcore.azurecr.io/${{ github.event.repository.name }}:staging
+  update_erd_staging:
+    if: github.event_name == 'push' # Remove once `release_staging` job is being used
+    name: update_erd_staging
+    needs: [tests] # Update to [release_staging] once `release_staging` job is being used
+    uses: ./.github/workflows/update_erd.yaml
+    with:
+      schema-env: Staging
+    secrets:
+      CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
+      CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
+      CONFLUENCE_PAGE_ID: ${{ secrets.CONFLUENCE_STAGING_PAGE_ID }}
   release_production:
     if: github.event_name == 'release' && github.event.action == 'published'
     name: release_production
@@ -151,3 +162,13 @@ jobs:
             --password ${{ secrets.ACR_BINKCORE_PASSWORD }} \
             --source binkcore.azurecr.io/${{ github.event.repository.name }}:${{ github.event.release.tag_name }} \
             --tag prod
+  update_erd_production:
+    name: update_erd_production
+    needs: [release_production]
+    uses: ./.github/workflows/update_erd.yaml
+    with:
+      schema-env: Production
+    secrets:
+      CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
+      CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
+      CONFLUENCE_PAGE_ID: ${{ secrets.CONFLUENCE_PROD_PAGE_ID }}

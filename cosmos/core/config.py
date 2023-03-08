@@ -116,6 +116,12 @@ class CoreSettings(BaseSettings):
         env_file = "local.env"
         env_file_encoding = "utf-8"
 
+    CONFLUENCE_API_BASE_URL: str = "https://hellobink.atlassian.net/wiki"
+    CONFLUENCE_PAGE_ID: str = ""
+    CONFLUENCE_USER: str = ""
+    CONFLUENCE_API_TOKEN: str = ""
+    CONFLUENCE_ATTACHMENT_NAME: str = "cosmos_schema"
+
 
 core_settings = CoreSettings()
 load_settings(core_settings)

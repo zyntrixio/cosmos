@@ -56,8 +56,8 @@ Flask-WTF = { version = "^1.0.1", optional = true }
 
 [tool.poetry.extras]
 admin = [
-    "Flask", 
-    "Flask-Admin", 
+    "Flask",
+    "Flask-Admin",
     "Authlib",
     "Flask-WTF",
 ]
@@ -90,6 +90,12 @@ httpretty = "^1.1.4"
 hashids = "^1.3.1"
 faker = "^15.3.3"
 progressbar2 = "^4.2.0"
+
+[tool.poetry.group.erd]
+optional = true
+
+[tool.poetry.group.erd.dependencies]
+eralchemy2 = "^1.3.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
@@ -130,7 +136,7 @@ show-source = true
 target-version = "py310"
 select = [
     "F",    # Pyflakes (F)
-    "E", 
+    "E",
     "W",    # pycodestyle (E, W)
     "C90",  # mccabe (C90)
     # isort (I)
@@ -166,9 +172,9 @@ select = [
     "RUF",  # Ruff-specific rules (RUF)
 ]
 ignore = [
-    "ANN101", 
-    "ANN102", 
-    # disables function call in function parameter error 
+    "ANN101",
+    "ANN102",
+    # disables function call in function parameter error
     # arg = Depends(..) and arg = typer.Option(..) would be flagged
     "B008"
 ]
