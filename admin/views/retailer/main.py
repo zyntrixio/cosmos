@@ -16,7 +16,7 @@ from admin.views.model_views import BaseModelView, CanDeleteModelView
 from admin.views.retailer.custom_actions import DeleteRetailerAction
 from admin.views.retailer.validators import (
     validate_account_number_prefix,
-    validate_balance_reset_advanced_warning_days,
+    validate_balance_lifespan_and_warning_days,
     validate_marketing_config,
     validate_optional_yaml,
     validate_retailer_config,
@@ -159,8 +159,8 @@ marketing_pref:
                 )
 
     def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
-        validate_balance_reset_advanced_warning_days(form, retailer_status=model.status)
-        if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data > 0:
+        validate_balance_lifespan_and_warning_days(form, retailer_status=model.status)
+        if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data is not None:
             reset_date = (datetime.now(tz=timezone.utc) + timedelta(days=model.balance_lifespan)).date()
             stmt = (
                 update(CampaignBalance)

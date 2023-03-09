@@ -1,12 +1,20 @@
-from collections.abc import Callable
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+import json
 
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
+import pytest
+import wtforms
+
+from flask import url_for
 from pytest_mock import MockerFixture
 from sqlalchemy.future import select
 from werkzeug.datastructures import MultiDict
 
 from admin.views.retailer import RetailerAdmin
+from admin.views.retailer.validators import validate_balance_lifespan_and_warning_days
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.db.models import AccountHolder, AccountHolderProfile, Campaign, Retailer, Reward, Transaction
 from cosmos.retailers.enums import RetailerStatuses
@@ -341,3 +349,147 @@ def test_activate_retailer_ok(
 
     mock_send_activity.assert_called_once()
     mock_flash.assert_called_once_with("Update retailer status successfully")
+
+
+@dataclass
+class SetupData:
+    original_warning_days: int | None
+    new_warning_days: int | None
+    status: RetailerStatuses
+    balance_lifespan: int | None
+
+
+@dataclass
+class ExpectationData:
+    response: str | None
+
+
+test_data = [
+    [
+        "balance_reset_advanced_warning_days more than balance_lifespan",
+        SetupData(
+            original_warning_days=None,
+            new_warning_days=30,
+            status=RetailerStatuses.TEST,
+            balance_lifespan=20,
+        ),
+        ExpectationData(response="The balance_reset_advanced_warning_days must be less than the balance_lifespan"),
+    ],
+    [
+        "balance_reset_advanced_warning_days are manditory if the balance_lifespan is set",
+        SetupData(
+            original_warning_days=None,
+            new_warning_days=None,
+            status=RetailerStatuses.TEST,
+            balance_lifespan=20,
+        ),
+        ExpectationData(response="You must set both the balance_lifespan with the balance_reset_advanced_warning_days"),
+    ],
+    [
+        "not able to update the balance_reset_advanced_warning_days for an active retailer",
+        SetupData(
+            original_warning_days=7,
+            new_warning_days=10,
+            status=RetailerStatuses.ACTIVE,
+            balance_lifespan=30,
+        ),
+        ExpectationData(response="You cannot update the balance_reset_advanced_warning_days for an active retailer"),
+    ],
+    [
+        "not able to set a balance_lifespan without a balance_reset_advanced_warning_days for ACTIVE retailers",
+        SetupData(
+            original_warning_days=None,
+            new_warning_days=None,
+            status=RetailerStatuses.ACTIVE,
+            balance_lifespan=30,
+        ),
+        ExpectationData(response="You must set both the balance_lifespan with the balance_reset_advanced_warning_days"),
+    ],
+    [
+        "not able to set a balance_lifespan without a balance_reset_advanced_warning_days for TEST retailers",
+        SetupData(
+            original_warning_days=None,
+            new_warning_days=None,
+            status=RetailerStatuses.TEST,
+            balance_lifespan=30,
+        ),
+        ExpectationData(response="You must set both the balance_lifespan with the balance_reset_advanced_warning_days"),
+    ],
+    [
+        "not able to have balance_reset_advanced_warning_days without a balance_lifespan",
+        SetupData(
+            original_warning_days=None,
+            new_warning_days=7,
+            status=RetailerStatuses.TEST,
+            balance_lifespan=None,
+        ),
+        ExpectationData(response="You must set both the balance_lifespan with the balance_reset_advanced_warning_days"),
+    ],
+]
+
+
+@pytest.mark.parametrize(
+    "_description,setup_data,expectation_data",
+    test_data,
+    ids=[f"{i[0]}" for i in test_data],
+)
+def test_validate_balance_reset_advanced_warning_days(
+    _description: str,
+    setup_data: SetupData,
+    expectation_data: ExpectationData,
+) -> None:
+    class MockForm:
+        def __init__(self, data: Any) -> None:  # noqa: ANN401
+            self.__dict__.update(data)
+
+    def build_form(data: dict) -> Any:  # noqa: ANN401
+        return json.loads(json.dumps(data), object_hook=MockForm)
+
+    data = {
+        "balance_reset_advanced_warning_days": {
+            "data": setup_data.new_warning_days,
+            "object_data": setup_data.original_warning_days,
+        },
+        "balance_lifespan": {"data": setup_data.balance_lifespan},
+    }
+
+    mock_form: wtforms.Form = build_form(data)
+    retailer_status = setup_data.status
+    with pytest.raises(wtforms.ValidationError) as exc_info:
+        validate_balance_lifespan_and_warning_days(mock_form, retailer_status)
+    assert exc_info.value.args[0] == expectation_data.response
+
+
+@pytest.mark.parametrize("params", [[0, None], [None, 0]])
+def test_create_retailer_with_balance_lifespan_set_to_zero(
+    test_client: "FlaskClient", db_session: "Session", params: list
+) -> None:
+    balance_lifespan, warning_days = params
+    resp = test_client.post(
+        url_for("retailers.create_view"),
+        data={
+            "name": "Test Retailer",
+            "slug": "test-retailer",
+            "account_number_prefix": "TEST",
+            "profile_config": """email:
+  required: true
+  label: Email address
+first_name:
+  required: true
+  label: Forename
+last_name:
+  required: true
+  label: Surname""",
+            "marketing_preference_config": """marketing_pref:
+  label: Spam?
+  type: boolean""",
+            "loyalty_name": "test",
+            "status": "TEST",
+            "balance_lifespan": balance_lifespan,
+            "balance_reset_advanced_warning_days": warning_days,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Number must be at least 1" in resp.text
+    assert not db_session.scalars(select(Retailer).where(Retailer.slug == "test-retailer")).all()
