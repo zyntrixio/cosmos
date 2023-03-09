@@ -128,42 +128,28 @@ def validate_account_number_prefix(_: wtforms.Form, field: wtforms.Field) -> Non
     field.data = field.data.upper()
 
 
-def _active_retailer_validation(original_warning_days: int, new_warning_days: int, balance_lifespan: int) -> None:
-    if new_warning_days != original_warning_days != 0:
-        raise wtforms.ValidationError("You cannot change this field for an active retailer")
-    if balance_lifespan and new_warning_days is None:
+def _validate_active_retailer_update(old_warning_days: int | None, updated_warning_days: int | None) -> None:
+    if old_warning_days is not None and updated_warning_days != old_warning_days:
         raise wtforms.ValidationError(
-            "You must set both the balance_lifespan with the balance_reset_advanced_warning_days for active retailers"
+            "You cannot update the balance_reset_advanced_warning_days for an active retailer"
         )
 
 
-def _new_warning_days_validation(original_warning_days: int, new_warning_days: int, balance_lifespan: int) -> None:
-    if new_warning_days and not balance_lifespan:
-        raise wtforms.ValidationError("There must be a balance_lifespan set")
-    if original_warning_days or balance_lifespan and not new_warning_days:
-        raise wtforms.ValidationError("The balance_reset_advanced_warning_days must be >0")
-
-
-def validate_balance_reset_advanced_warning_days(
+def validate_balance_lifespan_and_warning_days(
     form: wtforms.Form,
     retailer_status: RetailerStatuses,
 ) -> None:
-    try:
-        form.balance_reset_advanced_warning_days.data or form.balance_lifespan.data
-    except AttributeError:
-        pass
-    else:
-        original_warning_days = form.balance_reset_advanced_warning_days.object_data
-        new_warning_days = form.balance_reset_advanced_warning_days.data
-        balance_lifespan = form.balance_lifespan.data
-        if retailer_status == RetailerStatuses.ACTIVE:
-            _active_retailer_validation(original_warning_days, new_warning_days, balance_lifespan)
-        if original_warning_days != new_warning_days:
-            _new_warning_days_validation(original_warning_days, new_warning_days, balance_lifespan)
-        if balance_lifespan <= new_warning_days is not None:
-            raise wtforms.ValidationError(
-                "The balance_reset_advanced_warning_days must be less than the balance_lifespan"
-            )
+    old_warning_days = form.balance_reset_advanced_warning_days.object_data
+    updated_warning_days = form.balance_reset_advanced_warning_days.data
+    balance_lifespan = form.balance_lifespan.data
+    if retailer_status == RetailerStatuses.ACTIVE:
+        _validate_active_retailer_update(old_warning_days, updated_warning_days)
+    if balance_lifespan and updated_warning_days and balance_lifespan <= updated_warning_days:
+        raise wtforms.ValidationError("The balance_reset_advanced_warning_days must be less than the balance_lifespan")
+    if balance_lifespan and not updated_warning_days or updated_warning_days and not balance_lifespan:
+        raise wtforms.ValidationError(
+            "You must set both the balance_lifespan with the balance_reset_advanced_warning_days"
+        )
 
 
 def validate_retailer_config_new_values(form: wtforms.Form, model: "Retailer") -> tuple[dict, dict]:
