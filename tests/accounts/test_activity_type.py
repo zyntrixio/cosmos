@@ -1,6 +1,6 @@
 import uuid
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pytest_mock import MockerFixture
 
@@ -9,11 +9,11 @@ from cosmos.accounts.activity.enums import ActivityType
 
 def test_get_balance_change_activity_data(mocker: MockerFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     account_holder_uuid = str(uuid.uuid4())
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     payload = ActivityType.get_balance_change_activity_data(
         account_holder_uuid=account_holder_uuid,

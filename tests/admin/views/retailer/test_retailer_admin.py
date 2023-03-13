@@ -2,7 +2,7 @@ import json
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -79,7 +79,7 @@ def test_delete_retailer_action_success_with_cascades(
         transaction_id="tx_id",
         amount=300,
         mid="mid",
-        datetime=datetime.now(tz=timezone.utc),
+        datetime=datetime.now(tz=UTC),
     )
     db_session.add(tx)
     db_session.commit()
@@ -146,7 +146,7 @@ def test_delete_retailer_action_active_retailer(
         transaction_id="tx_id",
         amount=300,
         mid="mid",
-        datetime=datetime.now(tz=timezone.utc),
+        datetime=datetime.now(tz=UTC),
     )
     db_session.add(tx)
     db_session.commit()
@@ -208,7 +208,7 @@ def test_delete_retailer_action_no_acceptance(
         transaction_id="tx_id",
         amount=300,
         mid="mid",
-        datetime=datetime.now(tz=timezone.utc),
+        datetime=datetime.now(tz=UTC),
     )
     db_session.add(tx)
     db_session.commit()

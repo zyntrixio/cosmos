@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import NamedTuple
 from uuid import UUID
 
@@ -54,7 +54,7 @@ class AccountHolderAdmin(BaseModelView):
 
         return (
             ActivityType.get_account_holder_deleted_activity_data(
-                activity_datetime=datetime.now(tz=timezone.utc),
+                activity_datetime=datetime.now(tz=UTC),
                 account_holder_uuid=str(deleted_account.account_holder_uuid),
                 retailer_name=deleted_account.retailer_name,
                 retailer_status=deleted_account.retailer_status.name,

@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
@@ -303,7 +303,7 @@ class TransactionService(Service):
         """
 
         # asyncpg cant convert timezone aware to naive, remove this once we move to psycopg3
-        pending_rewards_updated_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        pending_rewards_updated_at = datetime.now(tz=UTC).replace(tzinfo=None)
         deleted_count_by_uuid: dict = {}
         total_costs: list[TotalCostToUserDataSchema] = []
 

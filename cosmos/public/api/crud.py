@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -53,6 +53,6 @@ async def update_boolean_marketing_preferences(
             .values(value="False")
         )
         await savepoint.commit()
-        return [(row[0], row[1].replace(tzinfo=timezone.utc)) for row in updates.fetchall()]
+        return [(row[0], row[1].replace(tzinfo=UTC)) for row in updates.fetchall()]
 
     return await async_run_query(_query, db_session)

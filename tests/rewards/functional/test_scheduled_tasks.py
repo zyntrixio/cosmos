@@ -1,6 +1,6 @@
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import ANY, MagicMock
 
@@ -54,7 +54,7 @@ def test_process_pending_rewards(
     create_pending_reward: Callable[..., PendingReward],
     campaign_with_rules: "Campaign",
 ) -> None:
-    now = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    now = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     delta = timedelta(days=1)
 
     pending_reward.campaign_id = campaign_with_rules.id
@@ -105,7 +105,7 @@ def test_process_pending_rewards_failed_enqueue(
     campaign_with_rules: "Campaign",
 ) -> None:
     pending_reward.campaign_id = campaign_with_rules.id
-    pending_reward.conversion_date = datetime.now(tz=timezone.utc) - timedelta(days=1)
+    pending_reward.conversion_date = datetime.now(tz=UTC) - timedelta(days=1)
     db_session.commit()
 
     mocks.enqueue_many.side_effect = ValueError("Oops")
@@ -129,7 +129,7 @@ def test_process_pending_rewards_failed_task_creation(
     campaign_with_rules: "Campaign",
 ) -> None:
     pending_reward.campaign_id = campaign_with_rules.id
-    pending_reward.conversion_date = datetime.now(tz=timezone.utc) - timedelta(days=1)
+    pending_reward.conversion_date = datetime.now(tz=UTC) - timedelta(days=1)
     db_session.commit()
 
     mock_create_task = mocker.patch("cosmos.rewards.scheduled_tasks.pending_rewards.sync_create_many_tasks")

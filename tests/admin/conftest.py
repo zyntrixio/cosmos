@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -42,7 +42,7 @@ def test_client(app: Flask) -> Generator["FlaskClient", None, None]:
             {
                 "name": "Test User",
                 "roles": {"Admin"},
-                "exp": (datetime.now(tz=timezone.utc) + timedelta(days=1)).timestamp(),
+                "exp": (datetime.now(tz=UTC) + timedelta(days=1)).timestamp(),
             },
         ),
     ):

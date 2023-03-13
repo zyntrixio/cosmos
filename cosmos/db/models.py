@@ -1,8 +1,7 @@
-# from typing import TYPE_CHECKING
 import enum
 import uuid
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import yaml
@@ -126,7 +125,6 @@ class PendingReward(IdPkMixin, Base, TimestampMixin):
     created_date = Column(DateTime, nullable=False)
     conversion_date = Column(DateTime, nullable=False)
     value = Column(Integer, nullable=False)
-    # enqueued = Column(Boolean, server_default="false", nullable=False)
     count = Column(Integer, nullable=False)
     total_cost_to_user = Column(Integer, nullable=False)
 
@@ -342,7 +340,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
                 return self.RewardStatuses.REDEEMED
             if self.cancelled_date:
                 return self.RewardStatuses.CANCELLED
-            if self.expiry_date and datetime.now(tz=timezone.utc) >= self.expiry_date.replace(tzinfo=timezone.utc):
+            if self.expiry_date and datetime.now(tz=UTC) >= self.expiry_date.replace(tzinfo=UTC):
                 return self.RewardStatuses.EXPIRED
             return self.RewardStatuses.ISSUED
         return self.RewardStatuses.UNALLOCATED
@@ -530,5 +528,5 @@ class Retailer(IdPkMixin, Base, TimestampMixin):
     @property
     def current_balance_reset_date(self) -> date | None:
         if self.balance_lifespan:
-            return datetime.now(tz=timezone.utc).date() + timedelta(days=self.balance_lifespan)
+            return datetime.now(tz=UTC).date() + timedelta(days=self.balance_lifespan)
         return None

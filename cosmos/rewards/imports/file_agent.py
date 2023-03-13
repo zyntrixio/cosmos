@@ -4,7 +4,7 @@ import string
 
 from collections import defaultdict
 from contextlib import suppress
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from io import StringIO
 from typing import TYPE_CHECKING, DefaultDict, NamedTuple
 
@@ -105,7 +105,7 @@ class BlobFileAgent:
             destination_container,
             dst_blob_name
             if dst_blob_name is not None
-            else f"{datetime.now(tz=timezone.utc).strftime('%Y/%m/%d/%H%M')}/{src_blob_client.blob_name}",
+            else f"{datetime.now(tz=UTC).strftime('%Y/%m/%d/%H%M')}/{src_blob_client.blob_name}",
         )
         dst_blob_client.start_copy_from_url(src_blob_client.url)  # Synchronous within the same storage account
         src_blob_client.delete_blob(lease=src_blob_lease)
@@ -241,7 +241,7 @@ class RewardImportAgent(BlobFileAgent):
         if ".expires." in sub_blob_name:
             try:
                 extracted_date = sub_blob_name.split(".expires.")[1].split(".")[0]
-                expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+                expiry_date = datetime.strptime(extracted_date, "%Y-%m-%d").replace(tzinfo=UTC).date()
             except ValueError as ex:
                 raise BlobProcessingError(f"Invalid filename, expiry date is invalid: {blob_name}") from ex
         else:
@@ -490,8 +490,14 @@ class RewardUpdatesAgent(BlobFileAgent):
             .mappings()
             .all()
         )
+
         # Provides a dict in the following format:
-        # {'<code>': {'id': 'f2c44cf7-9d0f-45d0-b199-44a3c8b72db3', 'allocated': True}}
+        # {
+        #     "<code>": {
+        #         "id": "f2c44cf7-9d0f-45d0-b199-44a3c8b72db3",
+        #         "allocated": True,
+        #     }
+        # }
         db_reward_data_by_code: dict[str, dict[str, str | bool]] = {
             reward_data["code"]: {
                 "id": str(reward_data["id"]),

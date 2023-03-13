@@ -1,6 +1,6 @@
 import json
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import httpretty
@@ -39,7 +39,7 @@ def test_jigsaw_agent_expired_token(
 
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/getToken",
@@ -222,7 +222,7 @@ def test_jigsaw_agent_get_token_unexpected_error_response(
     jigsaw_campaign: "Campaign",
 ) -> None:
     agent_config = jigsaw_retailer_fetch_type.load_agent_config()
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/getToken",

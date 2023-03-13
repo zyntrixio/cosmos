@@ -1,7 +1,7 @@
 import logging
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from random import getrandbits
 from typing import TYPE_CHECKING, TypeVar
 
@@ -114,7 +114,7 @@ class CampaignAdmin(CanDeleteModelView):
                 retailer_slug=model.retailer.slug,
                 campaign_name=model.name,
                 sso_username=self.sso_username,
-                activity_datetime=datetime.now(tz=timezone.utc),
+                activity_datetime=datetime.now(tz=UTC),
                 campaign_slug=model.slug,
                 loyalty_type=model.loyalty_type,
                 start_date=model.start_date,
@@ -160,7 +160,7 @@ class CampaignAdmin(CanDeleteModelView):
                     retailer_slug=model.retailer.slug,
                     campaign_name=model.name,
                     sso_username=self.sso_username,
-                    activity_datetime=datetime.now(tz=timezone.utc),
+                    activity_datetime=datetime.now(tz=UTC),
                     campaign_slug=model.slug,
                     loyalty_type=model.loyalty_type,
                     start_date=model.start_date,
@@ -552,7 +552,7 @@ class EarnRuleAdmin(CanDeleteModelView):
                 retailer_slug=model.campaign.retailer.slug,
                 campaign_name=model.campaign.name,
                 sso_username=self.sso_username,
-                activity_datetime=datetime.now(tz=timezone.utc),
+                activity_datetime=datetime.now(tz=UTC),
                 campaign_slug=model.campaign.slug,
                 threshold=model.threshold,
                 increment=model.increment,
@@ -658,7 +658,7 @@ class RewardRuleAdmin(CanDeleteModelView):
                 retailer_slug=model.campaign.retailer.slug,
                 campaign_name=model.campaign.name,
                 sso_username=self.sso_username,
-                activity_datetime=datetime.now(tz=timezone.utc),
+                activity_datetime=datetime.now(tz=UTC),
                 campaign_slug=model.campaign.slug,
                 reward_goal=model.reward_goal,
                 refund_window=model.allocation_window,

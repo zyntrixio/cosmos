@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -293,7 +293,7 @@ def test_status_change_activating_a_campaign_ok(
     mock_activity: mock.MagicMock,
     mocker: MockerFixture,
 ) -> None:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     db_session, retailer, account_holder = setup
 
     def get_balances() -> CampaignBalance:
@@ -461,7 +461,7 @@ def test_status_change_cancel_campaign_ok(
     campaign_with_rules.reward_rule.allocation_window = 15
     db_session.commit()
 
-    mock_now = datetime.now(tz=timezone.utc)
+    mock_now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.rewards.crud.datetime")
     mock_datetime.now.return_value = mock_now
 

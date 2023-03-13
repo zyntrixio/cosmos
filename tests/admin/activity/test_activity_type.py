@@ -2,7 +2,7 @@
 
 import uuid
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import yaml
@@ -15,7 +15,7 @@ from cosmos.campaigns.enums import LoyaltyTypes
 
 def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
@@ -23,8 +23,8 @@ def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
     campaign_slug = "test-campaign"
     loyalty_type = LoyaltyTypes.ACCUMULATOR
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
-    start_date = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
+    start_date = datetime.now(tz=UTC)
     end_date = start_date + timedelta(days=30)
 
     payload = ActivityType.get_campaign_created_activity_data(
@@ -66,14 +66,14 @@ def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
 
 def test_get_campaign_updated_activity_data_ok(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     new_values = {"slug": "new-slug"}
     original_values = {"slug": "old-slug"}
@@ -110,14 +110,14 @@ def test_get_campaign_updated_activity_data_ok(mocker: MockFixture) -> None:
 
 def test_get_campaign_updated_activity_data_ignored_field(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     new_values = {"retailerrewards": "new-slug"}
     original_values = {"retailerrewards": "old-slug"}
@@ -154,7 +154,7 @@ def test_get_campaign_updated_activity_data_ignored_field(mocker: MockFixture) -
 
 def test_get_campaign_deleted_activity_data_ok(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
@@ -162,8 +162,8 @@ def test_get_campaign_deleted_activity_data_ok(mocker: MockFixture) -> None:
     campaign_slug = "test-campaign"
     loyalty_type = "ACCUMULATOR"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
-    start_date = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
+    start_date = datetime.now(tz=UTC)
     end_date = start_date + timedelta(days=30)
 
     payload = ActivityType.get_campaign_deleted_activity_data(
@@ -205,14 +205,14 @@ def test_get_campaign_deleted_activity_data_ok(mocker: MockFixture) -> None:
 
 def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     threshold = 500
     increment = 1
     increment_multiplier = Decimal(2)
@@ -291,14 +291,14 @@ def test_get_earn_rule_created_activity_data(mocker: MockFixture) -> None:
 
 def test_get_earn_rule_updated_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     threshold = 500
     increment = 1
     increment_multiplier = Decimal(2)
@@ -359,14 +359,14 @@ def test_get_earn_rule_updated_activity_data(mocker: MockFixture) -> None:
 
 def test_get_earn_rule_updated_activity_partial_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     threshold = 500
     max_amount = 200
 
@@ -414,14 +414,14 @@ def test_get_earn_rule_updated_activity_partial_data(mocker: MockFixture) -> Non
 
 def test_get_earn_rule_updated_activity_data_ignored_field(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     new_values = {"retailerrewards": "new-slug"}
     original_values = {"retailerrewards": "old-slug"}
@@ -458,14 +458,14 @@ def test_get_earn_rule_updated_activity_data_ignored_field(mocker: MockFixture) 
 
 def test_get_earn_rule_deleted_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     threshold = 500
     increment = 1
     increment_multiplier = Decimal(2)
@@ -509,14 +509,14 @@ def test_get_earn_rule_deleted_activity_data(mocker: MockFixture) -> None:
 
 def test_get_reward_rule_created_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     reward_goal = 1000
     refund_window = 7
     reward_cap = 2
@@ -558,14 +558,14 @@ def test_get_reward_rule_created_activity_data(mocker: MockFixture) -> None:
 
 def test_get_reward_rule_updated_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     original_campaign_name = "Test Campaign"
     original_campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     new_values = {
         "reward_goal": 500,
@@ -616,14 +616,14 @@ def test_get_reward_rule_updated_activity_data(mocker: MockFixture) -> None:
 
 def test_get_reward_rule_updated_activity_data_partial(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     new_values = {
         "reward_goal": 500,
@@ -666,14 +666,14 @@ def test_get_reward_rule_updated_activity_data_partial(mocker: MockFixture) -> N
 
 def test_get_reward_rule_deleted_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     campaign_name = "Test Campaign"
     campaign_slug = "test-campaign"
     retailer_slug = "test-retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     reward_goal = 800
     allocation_window = 0
@@ -714,98 +714,15 @@ def test_get_reward_rule_deleted_activity_data(mocker: MockFixture) -> None:
     }
 
 
-# def test_get_campaign_migration_activity_data(mocker: MockFixture) -> None:
-#     mock_datetime = mocker.patch("admin.activity_utils.enums.datetime")
-#     fake_now = datetime.now(tz=timezone.utc)
-#     mock_datetime.now.return_value = fake_now
-
-#     sso_username = "Test Runner"
-#     from_campaign_slug = "ended-campaign"
-#     to_campaign_slug = "activated-campaign"
-#     retailer_slug = "test-retailer"
-#     activity_datetime = datetime.now(tz=timezone.utc)
-#     balance_conversion_rate = 100
-#     qualify_threshold = 0
-#     pending_rewards = PendingRewardChoices.CONVERT
-
-#     payload_transfer_balance_requested = ActivityType.get_campaign_migration_activity_data(
-#         transfer_balance_requested=True,
-#         retailer_slug=retailer_slug,
-#         from_campaign_slug=from_campaign_slug,
-#         to_campaign_slug=to_campaign_slug,
-#         sso_username=sso_username,
-#         activity_datetime=activity_datetime,
-#         balance_conversion_rate=balance_conversion_rate,
-#         qualify_threshold=qualify_threshold,
-#         pending_rewards=pending_rewards,
-#     )
-
-#     assert payload_transfer_balance_requested == {
-#         "type": ActivityType.CAMPAIGN_MIGRATION.name,
-#         "datetime": fake_now,
-#         "underlying_datetime": activity_datetime,
-#         "summary": (
-#             f"{retailer_slug} Campaign {from_campaign_slug} has ended"
-#             f" and account holders have been migrated to Campaign {to_campaign_slug}"
-#         ),
-#         "reasons": [f"Campaign {from_campaign_slug} was ended"],
-#         "activity_identifier": retailer_slug,
-#         "user_id": sso_username,
-#         "associated_value": "N/A",
-#         "retailer": retailer_slug,
-#         "campaigns": [from_campaign_slug, to_campaign_slug],
-#         "data": {
-#             "ended_campaign": from_campaign_slug,
-#             "activated_campaign": to_campaign_slug,
-#             "balance_conversion_rate": f"{balance_conversion_rate}%",
-#             "qualify_threshold": f"{qualify_threshold}%",
-#             "pending_rewards": pending_rewards.value.lower(),
-#         },
-#     }
-
-#     payload_transfer_balance_not_requested = ActivityType.get_campaign_migration_activity_data(
-#         transfer_balance_requested=False,
-#         retailer_slug=retailer_slug,
-#         from_campaign_slug=from_campaign_slug,
-#         to_campaign_slug=to_campaign_slug,
-#         sso_username=sso_username,
-#         activity_datetime=activity_datetime,
-#         balance_conversion_rate=balance_conversion_rate,
-#         qualify_threshold=qualify_threshold,
-#         pending_rewards=pending_rewards,
-#     )
-
-#     assert payload_transfer_balance_not_requested == {
-#         "type": ActivityType.CAMPAIGN_MIGRATION.name,
-#         "datetime": fake_now,
-#         "underlying_datetime": activity_datetime,
-#         "summary": (
-#             f"{retailer_slug} Campaign {from_campaign_slug} has ended"
-#             f" and account holders have been migrated to Campaign {to_campaign_slug}"
-#         ),
-#         "reasons": [f"Campaign {from_campaign_slug} was ended"],
-#         "activity_identifier": retailer_slug,
-#         "user_id": sso_username,
-#         "associated_value": "N/A",
-#         "retailer": retailer_slug,
-#         "campaigns": [from_campaign_slug, to_campaign_slug],
-#         "data": {
-#             "ended_campaign": from_campaign_slug,
-#             "activated_campaign": to_campaign_slug,
-#             "pending_rewards": pending_rewards.value.lower(),
-#         },
-#     }
-
-
 def test_get_retailer_created_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     account_prefix = "RETB"
     loyalty_name = "mock retailer"
     retailer_status = "TEST"
@@ -881,13 +798,13 @@ marketing_pref:
 
 def test_get_retailer_created_activity_data_without_optionals(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     account_prefix = "RETB"
     loyalty_name = "mock retailer"
     retailer_status = "TEST"
@@ -950,10 +867,10 @@ last_name:
 
 def test_delete_account_holder_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     account_holder_uuid = str(uuid.uuid4())
 
     payload = ActivityType.get_account_holder_deleted_activity_data(
@@ -982,13 +899,13 @@ def test_delete_account_holder_activity_data(mocker: MockFixture) -> None:
 
 def test_get_retailer_status_update_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     original_status = "TEST"
     new_status = "ACTIVE"
 
@@ -1027,13 +944,13 @@ def test_get_retailer_status_update_activity_data(mocker: MockFixture) -> None:
 
 def test_get_retailer_update_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     original_values = {"balance_reset_advanced_warning_days": 10, "balance_lifespan": 20}
     new_values = {"balance_reset_advanced_warning_days": 7, "balance_lifespan": 30}
 
@@ -1068,14 +985,14 @@ def test_get_retailer_update_activity_data(mocker: MockFixture) -> None:
 
 def test_get_retailer_delete_activity_data(mocker: MockFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     user_name = "TestUser"
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
     loyalty_name = "STAMP"
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
 
     payload = ActivityType.get_retailer_deletion_activity_data(
         sso_username=user_name,

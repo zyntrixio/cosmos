@@ -1,6 +1,6 @@
 import sys
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from random import randint
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -73,7 +73,7 @@ def create_unallocated_rewards(
 ) -> list[Reward]:
     hashids = Hashids(batch_reward_salt, min_length=15)
     unallocated_rewards = []
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     for i in range(unallocated_rewards_to_create):
         code = (hashids.encode(i),)
         unallocated_rewards.append(

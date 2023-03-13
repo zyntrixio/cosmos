@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from flask import Markup, flash, redirect, url_for
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 class RewardStatusFilter(FilterEqual):
     def get_filters_from_status(self, value: str) -> tuple:
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        now = datetime.now(tz=UTC).replace(tzinfo=None)
 
         match Reward.RewardStatuses(value):
             case Reward.RewardStatuses.UNALLOCATED:
@@ -212,7 +212,7 @@ class RewardAdmin(BaseModelView):
         rewards_deleted_count = len(rewards)
         retailer = self._get_retailer_by_id(selected_retailer_id)
         activity_payload = ActivityType.get_reward_deleted_activity_data(
-            activity_datetime=datetime.now(tz=timezone.utc),
+            activity_datetime=datetime.now(tz=UTC),
             retailer_name=retailer.name,
             retailer_slug=retailer.slug,
             sso_username=self.sso_username,

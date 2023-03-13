@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
@@ -65,7 +65,7 @@ def process_pending_rewards() -> None:
     query = (
         select(PendingReward)
         .with_for_update(skip_locked=True)
-        .where(PendingReward.conversion_date <= datetime.now(tz=timezone.utc))
+        .where(PendingReward.conversion_date <= datetime.now(tz=UTC))
         .limit(1000)
     )
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import yaml
@@ -121,7 +121,7 @@ class AccountService(Service):
             return ServiceResult({})
         finally:
             account_request_activity_payload = {
-                "activity_datetime": datetime.now(tz=timezone.utc),
+                "activity_datetime": datetime.now(tz=UTC),
                 "retailer_slug": self.retailer.slug,
                 "channel": channel,
                 "result": result,
@@ -156,7 +156,7 @@ class AccountService(Service):
             payload_formatter_fn=AccountsActivityType.get_account_auth_activity_data,
             formatter_kwargs={
                 "account_holder_uuid": str(account_holder.account_holder_uuid),
-                "activity_datetime": datetime.now(tz=timezone.utc),
+                "activity_datetime": datetime.now(tz=UTC),
                 "retailer_slug": self.retailer.slug,
                 "channel": channel,
             },
@@ -190,7 +190,7 @@ class AccountService(Service):
             payload_formatter_fn=AccountsActivityType.get_account_activity_data,
             formatter_kwargs={
                 "account_holder_uuid": str(account_holder_uuid),
-                "activity_datetime": datetime.now(tz=timezone.utc),
+                "activity_datetime": datetime.now(tz=UTC),
                 "retailer_slug": retailer.slug,
                 "channel": request.headers.get("bpl-user-channel"),
                 "campaign_slugs": {balance.campaign.slug for balance in account_holder.current_balances},

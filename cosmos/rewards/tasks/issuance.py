@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import sentry_sdk
@@ -66,7 +66,7 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
                     f"No Reward Codes Available for RewardConfig: "
                     f"{reward_config.id}, "
                     f"reward slug: {reward_config.slug} "
-                    f"on {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d')}"
+                    f"on {datetime.now(tz=UTC).strftime('%Y-%m-%d')}"
                 )
                 logger.info(f"Sentry event ID: {event_id}")
 

@@ -51,16 +51,17 @@ class CoreSettings(BaseSettings):
     QUERY_LOG_LEVEL: LogLevel | None = None
     PROMETHEUS_LOG_LEVEL: LogLevel | None = None
     LOG_FORMATTER: Literal["json", "brief", "console"] = "json"
-    SENTRY_DSN: HttpUrl | None = None
     SENTRY_ENV: str | None = None
-    SENTRY_TRACES_SAMPLE_RATE: float = Field(0.0, ge=0.0, le=1.0)
-    # The prefix used on every Redis key.
-    REDIS_KEY_PREFIX = "cosmos:"
+    SENTRY_DSN: HttpUrl | None = None
 
     @validator("SENTRY_DSN", pre=True)
     @classmethod
     def sentry_dsn_can_be_blank(cls, v: str | None) -> str | None:
         return v or None
+
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(0.0, ge=0.0, le=1.0)
+    # The prefix used on every Redis key.
+    REDIS_KEY_PREFIX = "cosmos:"
 
     db: DatabaseSettings = db_settings
 
@@ -72,10 +73,6 @@ class CoreSettings(BaseSettings):
 
     TASK_QUEUE_PREFIX: str = "cosmos:"
     TASK_QUEUES: list[str] | None = None
-    PENDING_REWARDS_SCHEDULE: str = "0 2 * * *"
-    REPORT_ANOMALOUS_TASKS_SCHEDULE: str = "*/10 * * * *"
-    REPORT_TASKS_SUMMARY_SCHEDULE: str = "5,20,35,50 */1 * * *"
-    REPORT_JOB_QUEUE_LENGTH_SCHEDULE: str = "*/10 * * * *"
 
     @validator("TASK_QUEUES")
     @classmethod
@@ -83,6 +80,11 @@ class CoreSettings(BaseSettings):
         if v and isinstance(v, list):
             return v
         return [values["TASK_QUEUE_PREFIX"] + name for name in ("high", "default", "low")]
+
+    PENDING_REWARDS_SCHEDULE: str = "0 2 * * *"
+    REPORT_ANOMALOUS_TASKS_SCHEDULE: str = "*/10 * * * *"
+    REPORT_TASKS_SUMMARY_SCHEDULE: str = "5,20,35,50 */1 * * *"
+    REPORT_JOB_QUEUE_LENGTH_SCHEDULE: str = "*/10 * * * *"
 
     TASK_MAX_RETRIES: int = 6
     TASK_RETRY_BACKOFF_BASE: float = 3
@@ -95,12 +97,13 @@ class CoreSettings(BaseSettings):
 
     MAILJET_API_URL: str | None = "https://api.mailjet.com/v3.1/send"  # Set in the env
     MAILJET_API_PUBLIC_KEY: str = ""
-    MAILJET_API_SECRET_KEY: str = ""
 
     @validator("MAILJET_API_PUBLIC_KEY")
     @classmethod
     def fetch_mailjet_api_public_key(cls, v: str) -> str:
         return v or key_vault.get_secret("bpl-mailjet-api-public-key")
+
+    MAILJET_API_SECRET_KEY: str = ""
 
     @validator("MAILJET_API_SECRET_KEY")
     @classmethod

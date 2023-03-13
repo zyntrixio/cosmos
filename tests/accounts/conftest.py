@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,7 +25,7 @@ def test_account_holder_activation_data() -> dict:
         "credentials": {
             "first_name": "Test User",
             "last_name": "Test 1",
-            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").replace(tzinfo=timezone.utc).date(),
+            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").replace(tzinfo=UTC).date(),
             "phone": "+447968100999",
             "address_line1": "Flat 3, Some Place",
             "address_line2": "Some Street",
@@ -157,11 +157,6 @@ def test_email_template_req_keys() -> list[dict]:
             "display_name": "Marketing opt out link",
             "description": "Account holder marketing opt out link",
         },
-        # {
-        #     "name": "reward_url",
-        #     "display_name": "Reward URL",
-        #     "description": "Associated URL on account holder reward",
-        # },
     ]
 
 

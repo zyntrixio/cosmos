@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from unittest import mock
 from uuid import UUID, uuid4
@@ -38,7 +38,7 @@ def sample_payload() -> dict:
         "id": "TESTTXID",
         "transaction_id": str(uuid4()),
         "transaction_total": 500,
-        "datetime": datetime.now(tz=timezone.utc).replace(tzinfo=None).timestamp(),
+        "datetime": datetime.now(tz=UTC).replace(tzinfo=None).timestamp(),
         "MID": "TSTMID",
         "loyalty_id": str(uuid4()),
     }
@@ -62,7 +62,7 @@ def validate_tx_import_store_activity_call(
                 "amount": tx_payload["transaction_total"],
                 "mid": tx_payload["MID"],
                 "payment_transaction_id": tx_payload["transaction_id"],
-                "transaction_datetime": datetime.fromtimestamp(tx_payload["datetime"], tz=timezone.utc),
+                "transaction_datetime": datetime.fromtimestamp(tx_payload["datetime"], tz=UTC),
                 "transaction_id": tx_payload["id"],
             },
             "retailer": mock.ANY,
@@ -248,7 +248,7 @@ def test_transaction_duplicated_transaction(
         transaction_id=sample_payload["id"],
         amount=sample_payload["transaction_total"],
         mid=sample_payload["MID"],
-        datetime=datetime.fromtimestamp(sample_payload["datetime"], tz=timezone.utc),
+        datetime=datetime.fromtimestamp(sample_payload["datetime"], tz=UTC),
         payment_transaction_id=sample_payload["transaction_id"],
         processed=True,
     )

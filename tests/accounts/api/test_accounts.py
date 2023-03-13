@@ -1,7 +1,7 @@
 import uuid
 
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
@@ -35,7 +35,7 @@ def test_account_holder_get_by_id(
     account_holder.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
     mock_datetime.now.return_value = now
     create_mock_reward(
@@ -76,7 +76,7 @@ def test_account_holder_get_by_id(
     total_num_transactions = 10
     for i in range(1, total_num_transactions + 1):
         amount = i * 1000
-        dt = datetime(2023, 1, i, tzinfo=timezone.utc)
+        dt = datetime(2023, 1, i, tzinfo=UTC)
         tx = create_transaction(
             account_holder=account_holder,
             **{"mid": fake_mid, "transaction_id": f"tx-id-{i}", "amount": amount, "datetime": dt},
@@ -111,7 +111,7 @@ def test_account_holder_get_by_id(
         amount_and_earned = f"{i*1000/100:.2f}"
         expected_transaction_history.append(
             {
-                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+                "datetime": int(datetime(2023, 1, i, tzinfo=UTC).replace(tzinfo=None).timestamp()),
                 "amount": amount_and_earned,
                 "amount_currency": "GBP",
                 "location": store.store_name,
@@ -162,7 +162,7 @@ def test_account_holder_get_by_id_stamps_tx_history(
     account_holder.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
     mock_datetime.now.return_value = now
     fake_mid = "mid-potato"
@@ -172,7 +172,7 @@ def test_account_holder_get_by_id_stamps_tx_history(
     total_num_transactions = 10
     for i in range(1, total_num_transactions + 1):
         amount = i * 1000
-        dt = datetime(2023, 1, i, tzinfo=timezone.utc)
+        dt = datetime(2023, 1, i, tzinfo=UTC)
         tx = create_transaction(
             account_holder=account_holder,
             **{"mid": fake_mid, "transaction_id": f"tx-id-{i}", "amount": amount, "datetime": dt},
@@ -201,7 +201,7 @@ def test_account_holder_get_by_id_stamps_tx_history(
         earned = str(int(float(tx_amount)))
         expected_transaction_history.append(
             {
-                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+                "datetime": int(datetime(2023, 1, i, tzinfo=UTC).replace(tzinfo=None).timestamp()),
                 "amount": tx_amount,
                 "amount_currency": "GBP",
                 "location": store.store_name,
@@ -253,7 +253,7 @@ def test_account_holder_get_by_id_pending_reward_count_more_than_one(
     account_holder.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
-    created_date = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    created_date = datetime.now(tz=UTC).replace(tzinfo=None)
     conversion_date = created_date + timedelta(days=10)
 
     pending_reward_value = 100
@@ -339,11 +339,11 @@ def test_account_holder_get_by_id_tx_history_no_store(
     account_holder.status = AccountHolderStatuses.ACTIVE
     db_session.commit()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
     mock_datetime.now.return_value = now
     amount = 1000
-    dt = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    dt = datetime(2023, 1, 1, tzinfo=UTC)
     tx = create_transaction(
         account_holder=account_holder,
         **{"mid": "a-mid", "transaction_id": "tx-id", "amount": amount, "datetime": dt},
@@ -365,7 +365,7 @@ def test_account_holder_get_by_id_tx_history_no_store(
 
     expected_transaction_history = [
         {
-            "datetime": int(datetime(2023, 1, 1, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+            "datetime": int(datetime(2023, 1, 1, tzinfo=UTC).replace(tzinfo=None).timestamp()),
             "amount": "10.00",
             "amount_currency": "GBP",
             "location": "N/A",

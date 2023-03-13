@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from cosmos.db.models import Campaign, Reward, RewardConfig
@@ -29,7 +29,7 @@ def test_reward_status_prop_unallocated(setup: SetupType, reward_config: RewardC
 def test_reward_status_prop_issued(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
     db_session, retailer, account_holder = setup
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     reward = Reward(
         account_holder_id=account_holder.id,
@@ -53,7 +53,7 @@ def test_reward_status_prop_issued_and_expired(
 ) -> None:
     db_session, retailer, account_holder = setup
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     reward = Reward(
         account_holder_id=account_holder.id,
@@ -75,7 +75,7 @@ def test_reward_status_prop_issued_and_expired(
 def test_reward_status_prop_redeemed(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
     db_session, retailer, account_holder = setup
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     reward = Reward(
         account_holder_id=account_holder.id,
@@ -98,7 +98,7 @@ def test_reward_status_prop_redeemed(setup: SetupType, reward_config: RewardConf
 def test_reward_status_prop_cancelled(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> None:
     db_session, retailer, account_holder = setup
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     reward = Reward(
         account_holder_id=account_holder.id,

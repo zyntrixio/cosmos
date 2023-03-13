@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from flask import abort, flash, redirect, session, url_for
@@ -22,7 +22,7 @@ class UserSessionMixin:
     @property
     def user_session_expired(self) -> bool:
         session_exp: int | None = self.user_info.get("exp")
-        return session_exp < datetime.now(tz=timezone.utc).timestamp() if session_exp else True
+        return session_exp < datetime.now(tz=UTC).timestamp() if session_exp else True
 
     @property
     def user_roles(self) -> set[str]:

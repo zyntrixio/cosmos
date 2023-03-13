@@ -1,6 +1,6 @@
 import uuid
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -22,11 +22,11 @@ def test_get_reward_status_activity_data(
     new_status: str, original_status: str | None, count: int | None, mocker: MockerFixture
 ) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     account_holder_uuid = str(uuid.uuid4())
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     pending_reward_uuid = str(uuid.uuid4())
 
     payload = ActivityType.get_reward_status_activity_data(
@@ -63,11 +63,11 @@ def test_get_reward_status_activity_data(
 
 def test_get_reward_update_activity_data(mocker: MockerFixture) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     account_holder_uuid = str(uuid.uuid4())
-    activity_datetime = datetime.now(tz=timezone.utc)
+    activity_datetime = datetime.now(tz=UTC)
     payload = ActivityType.get_reward_update_activity_data(
         account_holder_uuid=account_holder_uuid,
         retailer_slug="test-retailer",

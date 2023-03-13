@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import requests
 
@@ -43,7 +43,7 @@ def _stored_token_is_valid(stored_token: dict[str, str]) -> bool:
 
         if (
             float(stored_token["not_before"])
-            <= datetime.now(tz=timezone.utc).timestamp()
+            <= datetime.now(tz=UTC).timestamp()
             <= float(stored_token["expires_on"]) - 300
         ):
             return True

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -56,13 +56,13 @@ def test_get_allocable_reward_wrong_path(
         ),
         pytest.param(
             15,
-            datetime.now(tz=timezone.utc) + timedelta(days=15),
+            datetime.now(tz=UTC) + timedelta(days=15),
             "from_expiry_date",
             id="validity_days is set, expiry date is set, existing expiry_date has priority",
         ),
         pytest.param(
             0,
-            datetime.now(tz=timezone.utc) + timedelta(days=15),
+            datetime.now(tz=UTC) + timedelta(days=15),
             "from_expiry_date",
             id="no validity_days, expiry date is set, existing expiry_date has priority",
         ),
@@ -86,7 +86,7 @@ def test_get_allocable_reward_ok(
     reward_config.required_fields_values = f"validity_days: {validity_days}"
     db_session.commit()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     mock_datetime = mocker.patch("cosmos.rewards.fetch_reward.pre_loaded.datetime")
     mock_datetime.now.return_value = now

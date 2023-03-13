@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import or_
@@ -66,7 +66,7 @@ async def cancel_issued_rewards_for_campaign(
     db_session: "AsyncSession", *, campaign: "Campaign"
 ) -> list["CancelIssuedRewardsRes"]:
     # asyncpg can't translate tz aware to naive datetimes, and db datetimes are naive.
-    now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    now = datetime.now(tz=UTC).replace(tzinfo=None)
 
     async def _query(savepoint: "AsyncSessionTransaction") -> list["Row"]:
         updates = (

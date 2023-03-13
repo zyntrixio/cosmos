@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, func, literal
@@ -101,7 +101,7 @@ async def campaign_status_change(
     campaign: Campaign,
     requested_status: CampaignStatuses,
 ) -> "ChangeCampaignStatusRes":
-    now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    now = datetime.now(tz=UTC).replace(tzinfo=None)
     update_values: dict[str, CampaignStatuses | datetime] = {"status": requested_status}
 
     match requested_status:
@@ -127,7 +127,7 @@ async def campaign_status_change(
 
 async def create_campaign_balances(db_session: "AsyncSession", retailer: Retailer, campaign: Campaign) -> None:
     balance_reset_date = (
-        literal((datetime.now(tz=timezone.utc) + timedelta(days=retailer.balance_lifespan)).date(), Date)
+        literal((datetime.now(tz=UTC) + timedelta(days=retailer.balance_lifespan)).date(), Date)
         if retailer.balance_lifespan
         else None
     )
