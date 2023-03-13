@@ -1,6 +1,6 @@
 import json
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -46,7 +46,7 @@ def test_jigsaw_agent_register_retry_paths(
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4", return_value=card_ref)
@@ -119,7 +119,7 @@ def test_jigsaw_agent_register_failure_paths(
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4", return_value=card_ref)
@@ -298,7 +298,7 @@ def test_jigsaw_agent_register_retry_get_token_success(
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
     card_num = "NEW-REWARD-CODE"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_redis = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.redis_raw")
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4", return_value=card_ref)
     mock_datetime = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.datetime")
@@ -489,7 +489,7 @@ def test_jigsaw_agent_register_retry_get_token_max_retries_exceeded(
                                     "__type": "Response.getToken:#Jigsaw.API.Service",
                                     "Token": "test-token",
                                     # jigsaw returns a naive datetime here
-                                    "Expires": (datetime.now(tz=timezone.utc) + timedelta(days=1)).isoformat(),
+                                    "Expires": (datetime.now(tz=UTC) + timedelta(days=1)).isoformat(),
                                     "TestMode": True,
                                 },
                             }

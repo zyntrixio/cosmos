@@ -1,7 +1,7 @@
 import uuid
 
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from pytest_mock import MockerFixture
@@ -68,7 +68,7 @@ def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, 
     assert mp_not_boolean.value == "potato"
     mock_get_marketing_preference_change_activity_data.assert_called_once_with(
         account_holder_uuid=account_holder.account_holder_uuid,
-        activity_datetime=mp_true.updated_at.replace(tzinfo=timezone.utc),
+        activity_datetime=mp_true.updated_at.replace(tzinfo=UTC),
         associated_value="Marketing Preferences unsubscribed",
         field_name="preference-one",
         new_value="False",
@@ -151,7 +151,7 @@ def test_opt_out_marketing_preferences_no_opt_out_token_provided(
 
 def test_get_reward_for_microsite(setup: SetupType, user_reward: Reward, test_client: "TestClient") -> None:
     db_session, retailer, account_holder = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
     user_reward.account_holder = account_holder
     db_session.commit()
@@ -173,7 +173,7 @@ def test_get_reward_for_microsite_invalid_reward_uuid(
     setup: SetupType, user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
     user_reward.account_holder = account_holder
     db_session.commit()
@@ -189,7 +189,7 @@ def test_get_reward_for_microsite_invalid_retailer(
     setup: SetupType, user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, _, account_holder = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
     user_reward.account_holder = account_holder
     db_session.commit()
@@ -205,7 +205,7 @@ def test_get_reward_for_microsite_past_expiry_date(
     setup: SetupType, user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=-1)
     user_reward.account_holder = account_holder
     db_session.commit()
@@ -227,7 +227,7 @@ def test_get_reward_for_microsite_redeemed_reward(
     setup: SetupType, user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.account_holder = account_holder
     user_reward.expiry_date = now + timedelta(days=10)
     user_reward.redeemed_date = now + timedelta(days=-5)
@@ -251,7 +251,7 @@ def test_get_reward_for_microsite_bad_reward_uuid(
     setup: SetupType, user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, _ = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
     db_session.commit()
     bad_reward_uuid = uuid.uuid4()
@@ -271,7 +271,7 @@ def test_get_reward_for_microsite_reward_uuid_for_wrong_retailer(
     create_mock_account_holder: Callable,
 ) -> None:
     db_session, retailer, _ = setup
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
     random_uuid = uuid.uuid4()
     wrong_retailer = Retailer(

@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator, Callable, Generator
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, NamedTuple
 from uuid import uuid4
 
@@ -185,7 +185,7 @@ def test_account_holder_activation_data() -> dict:
         "credentials": {
             "first_name": "Test User",
             "last_name": "Test 1",
-            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").replace(tzinfo=timezone.utc).date(),
+            "date_of_birth": datetime.strptime("1970-12-03", "%Y-%m-%d").replace(tzinfo=UTC).date(),
             "phone": "+447968100999",
             "address_line1": "Flat 3, Some Place",
             "address_line2": "Some Street",
@@ -368,7 +368,7 @@ def create_campaign(setup: SetupType, reward_config: RewardConfig) -> Callable[.
 @pytest.fixture(scope="function")
 def campaign_with_rules(setup: SetupType, campaign: Campaign, reward_config: RewardConfig) -> Campaign:
     db_session = setup.db_session
-    campaign.start_date = datetime.now(timezone.utc) - timedelta(days=20)
+    campaign.start_date = datetime.now(UTC) - timedelta(days=20)
     db_session.add(
         RewardRule(
             reward_goal=500,
@@ -404,7 +404,7 @@ def account_holder_campaign_balances(setup: SetupType, campaigns: list[Campaign]
 
 @pytest.fixture(scope="function")
 def user_reward(setup: SetupType, reward_config: RewardConfig, campaign: Campaign) -> Reward:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     db_session, retailer, _ = setup
     mock_user_reward = Reward(
         reward_uuid=uuid4(),
@@ -429,13 +429,13 @@ def create_mock_reward(db_session: "Session", reward_config: RewardConfig, campa
         "reward_config_id": reward_config.id,
         "code": "test_reward_code",
         "deleted": False,
-        "issued_date": datetime(2021, 6, 25, 14, 30, 00, tzinfo=timezone.utc),
-        "expiry_date": datetime(2121, 6, 25, 14, 30, 00, tzinfo=timezone.utc),
+        "issued_date": datetime(2021, 6, 25, 14, 30, 00, tzinfo=UTC),
+        "expiry_date": datetime(2121, 6, 25, 14, 30, 00, tzinfo=UTC),
         "redeemed_date": None,
         "cancelled_date": None,
         "retailer_id": None,
         "campaign_id": None,
-        "created_at": datetime.now(tz=timezone.utc),
+        "created_at": datetime.now(tz=UTC),
         "updated_at": None,
     }
 
@@ -600,8 +600,8 @@ def pending_reward(setup: SetupType, campaign: Campaign) -> PendingReward:
         account_holder_id=account_holder.id,
         campaign_id=campaign.id,
         pending_reward_uuid=uuid4(),
-        created_date=datetime(2022, 1, 1, 5, 0, tzinfo=timezone.utc),
-        conversion_date=datetime.now(tz=timezone.utc) + timedelta(days=15),
+        created_date=datetime(2022, 1, 1, 5, 0, tzinfo=UTC),
+        conversion_date=datetime.now(tz=UTC) + timedelta(days=15),
         value=100,
         count=2,
         total_cost_to_user=300,
@@ -618,8 +618,8 @@ def create_pending_reward(setup: SetupType, campaign: Campaign) -> Callable[...,
         "account_holder_id": account_holder.id,
         "campaign_id": campaign.id,
         "pending_reward_uuid": uuid4(),
-        "created_date": datetime(2022, 1, 1, 5, 0, tzinfo=timezone.utc),
-        "conversion_date": datetime.now(tz=timezone.utc) + timedelta(days=15),
+        "created_date": datetime(2022, 1, 1, 5, 0, tzinfo=UTC),
+        "conversion_date": datetime.now(tz=UTC) + timedelta(days=15),
         "value": 100,
         "count": 2,
         "total_cost_to_user": 300,
@@ -679,7 +679,7 @@ def create_transaction(db_session: "Session") -> Callable:
         transaction_data = {
             "account_holder_id": account_holder.id,
             "retailer_id": account_holder.retailer_id,
-            "datetime": transaction_params.get("datetime", datetime(2022, 6, 1, 14, 30, 00, tzinfo=timezone.utc)),
+            "datetime": transaction_params.get("datetime", datetime(2022, 6, 1, 14, 30, 00, tzinfo=UTC)),
             "transaction_id": transaction_params["transaction_id"],
             "amount": 1000,
             "processed": True,

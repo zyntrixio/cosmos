@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic.datetime_parse import parse_datetime
 
@@ -13,12 +13,8 @@ class UTCDatetime(datetime):
 
     @classmethod
     def ensure_tzinfo(cls, v: datetime) -> datetime:
-
-        if v.tzinfo is None:
-            return v.replace(tzinfo=timezone.utc)
-
-        return v.astimezone(timezone.utc)
+        return v.replace(tzinfo=UTC) if v.tzinfo is None else v.astimezone(UTC)
 
 
 def utc_datetime_from_timestamp(v: float) -> datetime:
-    return datetime.fromtimestamp(v, tz=timezone.utc)
+    return datetime.fromtimestamp(v, tz=UTC)

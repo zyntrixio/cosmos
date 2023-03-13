@@ -1,7 +1,7 @@
 import uuid
 
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import status as fastapi_http_status
@@ -41,7 +41,7 @@ def test_account_holder_get_by_credentials(
     account_holder.account_number = "TEST123456789"
     db_session.commit()
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.accounts.api.service.datetime")
     mock_datetime.now.return_value = now
     create_mock_reward(
@@ -82,7 +82,7 @@ def test_account_holder_get_by_credentials(
     total_num_transactions = 15
     for i in range(1, total_num_transactions + 1):
         amount = i * 1000
-        dt = datetime(2023, 1, i, tzinfo=timezone.utc)
+        dt = datetime(2023, 1, i, tzinfo=UTC)
         tx = create_transaction(
             account_holder=account_holder,
             **{"mid": fake_mid, "transaction_id": f"tx-id-{i}", "amount": amount, "datetime": dt},
@@ -116,7 +116,7 @@ def test_account_holder_get_by_credentials(
         amount_and_earned = f"{i*1000/100:.2f}"
         expected_transaction_history.append(
             {
-                "datetime": int(datetime(2023, 1, i, tzinfo=timezone.utc).replace(tzinfo=None).timestamp()),
+                "datetime": int(datetime(2023, 1, i, tzinfo=UTC).replace(tzinfo=None).timestamp()),
                 "amount": amount_and_earned,
                 "amount_currency": "GBP",
                 "location": store.store_name,

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -136,7 +136,7 @@ def reset_balances() -> None:
     with SyncSessionMaker() as db_session:
         updated_balances = _retrieve_and_update_balances(db_session)
         logger.info("Operation completed successfully, %d balances have been set to 0", len(updated_balances))
-        activity_datetime = datetime.now(tz=timezone.utc)
+        activity_datetime = datetime.now(tz=UTC)
         sync_send_activity(
             (
                 AccountsActivityType.get_balance_reset_activity_data(

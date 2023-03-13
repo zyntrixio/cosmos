@@ -133,9 +133,6 @@ class ErrorCode(enum.Enum):
             code="NO_CAMPAIGN_FOUND",
         ),
     )
-    # INVALID_RETAILER = "INVALID_RETAILER"
-    # INVALID_TOKEN = "INVALID_TOKEN"
-    # INVALID_ACCOUNT_HOLDER_STATUS = "INVALID_ACCOUNT_HOLDER_STATUS"
 
     @classmethod
     def http_exception_response(
@@ -158,40 +155,11 @@ class ErrorCode(enum.Enum):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    # MISSING_BPL_CHANNEL_HEADER = HTTPException(
-    #     status_code=status.HTTP_400_BAD_REQUEST,
-    #     detail={
-    #         "display_message": "Submitted headers are missing or invalid.",
-    #         "code": "HEADER_VALIDATION_ERROR",
     #         "fields": [
     #             "bpl-user-channel",
     #         ],
     #     },
-    # )
-    # MISSING_OR_INVALID_IDEMPOTENCY_TOKEN_HEADER = HTTPException(
-    #     status_code=status.HTTP_400_BAD_REQUEST,
-    #     detail={
-    #         "display_message": "Submitted headers are missing or invalid.",
-    #         "code": "HEADER_VALIDATION_ERROR",
     #         "fields": [
     #             "idempotency-token",
     #         ],
     #     },
-    # )
-    # INVALID_STATUS = HTTPException(
-    #     status_code=status.HTTP_400_BAD_REQUEST,
-    #     detail={"display_message": "Status Rejected.", "code": "INVALID_STATUS"},
-    # )
-    # NO_REWARD_FOUND = HTTPException(
-    #     status_code=status.HTTP_404_NOT_FOUND,
-    #     detail={"display_message": "Reward not found.", "code": "NO_REWARD_FOUND"},
-    # )
-    # NO_REWARD_SLUG_FOUND = HTTPException(
-    #     status_code=status.HTTP_404_NOT_FOUND,
-    #     detail={"display_message": "Reward slug not found", "code": "NO_REWARD_SLUG_FOUND"},
-    # )
-    # NO_CAMPAIGN_BALANCE = HTTPException(
-    #     status_code=status.HTTP_409_CONFLICT,
-    #     detail={"display_message": "No balance for provided campaign slug.", "code": "NO_CAMPAIGN_BALANCE"},
-    # )
-    # INVALID_REQUEST = HTTPException(status_code=status.HTTP_404_NOT_FOUND)

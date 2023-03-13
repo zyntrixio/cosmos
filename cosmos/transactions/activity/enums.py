@@ -48,7 +48,6 @@ class ActivityType(ActivityTypeMixin, Enum):
     ) -> dict:
         # NOTE: retailer and processed_tx are not bound to this db_session
         # so we can't use the relationships on those objects
-        # ie: retailer.stores and processed_tx.retailer
         return cls._assemble_payload(
             cls.TX_HISTORY.name,
             underlying_datetime=processed_tx.datetime,

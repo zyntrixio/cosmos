@@ -3,7 +3,7 @@ import uuid
 
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, DefaultDict
 
 import pytest
@@ -95,7 +95,7 @@ def test_import_agent__process_csv_with_expiry_date(setup_rewards: RewardsSetupT
         db_session=db_session,
     )
 
-    expiry_date = datetime.strptime("2023-01-16", "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+    expiry_date = datetime.strptime("2023-01-16", "%Y-%m-%d").replace(tzinfo=UTC).date()
     rewards = _get_reward_rows(db_session)
     for reward in rewards[1:4]:
         assert reward.expiry_date.date() == expiry_date
@@ -444,14 +444,14 @@ def test_updates_agent__process_updates(
 ) -> None:
     db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
-    reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
+    reward.issued_date = datetime(2021, 7, 25, tzinfo=UTC)  # not required but for the sake of completeness
     other_reward = Reward(
         code="other_code",
         retailer_id=account_holder.retailer_id,
         reward_uuid=uuid.uuid4(),
         reward_config_id=reward_config.id,
         account_holder_id=account_holder.id,
-        issued_date=datetime(2021, 7, 20, tzinfo=timezone.utc),
+        issued_date=datetime(2021, 7, 20, tzinfo=UTC),
     )
     db_session.add(other_reward)
     db_session.commit()
@@ -511,11 +511,11 @@ def test_updates_agent__process_updates(
     db_session.refresh(reward)
     db_session.refresh(other_reward)
 
-    assert reward.redeemed_date == datetime(2021, 7, 30, tzinfo=timezone.utc).replace(tzinfo=None)
+    assert reward.redeemed_date == datetime(2021, 7, 30, tzinfo=UTC).replace(tzinfo=None)
     assert reward.cancelled_date is None
     assert reward.status == Reward.RewardStatuses.REDEEMED
 
-    assert other_reward.cancelled_date == datetime(2021, 7, 29, tzinfo=timezone.utc).replace(tzinfo=None)
+    assert other_reward.cancelled_date == datetime(2021, 7, 29, tzinfo=UTC).replace(tzinfo=None)
     assert other_reward.redeemed_date is None
     assert other_reward.status == Reward.RewardStatuses.CANCELLED
 
@@ -525,7 +525,7 @@ def test_updates_agent__process_updates_duplicates(
 ) -> None:
     db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
-    reward.issued_date = datetime(2021, 7, 25, tzinfo=timezone.utc)  # not required but for the sake of completeness
+    reward.issued_date = datetime(2021, 7, 25, tzinfo=UTC)  # not required but for the sake of completeness
 
     other_reward = Reward(
         code="code2",
@@ -533,7 +533,7 @@ def test_updates_agent__process_updates_duplicates(
         reward_uuid=uuid.uuid4(),
         reward_config_id=reward_config.id,
         account_holder_id=account_holder.id,
-        issued_date=datetime(2021, 7, 29, tzinfo=timezone.utc),
+        issued_date=datetime(2021, 7, 29, tzinfo=UTC),
     )
     db_session.add(other_reward)
     db_session.commit()
@@ -603,7 +603,7 @@ def test_updates_agent__process_updates_duplicates(
     assert reward.cancelled_date is None
     assert reward.status == Reward.RewardStatuses.ISSUED  # This one is ignored due to duplicate/conflicting lines
 
-    assert other_reward.cancelled_date == datetime(2021, 7, 30, tzinfo=timezone.utc).replace(tzinfo=None)
+    assert other_reward.cancelled_date == datetime(2021, 7, 30, tzinfo=UTC).replace(tzinfo=None)
     assert other_reward.redeemed_date is None
     assert other_reward.status == Reward.RewardStatuses.CANCELLED
 
@@ -664,7 +664,6 @@ def test_updates_agent__process_updates_reward_code_does_not_exist(
 
     capture_message_spy = mocker.spy(file_agent_sentry_sdk, "capture_message")
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
-    # mocker.patch.object(RewardUpdatesAgent, "enqueue_reward_updates")
     mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
@@ -905,7 +904,7 @@ def test_move_blob(mocker: MockerFixture) -> None:
         mock_src_blob_client,
         src_blob_lease_client,
     )
-    blob = f"{datetime.now(tz=timezone.utc).strftime('%Y/%m/%d/%H%M')}/{blob_name}"
+    blob = f"{datetime.now(tz=UTC).strftime('%Y/%m/%d/%H%M')}/{blob_name}"
 
     blob_service_client.get_blob_client.assert_called_once_with("DESTINATION-CONTAINER", blob)
     mock_dst_blob_client.start_copy_from_url.assert_called_once_with("https://a-blob-url")

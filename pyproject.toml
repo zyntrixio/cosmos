@@ -125,6 +125,7 @@ warn_unused_ignores = true
 ignore_missing_imports = true
 disallow_incomplete_defs = true
 warn_redundant_casts = true
+exclude = "alembic/versions/"
 plugins = [
     "pydantic.mypy",
     "sqlalchemy.ext.mypy.plugin",
@@ -133,7 +134,7 @@ plugins = [
 [tool.ruff]
 line-length = 120
 show-source = true
-target-version = "py310"
+target-version = "py311"
 select = [
     "F",    # Pyflakes (F)
     "E",
@@ -162,7 +163,7 @@ select = [
     "TID",  # flake8-tidy-imports (TID)
     "ARG",  # flake8-unused-arguments (ARG)
     "DTZ",  # flake8-datetimez (DTZ)
-    # "ERA",  # eradicate (ERA) until we can remove commented out code this has to stay deactivated
+    "ERA",  # eradicate (ERA) until we can remove commented out code this has to stay deactivated
     # pandas-vet (PD)
     # pygrep-hooks (PGH)
     "PLC",
@@ -183,9 +184,10 @@ ignore = [
 # disable unused import error for __init__.py and cosmos/db/base.py
 "__init__.py" = ["F401"]
 "cosmos/db/base.py" = ["F401"]
-"tests/*" = ["S101", "PLR2004", "ARG001", "PLR0913", "PLR0915", "ARG002"]
 "cosmos/core/config.py" = ["PLR2004"]
 "cosmos/db/config.py" = ["PLR2004"]
+"cosmos/rewards/imports/file_agent.py" = ["ERA001"]
 "cosmos/rewards/fetch_reward/jigsaw.py" = ["PLR2004"]
+"tests/*" = ["S101", "PLR2004", "ARG001", "PLR0913", "PLR0915", "ARG002"]
 "tests/rewards/test_reward_import_and_updates.py" = ["N806"]
 "tests/rewards/functional/fetch_reward_jigsaw/*" = ["S105", "SIM117"]

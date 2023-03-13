@@ -1,7 +1,7 @@
 import uuid
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from enum import Enum
 
 # asyncpg can't handle timezone aware to naive conversion, update this once we move to psycopg3
-now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+now = datetime.now(tz=UTC).replace(tzinfo=None)
 first_uuid = uuid.uuid4()
 second_uuid = uuid.uuid4()
 

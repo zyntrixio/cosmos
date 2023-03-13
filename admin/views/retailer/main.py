@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import wtforms
@@ -161,7 +161,7 @@ marketing_pref:
     def on_model_change(self, form: wtforms.Form, model: "Retailer", is_created: bool) -> None:
         validate_balance_lifespan_and_warning_days(form, retailer_status=model.status)
         if not is_created and form.balance_lifespan.object_data is None and form.balance_lifespan.data is not None:
-            reset_date = (datetime.now(tz=timezone.utc) + timedelta(days=model.balance_lifespan)).date()
+            reset_date = (datetime.now(tz=UTC) + timedelta(days=model.balance_lifespan)).date()
             stmt = (
                 update(CampaignBalance)
                 .where(
@@ -255,7 +255,7 @@ marketing_pref:
                 sync_send_activity(
                     ActivityType.get_retailer_deletion_activity_data(
                         sso_username=self.sso_username,
-                        activity_datetime=datetime.now(tz=timezone.utc),
+                        activity_datetime=datetime.now(tz=UTC),
                         retailer_name=del_ret_action.session_data.retailer_name,
                         retailer_slug=del_ret_action.session_data.retailer_slug,
                         original_values={

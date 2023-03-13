@@ -1,7 +1,7 @@
 import logging
 
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from logging import Logger
 from typing import Any, Protocol
@@ -34,7 +34,7 @@ def acquire_lock(runner: Runner) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa ANN401
             func_lock_key = f"{core_settings.REDIS_KEY_PREFIX}{runner.name}:{func.__qualname__}"
-            value = f"{runner.uid}:{datetime.now(tz=timezone.utc)}"
+            value = f"{runner.uid}:{datetime.now(tz=UTC)}"
             if redis.set(func_lock_key, value, LOCK_TIMEOUT_SECS, nx=True):
                 # This assumes jobs will be completed within LOCK_TIMEOUT_SECS
                 # seconds and if the lock expires then another process can run

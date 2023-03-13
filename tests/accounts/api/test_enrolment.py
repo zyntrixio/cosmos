@@ -1,7 +1,7 @@
 import copy
 
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import ANY, MagicMock, call
 
 import yaml
@@ -33,7 +33,7 @@ def test_account_holder_enrol_success(
     send_email_task_type: TaskType,
     mock_activity: MagicMock,
 ) -> None:
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime = mocker.MagicMock()
     mock_datetime.now.return_value = fake_now
     mocker.patch("cosmos.accounts.api.service.datetime", mock_datetime)
@@ -250,7 +250,7 @@ def test_account_holder_enrol_duplicate(
     test_account_holder_duplicate: dict,
     mock_activity: MagicMock,
 ) -> None:
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime = mocker.MagicMock()
     mock_datetime.now.return_value = fake_now
     mocker.patch("cosmos.accounts.api.service.datetime", mock_datetime)

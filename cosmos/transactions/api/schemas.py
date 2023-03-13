@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field, StrictInt
 from pydantic.types import UUID4
@@ -15,7 +15,7 @@ class DateTime(datetime):
     @classmethod
     def convert_float_to_datetime(cls, value: float) -> datetime:
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except TypeError as ex:
             raise ValueError("invalid datetime") from ex
 

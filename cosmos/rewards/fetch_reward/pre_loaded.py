@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy.future import select
@@ -21,7 +21,7 @@ class PreLoaded(BaseAgent):
 
         validity_days: int = self.reward_config.load_required_fields_values()["validity_days"]
 
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.now(UTC).replace(tzinfo=None)
         expiry_date = now + timedelta(days=validity_days) if validity_days else None
 
         associated_url_template = (

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from cosmos_message_lib.schemas import ActivitySchema
@@ -22,7 +22,7 @@ class ActivityTypeMixin:
     ) -> dict:
         return ActivitySchema(
             type=activity_type,
-            datetime=datetime.now(tz=timezone.utc),
+            datetime=datetime.now(tz=UTC),
             underlying_datetime=underlying_datetime,
             summary=summary,
             reasons=reasons or [],

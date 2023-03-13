@@ -1,6 +1,6 @@
 import json
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 from unittest import mock
 from uuid import uuid4
@@ -47,7 +47,7 @@ def test_jigsaw_agent_ok(
     card_num = "NEW-REWARD-CODE"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/getToken",
@@ -145,7 +145,7 @@ def test_jigsaw_agent_ok_token_already_set(
     sample_url = "http://sample.url"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/register",
@@ -224,7 +224,7 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
     card_num = "NEW-REWARD-CODE"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/register",
@@ -320,7 +320,7 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
     card_num = "NEW-REWARD-CODE"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
 
@@ -437,7 +437,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
     card_num = "NEW-REWARD-CODE"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
 

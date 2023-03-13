@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import status
@@ -81,7 +81,7 @@ class CampaignService(Service):
 
     async def _delete_pending_rewards_for_campaign(self, campaign: Campaign) -> None:
         """Executes crud method delete_pending_rewards_for_campaign and stores required data for this activity"""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         del_data = await delete_pending_rewards_for_campaign(self.db_session, campaign=campaign)
         await self.store_activity(
             activity_type=RewardsActivityType.REWARD_STATUS,

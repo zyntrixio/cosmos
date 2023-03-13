@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -42,7 +42,7 @@ class EmailTemplateKeysError(Exception):
 
 def _process_callback(task_params: dict, account_holder: AccountHolder) -> dict:
     logger.info(f"Processing callback for {account_holder.account_holder_uuid}")
-    timestamp = datetime.now(tz=timezone.utc)
+    timestamp = datetime.now(tz=UTC)
 
     if account_settings.USE_CALLBACK_OAUTH2:
         headers: dict | None = get_callback_oauth_header()
@@ -151,7 +151,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
             retailer_slug=account_holder.retailer.slug,
             channel=task_params["channel"],
             third_party_identifier=task_params["third_party_identifier"],
-            activity_datetime=account_holder.updated_at.replace(tzinfo=timezone.utc),
+            activity_datetime=account_holder.updated_at.replace(tzinfo=UTC),
         )
         sync_send_activity(activity_payload, routing_key=AccountsActivityType.ACCOUNT_ENROLMENT.value)
 
@@ -274,7 +274,7 @@ def send_email(retry_task: RetryTask, db_session: "Session") -> None:
             response_audit = msg
         else:
             response_audit = {
-                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "timestamp": datetime.now(tz=UTC).isoformat(),
                 "request": {"url": account_settings.core.MAILJET_API_URL},
                 "response": {"status": resp.status_code, "body": resp.text},
             }

@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from pydantic import BaseModel, Extra, Field, validator
 
@@ -14,7 +14,7 @@ class RewardUpdateSchema(BaseModel):
     @validator("date_")
     @classmethod
     def get_date(cls, v: str) -> date:
-        return datetime.strptime(v, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+        return datetime.strptime(v, "%Y-%m-%d").replace(tzinfo=UTC).date()
 
 
 class IssuanceTaskParams(BaseModel):

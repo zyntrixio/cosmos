@@ -1,7 +1,7 @@
 import json
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from random import choice, randint
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
@@ -182,7 +182,7 @@ def account_holder_reward_payload(
     reward_config_id: int,
     reward_status: AccountHolderRewardStatuses,
 ) -> dict:
-    now = datetime.now(tz=timezone.utc).replace(microsecond=0)
+    now = datetime.now(tz=UTC).replace(microsecond=0)
 
     reward_datetimes = _datetimes_for_reward_by_status(now, reward_status)
 
@@ -206,7 +206,7 @@ def account_holder_pending_reward_payload(
     campaign_id: str,
     refund_window: int,
 ) -> dict:
-    now = datetime.now(tz=timezone.utc).replace(microsecond=0)
+    now = datetime.now(tz=UTC).replace(microsecond=0)
     pending_reward_value = 200
     count = 1
 
@@ -228,7 +228,7 @@ def account_holder_transaction_payload(
     tx_amount: int,
     mid: str,
 ) -> dict:
-    now = datetime.now(tz=timezone.utc).replace(microsecond=0)
+    now = datetime.now(tz=UTC).replace(microsecond=0)
 
     return {
         "transaction_id": f"{account_holder_id}{randint(1, 1000000)}",
@@ -246,7 +246,7 @@ def reward_payload(reward_code: str, reward_config_id: int, retailer_id: int) ->
         "code": reward_code,
         "reward_config_id": reward_config_id,
         "retailer_id": retailer_id,
-        "issued_date": datetime.now(tz=timezone.utc),
+        "issued_date": datetime.now(tz=UTC),
         "deleted": False,
     }
 
@@ -289,7 +289,7 @@ def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str) ->
         "status": "ACTIVE",
         "name": campaign_slug.replace("-", " ").title(),
         "slug": campaign_slug,
-        "start_date": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
+        "start_date": datetime.now(tz=UTC) - timedelta(minutes=5),
         "loyalty_type": loyalty_type,
     }
 

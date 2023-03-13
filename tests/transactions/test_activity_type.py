@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -67,13 +67,13 @@ def test_tx_import_activity_payload(
     mocker: MockerFixture,
 ) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     account_holder_uuid = str(uuid4())
     transaction_id = str(uuid4())
     payment_transaction_id = str(uuid4())
-    transaction_datetime = datetime.now(tz=timezone.utc)
+    transaction_datetime = datetime.now(tz=UTC)
     campaign_slugs = ["slug1", "slug2"]
 
     assert ActivityType.get_tx_import_activity_data(
@@ -114,13 +114,13 @@ def test_tx_import_activity_payload_optional_params(
     mocker: MockerFixture,
 ) -> None:
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
 
     account_holder_uuid = str(uuid4())
     transaction_id = str(uuid4())
     payment_transaction_id = str(uuid4())
-    transaction_datetime = datetime.now(tz=timezone.utc)
+    transaction_datetime = datetime.now(tz=UTC)
     campaign_slugs = ["slug1", "slug2"]
 
     assert ActivityType.get_tx_import_activity_data(
@@ -155,9 +155,9 @@ def test_tx_import_activity_payload_optional_params(
 
 
 def test_get_processed_tx_activity_data(account_holder: AccountHolder, mocker: MockerFixture) -> None:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
     transaction = Transaction(
         retailer_id=account_holder.retailer_id,
@@ -201,9 +201,9 @@ def test_get_processed_tx_activity_data(account_holder: AccountHolder, mocker: M
 
 
 def test_get_refund_not_recouped_activity_data(account_holder: AccountHolder, mocker: MockerFixture) -> None:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_datetime.now.return_value = fake_now
     assert ActivityType.get_refund_not_recouped_activity_data(
         account_holder_uuid=account_holder.account_holder_uuid,

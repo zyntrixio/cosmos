@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from pytest_mock import MockerFixture
@@ -87,7 +87,7 @@ def test_delete_account_holder_action_success_with_cascades(
         transaction_id="tx_id",
         amount=300,
         mid="mid",
-        datetime=datetime.now(tz=timezone.utc),
+        datetime=datetime.now(tz=UTC),
     )
     prefs = MarketingPreference(
         account_holder_id=account_holder.id,

@@ -1,7 +1,7 @@
 import json
 
 from collections.abc import Callable, Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 import httpretty
@@ -37,7 +37,7 @@ class MockedOauthToken:
 
     @staticmethod
     def json() -> dict:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         shift = timedelta(seconds=86400)
 
         return {
@@ -51,7 +51,7 @@ class MockedOauthToken:
         }
 
 
-fake_now = datetime.now(tz=timezone.utc)
+fake_now = datetime.now(tz=UTC)
 
 
 @pytest.fixture(autouse=True)
@@ -214,18 +214,14 @@ def test_account_holder_activation(
     assert account_holder.account_number.startswith(test_retailer["account_number_prefix"])
     assert account_holder.current_balances[0].campaign.slug == "test-campaign"
     assert account_holder.current_balances[0].balance == 0
-    # assert account_holder.current_balances[1].campaign_slug == "slug2"
-    # assert account_holder.current_balances[1].balance == 0
     if balance_lifespan:
         assert account_holder.current_balances[0].reset_date is not None
-        # assert account_holder.current_balances[1].reset_date is not None
     else:
         assert account_holder.current_balances[0].reset_date is None
-        # assert account_holder.current_balances[1].reset_date is None
     assert account_holder.status == AccountHolderStatuses.ACTIVE
     mock_get_account_enrolment_activity_data.assert_called_once_with(
         account_holder_uuid=account_holder.account_holder_uuid,
-        activity_datetime=account_holder.updated_at.replace(tzinfo=timezone.utc),
+        activity_datetime=account_holder.updated_at.replace(tzinfo=UTC),
         channel="test-channel",
         retailer_slug=account_holder.retailer.slug,
         third_party_identifier="test_3rd_perty_id",
@@ -515,47 +511,6 @@ def test_send_email_task_missing_req_fields(
         for record in capture.records
     )
     mock_send_email_to_mailjet.assert_not_called()
-
-
-# def test_send_email_task_missing_extra_params(
-#     db_session: "Session",
-#     account_holder: "AccountHolder",
-#     send_reward_email_task_no_extra_params: RetryTask,
-#     populate_email_template_req_keys: list[EmailTemplateKey],
-#     create_email_template: Callable,
-#     retailer: Retailer,
-#     mocker: MockerFixture,
-#     capture: LogCapture,
-# ) -> None:
-#     account_holder.account_number = "TEST1234"
-#     db_session.commit()
-#     email_template_req_keys: list[EmailTemplateKey] = populate_email_template_req_keys
-#     email_template_params = {
-#         "template_id": "test1234",
-#         "type": EmailTemplateTypes.REWARD_ISSUANCE,
-#         "retailer_id": retailer.id,
-#         "required_keys": email_template_req_keys,
-#     }
-#     create_email_template(**email_template_params)
-
-#     import cosmos.core.tasks.mailjet as tasks_mailjet
-
-#     mock_send_email_to_mailjet = mocker.spy(tasks_mailjet, "send_email_to_mailjet")
-
-#     send_email(
-#         retry_task_id=send_reward_email_task_no_extra_params.retry_task_id
-#     )
-
-#     db_session.refresh(send_reward_email_task_no_extra_params)
-#     db_session.refresh(account_holder)
-
-#     assert send_reward_email_task_no_extra_params.attempts == 1
-#     assert send_reward_email_task_no_extra_params.next_attempt_time is None
-#     assert send_reward_email_task_no_extra_params.status == RetryTaskStatuses.FAILED
-#     assert send_reward_email_task_no_extra_params.audit_data == []
-#     assert any("Mailjet failure - missing fields: ['reward_url']"
-#     in str(record.exc_info) for record in capture.records)
-#     mock_send_email_to_mailjet.assert_not_called()
 
 
 @httpretty.activate

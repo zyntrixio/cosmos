@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
@@ -15,23 +15,19 @@ from cosmos.rewards.fetch_reward.base import AgentError, BaseAgent
 
 if TYPE_CHECKING:  # pragma: no cover
     from inspect import Traceback
+    from typing import TypedDict
 
     from retry_tasks_lib.db.models import RetryTask
     from sqlalchemy.orm import Session
-    from typing_extensions import TypedDict
 
     from cosmos.db.models import AccountHolder, Campaign, RewardConfig
     from cosmos.rewards.schemas import IssuanceTaskParams
 
-    SpecialActionsMap = TypedDict(
-        "SpecialActionsMap",
-        {
-            "message_ids": list[str],
-            "action": Callable,
-            "max_retries": int,
-            "retried": int,
-        },
-    )
+    class SpecialActionsMap(TypedDict):
+        message_ids: list[str]
+        action: Callable
+        max_retries: int
+        retried: int
 
 
 class Jigsaw(BaseAgent):
@@ -259,7 +255,7 @@ class Jigsaw(BaseAgent):
         self.retry_task.update_task(
             db_session=self.db_session,
             response_audit={
-                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "timestamp": datetime.now(tz=UTC).isoformat(),
                 "request": {"method": resp.request.method, "url": resp.request.url},
                 "response": {
                     "status": resp.status_code,
@@ -291,9 +287,9 @@ class Jigsaw(BaseAgent):
         dt = datetime.fromisoformat(date_time_str)
         if dt.tzinfo is None:
             self.logger.info("Jigsaw: Received naive datetime, assuming UTC timezone.")
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
-        return dt.astimezone(tz=timezone.utc)
+        return dt.astimezone(tz=UTC)
 
     def _get_and_decrypt_token(self) -> str | None:
         """tries to fetch and decrypt token from redis, returns the token as a string on success and None on failure."""
@@ -345,7 +341,7 @@ class Jigsaw(BaseAgent):
 
         response_payload = self._get_response_body_or_raise_for_status(resp)
         expires_in = self._get_tz_aware_datetime_from_isoformat(response_payload["data"]["Expires"]) - datetime.now(
-            tz=timezone.utc
+            tz=UTC
         )
         if expires_in.total_seconds() <= 0:
             raise AgentError("Jigsaw: Jigsaw returned an already expired token.")
@@ -362,7 +358,7 @@ class Jigsaw(BaseAgent):
 
         customer_card_ref = self.agent_state_params.get(self.CARD_REF_KEY, None)
         self.customer_card_ref = str(uuid4()) if customer_card_ref is None else customer_card_ref
-        return datetime.now(tz=timezone.utc)
+        return datetime.now(tz=UTC)
 
     def _save_reward(
         self,

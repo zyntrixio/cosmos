@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest import mock
 from zoneinfo import ZoneInfo
@@ -91,7 +91,7 @@ def test_reset_balances_ok_ratailer_has_lifespan(
                     {
                         "type": "BALANCE_CHANGE",
                         "datetime": now,
-                        "underlying_datetime": balance.updated_at.replace(tzinfo=timezone.utc),
+                        "underlying_datetime": balance.updated_at.replace(tzinfo=UTC),
                         "summary": f"re-test {balance.campaign.slug} Balance 100",
                         "reasons": ["Balance Reset every 10 days"],
                         "activity_identifier": "N/A",

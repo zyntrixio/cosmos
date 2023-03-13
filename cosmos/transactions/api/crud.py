@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import IntegrityError
@@ -134,7 +134,7 @@ async def create_pending_reward(
     count: int,
     total_cost_to_user: int,
 ) -> PendingReward:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     conversion_date = (now + timedelta(days=allocation_window)).date()
 
     async def _query(savepoint: "AsyncSessionTransaction") -> PendingReward:

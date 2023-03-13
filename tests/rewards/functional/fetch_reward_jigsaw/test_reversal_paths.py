@@ -1,6 +1,6 @@
 import json
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -217,7 +217,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_need_new_token(
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4")
     mock_uuid.side_effect = [card_ref, success_card_ref]
     success_token = "test-token-success"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     mock_datetime = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.datetime")
     mock_datetime.now.return_value = now
     mock_datetime.fromisoformat = datetime.fromisoformat

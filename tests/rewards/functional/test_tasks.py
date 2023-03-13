@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpretty
@@ -108,7 +108,7 @@ def test_reward_issuance_no_reward_and_allocation_is_requeued(
     reward.deleted = True
     db_session.commit()
 
-    fake_now = datetime.now(tz=timezone.utc)
+    fake_now = datetime.now(tz=UTC)
     mock_queue = mocker.patch("cosmos.rewards.tasks.issuance.enqueue_retry_task_delay")
     mock_queue.return_value = fake_now
     from cosmos.rewards.tasks.issuance import sentry_sdk as mock_sentry_sdk
