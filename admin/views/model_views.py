@@ -7,6 +7,7 @@ from flask import abort, flash, redirect, session, url_for
 from flask_admin.contrib.sqla import ModelView
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
     from werkzeug.wrappers import Response  # pragma: no cover
 
 
@@ -79,6 +80,7 @@ class BaseModelView(AuthorisedModelView):
     Set some baseline behaviour for all ModelViews
     """
 
+    session: "Session"
     list_template = "eh_list.html"
     edit_template = "eh_edit.html"
     create_template = "eh_create.html"

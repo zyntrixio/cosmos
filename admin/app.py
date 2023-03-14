@@ -14,7 +14,7 @@ from admin.config import admin_settings
 from admin.version import __version__
 from admin.views import main_admin
 from admin.views.model_views import BaseModelView
-from cosmos.core.config import redis
+from cosmos.core.config import redis_raw
 from cosmos.db.session import scoped_db_session
 
 oauth = OAuth()
@@ -66,21 +66,29 @@ def create_app(with_activities: bool = True) -> Flask:
     register_campaign_and_reward_management_admin(main_admin)
     register_transactions_admin(main_admin)
     register_tasks_admin(
-        admin=main_admin, scoped_db_session=scoped_db_session, admin_base_classes=(BaseModelView,), redis=redis
+        admin=main_admin, scoped_db_session=scoped_db_session, admin_base_classes=(BaseModelView,), redis=redis_raw
     )
 
     if with_activities:
-        from admin.hubble.db import db_session as hubble_db_session
         from admin.hubble.db.models import Base as HubbleModelBase
-        from admin.hubble.db.session import engine as hubble_engine
+        from admin.hubble.db.session import activity_engine, activity_scoped_session
         from admin.views.activity import register_hubble_admin
 
-        HubbleModelBase.prepare(hubble_engine, reflect=True)
+        HubbleModelBase.prepare(activity_engine, reflect=True)
         register_hubble_admin(main_admin)
+        register_tasks_admin(
+            admin=main_admin,
+            scoped_db_session=activity_scoped_session,
+            admin_base_classes=(BaseModelView,),
+            redis=redis_raw,
+            endpoint_prefix="activity-",
+            url_prefix="activity",
+            menu_title="Activity Tasks",
+        )
 
         @app.teardown_appcontext
         def remove_hubble_session(exception: BaseException | None = None) -> Any:  # noqa: ARG001, ANN401
-            hubble_db_session.remove()
+            activity_scoped_session.remove()
 
     main_admin.init_app(app)
     oauth.init_app(app)

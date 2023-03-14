@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 from fastapi.testclient import TestClient
 
 from cosmos.public.api.app import app

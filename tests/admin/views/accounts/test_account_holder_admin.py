@@ -3,10 +3,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from pytest_mock import MockerFixture
+from sqlalchemy.exc import DataError
 from sqlalchemy.future import select
+from werkzeug.datastructures import MultiDict
 
 from admin.views.accounts import AccountHolderAdmin
-from cosmos.accounts.enums import MarketingPreferenceValueTypes
+from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.db.models import (
     AccountHolder,
     AccountHolderProfile,
@@ -21,6 +23,7 @@ from cosmos.retailers.enums import RetailerStatuses
 from tests.conftest import SetupType
 
 if TYPE_CHECKING:
+
     from flask.testing import FlaskClient
     from sqlalchemy.orm import Session
     from werkzeug import Response
@@ -189,3 +192,184 @@ def test_delete_account_holder_action_multiple_with_one_invalid(
 
     # Check activity was sent
     mock_send_activity.assert_called_once()
+
+
+def test_anonymise_user_action_ok(setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture) -> None:
+    db_session, _, account_holder = setup
+    mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
+    mocker.patch("admin.views.accounts.main.activity_scoped_session")
+    mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
+    mock_flash = mocker.patch("admin.views.accounts.main.flash")
+
+    email = account_holder.email
+    account_number = "TEST1234"
+    assert account_holder.profile
+
+    account_holder.status = AccountHolderStatuses.ACTIVE
+    account_holder.account_number = account_number
+    db_session.commit()
+
+    resp = test_client.post(
+        "/admin/account-holders/action/",
+        data={
+            "url": "/admin/account-holders/",
+            "action": "anonymise-account-holder",
+            "rowid": account_holder.id,
+        },
+        follow_redirects=True,
+    )
+
+    assert resp.status_code == 200
+
+    db_session.refresh(account_holder)
+    assert account_holder.email != email
+    assert account_holder.account_number != account_number
+    assert account_holder.profile is None
+    assert account_holder.status == AccountHolderStatuses.INACTIVE
+
+    mock_enqueue.assert_called_once()
+    mock_flash.assert_called_once_with(f"Account Holder (id: {account_holder.id}) successfully anonymised.")
+
+
+def test_anonymise_user_action_too_many_selected(
+    setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture
+) -> None:
+    db_session, _, account_holder = setup
+    mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
+    mocker.patch("admin.views.accounts.main.activity_scoped_session")
+    mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
+    mock_flash = mocker.patch("admin.views.accounts.main.flash")
+
+    email = account_holder.email
+    account_number = "TEST1234"
+    assert account_holder.profile
+
+    account_holder.account_number = account_number
+    db_session.commit()
+
+    resp = test_client.post(
+        "/admin/account-holders/action/",
+        data=MultiDict(
+            (
+                ("url", "/admin/account-holders/"),
+                ("action", "anonymise-account-holder"),
+                ("rowid", account_holder.id),
+                ("rowid", account_holder.id + 1),
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    assert resp.status_code == 200
+
+    db_session.refresh(account_holder)
+    assert account_holder.email == email
+    assert account_holder.account_number == account_number
+    assert account_holder.profile
+
+    mock_enqueue.assert_not_called()
+    mock_flash.assert_called_once_with(
+        "This action must be completed for account holders one at a time", category="error"
+    )
+
+
+def test_anonymise_user_action_account_holder_inactive(
+    setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture
+) -> None:
+    db_session, _, account_holder = setup
+    mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
+    mocker.patch("admin.views.accounts.main.activity_scoped_session")
+    mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
+    mock_flash = mocker.patch("admin.views.accounts.main.flash")
+
+    email = account_holder.email
+    account_number = "TEST1234"
+    assert account_holder.profile
+
+    account_holder.status = AccountHolderStatuses.INACTIVE
+    account_holder.account_number = account_number
+    db_session.commit()
+
+    resp = test_client.post(
+        "/admin/account-holders/action/",
+        data={
+            "url": "/admin/account-holders/",
+            "action": "anonymise-account-holder",
+            "rowid": account_holder.id,
+        },
+        follow_redirects=True,
+    )
+
+    assert resp.status_code == 200
+
+    db_session.refresh(account_holder)
+    assert account_holder.email == email
+    assert account_holder.account_number == account_number
+    assert account_holder.profile
+    assert account_holder.status == AccountHolderStatuses.INACTIVE
+
+    mock_enqueue.assert_not_called()
+    mock_flash.assert_called_once_with("Account holder is INACTIVE", category="error")
+
+
+def test_anonymise_user_action_account_holder_not_found(test_client: "FlaskClient", mocker: MockerFixture) -> None:
+
+    mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
+    mocker.patch("admin.views.accounts.main.activity_scoped_session")
+    mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
+    mock_flash = mocker.patch("admin.views.accounts.main.flash")
+
+    resp = test_client.post(
+        "/admin/account-holders/action/",
+        data={
+            "url": "/admin/account-holders/",
+            "action": "anonymise-account-holder",
+            "rowid": 12,
+        },
+        follow_redirects=True,
+    )
+
+    assert resp.status_code == 200
+
+    mock_enqueue.assert_not_called()
+    mock_flash.assert_called_once_with("Account holder not found", category="error")
+
+
+def test_anonymise_user_action_db_error(setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture) -> None:
+    db_session, _, account_holder = setup
+    mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
+    mocker.patch("admin.views.accounts.main.activity_scoped_session")
+    mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
+    mock_flash = mocker.patch("admin.views.accounts.main.flash")
+    mocker.patch("admin.views.accounts.main.sync_create_task", side_effect=DataError("sample error", "test", "test"))
+
+    email = account_holder.email
+    account_number = "TEST1234"
+    assert account_holder.profile
+
+    account_holder.status = AccountHolderStatuses.ACTIVE
+    account_holder.account_number = account_number
+    db_session.commit()
+
+    resp = test_client.post(
+        "/admin/account-holders/action/",
+        data={
+            "url": "/admin/account-holders/",
+            "action": "anonymise-account-holder",
+            "rowid": account_holder.id,
+        },
+        follow_redirects=True,
+    )
+
+    assert resp.status_code == 200
+
+    db_session.refresh(account_holder)
+    assert account_holder.email == email
+    assert account_holder.account_number == account_number
+    assert account_holder.profile
+    assert account_holder.status == AccountHolderStatuses.ACTIVE
+
+    mock_enqueue.assert_not_called()
+    mock_flash.assert_called_once_with(
+        f"Failed to anonymise Account Holder (id: {account_holder.id}), rolling back.", category="error"
+    )
