@@ -67,7 +67,7 @@ def test_delete_retailer_action_success_with_cascades(
     db_session, retailer, account_holder = setup
 
     mocker.patch.object(RetailerAdmin, "sso_username", "test-user")
-    mocker.patch("admin.views.retailer.custom_actions.hubble_db_session")
+    mocker.patch("admin.views.retailer.custom_actions.activity_scoped_session")
 
     mock_send_activity = mocker.patch("admin.views.retailer.main.sync_send_activity")
     flash = mocker.patch("admin.views.retailer.custom_actions.flash")

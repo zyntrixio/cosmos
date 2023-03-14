@@ -64,6 +64,8 @@ class AdminSettings(BaseSettings):
             v or urlparse(values["core"].db.SQLALCHEMY_DATABASE_URI)._replace(path=f'/{values["ACTIVITY_DB"]}').geturl()
         )
 
+    ANONYMISE_ACTIVITIES_TASK_NAME: str = "anonymise-activities"
+
     BPL_USER_NAMES: list[str] = [
         "Alyson",
         "Jess",

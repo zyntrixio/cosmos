@@ -1,3 +1,5 @@
+import hashlib
+
 from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import NamedTuple
@@ -5,13 +7,19 @@ from uuid import UUID
 
 from flask import flash
 from flask_admin.actions import action
+from retry_tasks_lib.utils.synchronous import enqueue_retry_task, sync_create_task
 from sqlalchemy import delete
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import joinedload
 
 from admin.activity_utils.enums import ActivityType
+from admin.config import admin_settings
 from admin.helpers.custom_formatters import account_holder_repr, campaign_slug_repr
+from admin.hubble.db.session import activity_scoped_session
 from admin.views.model_views import BaseModelView
+from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.core.activity.tasks import sync_send_activity
+from cosmos.core.config import redis_raw
 from cosmos.db.models import AccountHolder, Retailer
 from cosmos.retailers.enums import RetailerStatuses
 
@@ -100,6 +108,60 @@ class AccountHolderAdmin(BaseModelView):
         self.session.commit()
 
         flash(f"Deleted {len(result)} Account Holders.")
+
+    @action(
+        "anonymise-account-holder",
+        "Anonymise account holder (RTBF)",
+        "This action is not reversible. Are you sure you wish to proceed?",
+    )
+    def anonymise_user(self, account_holder_ids: list[str]) -> None:
+        if len(account_holder_ids) != 1:
+            flash("This action must be completed for account holders one at a time", category="error")
+            return
+
+        if not (account_holder := self.session.get(AccountHolder, account_holder_ids[0])):
+            flash("Account holder not found", category="error")
+            return
+
+        if account_holder.status == AccountHolderStatuses.INACTIVE:
+            flash("Account holder is INACTIVE", category="error")
+            return
+
+        email = account_holder.email
+
+        account_holder.status = AccountHolderStatuses.INACTIVE
+        account_holder.email = hashlib.sha224(
+            (account_holder.email + str(account_holder.account_holder_uuid)).encode("utf-8")
+        ).hexdigest()
+
+        account_holder.account_number = hashlib.sha224(
+            ((account_holder.account_number or "N/A") + str(account_holder.account_holder_uuid)).encode("utf-8")
+        ).hexdigest()
+
+        if account_holder.profile:
+            self.session.delete(account_holder.profile)
+
+        try:
+            self.session.flush()
+            anonymise_activities_task = sync_create_task(
+                activity_scoped_session,
+                task_type_name=admin_settings.ANONYMISE_ACTIVITIES_TASK_NAME,
+                params={
+                    "retailer_slug": account_holder.retailer.slug,
+                    "account_holder_uuid": account_holder.account_holder_uuid,
+                    "account_holder_email": email,
+                },
+            )
+
+        except DBAPIError:
+            self.session.rollback()
+            flash(f"Failed to anonymise Account Holder (id: {account_holder.id}), rolling back.", category="error")
+            return
+
+        self.session.commit()
+        activity_scoped_session.commit()
+        enqueue_retry_task(connection=redis_raw, retry_task=anonymise_activities_task)
+        flash(f"Account Holder (id: {account_holder.id}) successfully anonymised.")
 
 
 class ProfileAdmin(BaseModelView):

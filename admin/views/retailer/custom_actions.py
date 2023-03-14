@@ -7,8 +7,8 @@ from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.future import select
 
-from admin.hubble.db import db_session as hubble_db_session
 from admin.hubble.db.models import Activity
+from admin.hubble.db.session import activity_scoped_session
 from admin.views.retailer.forms import DeleteRetailerActionForm
 from admin.views.utils import SessionDataMethodsMixin
 from cosmos.campaigns.enums import CampaignStatuses
@@ -101,10 +101,10 @@ class DeleteRetailerAction:
         db_session.flush()
 
     def _delete_hubble_retailer_data(self) -> None:  # pragma: no cover
-        hubble_db_session.execute(
+        activity_scoped_session.execute(
             Activity.__table__.delete().where(Activity.retailer == self.session_data.retailer_slug)
         )
-        hubble_db_session.flush()
+        activity_scoped_session.flush()
 
     def delete_retailer(self) -> bool:
         """Tries to delete all retailer related data in cosmos and hubble, returns True if successful False if not."""
@@ -118,7 +118,7 @@ class DeleteRetailerAction:
             self._delete_hubble_retailer_data()
         except DBAPIError:
             db_session.rollback()
-            hubble_db_session.rollback()
+            activity_scoped_session.rollback()
 
             self.logger.exception(
                 "Exception while trying to delete retailer %s (%d)",
@@ -129,7 +129,7 @@ class DeleteRetailerAction:
             return False
 
         db_session.commit()
-        hubble_db_session.commit()
+        activity_scoped_session.commit()
         flash(
             f"All rows related to retailer {self.session_data.retailer_name} ({self.session_data.retailer_id}) "
             "have been deleted."

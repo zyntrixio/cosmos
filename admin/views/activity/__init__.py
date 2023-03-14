@@ -8,15 +8,17 @@ if TYPE_CHECKING:
 
 
 def register_hubble_admin(admin: "Admin") -> None:
-    from admin.hubble.db.session import db_session
+    from admin.hubble.db.models import Base
+    from admin.hubble.db.session import activity_scoped_session
 
-    hubble_menu_title = "Activity"
+    menu_title = "Activity"
+
     admin.add_view(
         ActivityAdmin(
             Activity,
-            db_session,
+            activity_scoped_session,
             "Activity",
             endpoint="activities",
-            category=hubble_menu_title,
+            category=menu_title,
         )
     )
