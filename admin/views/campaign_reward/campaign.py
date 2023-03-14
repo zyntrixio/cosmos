@@ -16,7 +16,6 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from wtforms.validators import DataRequired
 
 from admin.activity_utils.enums import ActivityType
 from admin.views.campaign_reward.custom_actions import CampaignEndAction
@@ -65,7 +64,7 @@ class CampaignAdmin(CanDeleteModelView):
     column_filters = ("retailer.slug", "status")
     column_searchable_list = ("slug", "name")
     form_args = {
-        "loyalty_type": {"validators": [DataRequired(), validate_campaign_loyalty_type]},
+        "loyalty_type": {"validators": [wtforms.validators.DataRequired(), validate_campaign_loyalty_type]},
         "status": {"validators": [validate_campaign_status_change]},
     }
     form_create_rules = form_edit_rules = (
@@ -523,25 +522,34 @@ class EarnRuleAdmin(CanDeleteModelView):
         "campaign.retailer": "Retailer",
         "campaign.loyalty_type": "LoyaltyType",
     }
-    form_args = {
-        "increment": {
-            "validators": [validate_earn_rule_increment, wtforms.validators.NumberRange(min=1)],
-            "description": (
-                "Leave blank for accumulator campaigns. For stamp, this is the number to be awarded per eligible "
-                "transaction multiplied by 100. 100 = 1 stamp."
-            ),
-        },
-        "threshold": {
-            "validators": [wtforms.validators.NumberRange(min=0)],
-            "description": ("Minimum transaction value for earn in pence. E.g. for £10.50, please enter '1050'."),
-        },
-        "increment_multiplier": {"validators": [validate_increment_multiplier, wtforms.validators.NumberRange(min=0)]},
-        "max_amount": {
-            "validators": [validate_earn_rule_max_amount, wtforms.validators.NumberRange(min=0)],
-            "description": ("Upper limit for transaction earn in pence. 0 for stamp."),
-        },
-    }
     column_type_formatters = typefmt.BASE_FORMATTERS | {type(None): lambda _view, _value: "-"}
+
+    @property
+    def form_args(self) -> dict:
+        return {
+            "increment": {
+                "validators": [validate_earn_rule_increment, wtforms.validators.NumberRange(min=1)],
+                "description": (
+                    "Leave blank for accumulator campaigns. For stamp, this is the number to be awarded per eligible "
+                    "transaction multiplied by 100. 100 = 1 stamp."
+                ),
+            },
+            "threshold": {
+                "validators": [wtforms.validators.NumberRange(min=0)],
+                "description": ("Minimum transaction value for earn in pence. E.g. for £10.50, please enter '1050'."),
+            },
+            "increment_multiplier": {
+                "validators": [validate_increment_multiplier, wtforms.validators.NumberRange(min=0)]
+            },
+            "max_amount": {
+                "validators": [validate_earn_rule_max_amount, wtforms.validators.NumberRange(min=0)],
+                "description": ("Upper limit for transaction earn in pence. 0 for stamp."),
+            },
+            "campaign": {
+                "validators": [wtforms.validators.DataRequired()],
+                "query_factory": lambda: self.session.query(Campaign).filter_by(earn_rule=None),
+            },
+        }
 
     def on_model_delete(self, model: "EarnRule") -> None:
         validate_earn_rule_deletion(model.campaign)
@@ -624,31 +632,38 @@ class RewardRuleAdmin(CanDeleteModelView):
         "campaign.retailer": "Retailer",
         "allocation_window": "Refund Window",
     }
-    form_args = {
-        "reward_goal": {
-            "validators": [wtforms.validators.NumberRange(min=1)],
-            "description": (
-                "Balance goal used to calculate if a reward should be issued. "
-                "This is a money value * 100, e.g. a reward goal of £10.50 should be 1050, "
-                "and a reward goal of 8 stamps would be 800."
-            ),
-        },
-        "allocation_window": {
-            "default": 0,
-            "validators": [validate_reward_rule_allocation_window, wtforms.validators.NumberRange(min=0)],
-            "description": (
-                "Period of time before a reward is allocated to an AccountHolder in days."
-                " Accumulator campaigns only."
-            ),
-        },
-        "reward_cap": {
-            "default": None,
-            "validators": [validate_reward_cap_for_loyalty_type],
-            "blank_text": "None",
-            "description": ("Transaction reward cap. Accumulator campaigns only."),
-        },
-    }
     column_type_formatters = typefmt.BASE_FORMATTERS | {type(None): lambda _view, _value: "-"}
+
+    @property
+    def form_args(self) -> dict:
+        return {
+            "reward_goal": {
+                "validators": [wtforms.validators.NumberRange(min=1)],
+                "description": (
+                    "Balance goal used to calculate if a reward should be issued. "
+                    "This is a money value * 100, e.g. a reward goal of £10.50 should be 1050, "
+                    "and a reward goal of 8 stamps would be 800."
+                ),
+            },
+            "allocation_window": {
+                "default": 0,
+                "validators": [validate_reward_rule_allocation_window, wtforms.validators.NumberRange(min=0)],
+                "description": (
+                    "Period of time before a reward is allocated to an AccountHolder in days."
+                    " Accumulator campaigns only."
+                ),
+            },
+            "reward_cap": {
+                "default": None,
+                "validators": [validate_reward_cap_for_loyalty_type],
+                "blank_text": "None",
+                "description": ("Transaction reward cap. Accumulator campaigns only."),
+            },
+            "campaign": {
+                "validators": [wtforms.validators.DataRequired()],
+                "query_factory": lambda: self.session.query(Campaign).filter_by(reward_rule=None),
+            },
+        }
 
     def on_model_delete(self, model: "RewardRule") -> None:
         validate_reward_rule_deletion(model.campaign)
