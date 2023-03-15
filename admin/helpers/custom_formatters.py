@@ -16,6 +16,8 @@ from cosmos.db.models import (
     Reward,
     RewardConfig,
     RewardRule,
+    Transaction,
+    TransactionEarn,
 )
 
 if TYPE_CHECKING:
@@ -33,7 +35,7 @@ def format_json_field(_v: type["ModelView"], _c: "Context", model: type["Automap
 def account_holder_repr(
     _v: type[BaseModelView],
     _c: "Context",
-    model: AccountHolderProfile | Reward | CampaignBalance,
+    model: AccountHolderProfile | Reward | CampaignBalance | Transaction,
     _p: str,
 ) -> str | None:
     return (
@@ -51,6 +53,29 @@ def account_holder_repr(
         )
         if model.account_holder
         else None
+    )
+
+
+def account_holder_repr_transaction_earn(
+    _v: type[BaseModelView],
+    _c: "Context",
+    model: TransactionEarn,
+    _p: str,
+) -> str | None:
+    return account_holder_repr(_v, _c, model.transaction, _p)
+
+
+def transaction_repr(
+    _v: type[BaseModelView],
+    _c: "Context",
+    model: TransactionEarn,
+    _p: str,
+) -> str | None:
+    return Markup(
+        ("<a href='{}'>&nbsp;{}</a>").format(
+            url_for("transactions.details_view", id=model.transaction_id),
+            model.transaction.transaction_id,
+        )
     )
 
 

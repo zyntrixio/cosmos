@@ -1,3 +1,4 @@
+from admin.helpers.custom_formatters import account_holder_repr_transaction_earn, transaction_repr
 from admin.views.model_views import BaseModelView
 
 
@@ -5,6 +6,7 @@ class TransactionAdmin(BaseModelView):
     column_list = (
         "retailer",
         "transaction_id",
+        "processed",
         "amount",
         "mid",
         "datetime",
@@ -23,20 +25,40 @@ class TransactionAdmin(BaseModelView):
 
 class TransactionEarnAdmin(BaseModelView):
     column_list = (
-        "transaction_id",
-        "transaction.account_holder.account_holder_uuid",
+        "transaction.account_holder",
+        "transaction",
+        "transaction.amount",
+        "transaction.datetime",
+        "transaction.mid",
+        "transaction.store.store_name",
         "earn_amount",
         "loyalty_type",
         "transaction.payment_transaction_id",
         "created_at",
     )
-    column_filters = ("loyalty_type", "created_at")
+    column_filters = (
+        "transaction.retailer.slug",
+        "transaction.datetime",
+        "transaction.store.store_name",
+        "loyalty_type",
+        "created_at",
+    )
+
+    column_formatters = {
+        "transaction": transaction_repr,
+        "transaction.account_holder": account_holder_repr_transaction_earn,
+    }
     column_searchable_list = (
-        "transaction_id",
+        "transaction.transaction_id",
         "transaction.account_holder.account_holder_uuid",
         "transaction.payment_transaction_id",
     )
     column_labels = {
-        "transaction.account_holder.account_holder_uuid": "Account Holder UUID",
+        "transaction.datetime": "Transaction date",
+        "transaction.transaction_id": "Transaction ID",
+        "transaction.account_holder": "Account Holder",
         "transaction.payment_transaction_id": "Payment Transaction ID",
+        "transaction.amount": "Transaction amount",
+        "transaction.mid": "MID",
+        "transaction.store.store_name": "Store name",
     }
