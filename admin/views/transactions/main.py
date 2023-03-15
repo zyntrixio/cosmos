@@ -24,7 +24,7 @@ class TransactionAdmin(BaseModelView):
 
 
 class TransactionEarnAdmin(BaseModelView):
-    column_list = (
+    column_list = column_details_list = (
         "transaction.account_holder",
         "transaction",
         "transaction.amount",
