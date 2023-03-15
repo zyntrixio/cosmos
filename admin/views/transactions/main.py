@@ -15,7 +15,7 @@ class TransactionAdmin(BaseModelView):
         "created_at",
         "updated_at",
     )
-    column_filters = ("retailer.slug", "created_at", "datetime")
+    column_filters = ("retailer.slug", "created_at", "datetime", "processed")
     column_searchable_list = ("transaction_id", "payment_transaction_id", "account_holder.account_holder_uuid")
     column_labels = {
         "retailer.slug": "Retailer",
