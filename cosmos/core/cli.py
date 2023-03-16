@@ -18,6 +18,7 @@ from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
 from cosmos.core.scheduled_tasks.balances import reset_balances, send_balance_reset_nudges
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
+from cosmos.core.scheduled_tasks.task_cleanup import cleanup_old_tasks
 from cosmos.db.session import SyncSessionMaker
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
@@ -72,6 +73,7 @@ def cron_scheduler(  # noqa: PLR0913
     balances: bool = True,
     report_tasks: bool = True,
     report_rq_queues: bool = True,
+    task_cleanup: bool = True,
 ) -> None:  # pragma: no cover
 
     logger.info("Initialising scheduler...")
@@ -145,6 +147,13 @@ def cron_scheduler(  # noqa: PLR0913
                 "gauge": job_queue_summary,
             },
             schedule_fn=lambda: reward_settings.core.REPORT_JOB_QUEUE_LENGTH_SCHEDULE,
+            coalesce_jobs=True,
+        )
+
+    if task_cleanup:
+        scheduler.add_job(
+            cleanup_old_tasks,
+            schedule_fn=lambda: reward_settings.core.TASK_CLEANUP_SCHEDULE,
             coalesce_jobs=True,
         )
 
