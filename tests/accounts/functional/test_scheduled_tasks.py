@@ -226,12 +226,12 @@ def test_send_balance_reset_nudges_ok(
 
     assert mock_logger.info.call_args_list[0] == mock.call("Enqueueing email nudges tasks for balance resets.")
     assert mock_logger.info.call_args_list[1] == mock.call(
-        "%d %s %s tasks enqueued.", 2, "BALANCE_RESET", account_settings.SEND_EMAIL_TASK_NAME
+        "%d %s %s tasks enqueued.", 2, "BALANCE_RESET", account_settings.core.SEND_EMAIL_TASK_NAME
     )
 
     send_email_task = (
         db_session.execute(
-            select(RetryTask).join(TaskType).where(TaskType.name == account_settings.SEND_EMAIL_TASK_NAME).limit(2)
+            select(RetryTask).join(TaskType).where(TaskType.name == account_settings.core.SEND_EMAIL_TASK_NAME).limit(2)
         )
         .scalars()
         .unique()

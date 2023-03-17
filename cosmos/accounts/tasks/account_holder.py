@@ -238,7 +238,7 @@ def send_email(retry_task: RetryTask, db_session: "Session") -> None:
     response_audit: dict[str, Any] | str = {}
     if account_settings.core.ACTIVATE_TASKS_METRICS:
         tasks_run_total.labels(
-            app=account_settings.core.PROJECT_NAME, task_name=account_settings.SEND_EMAIL_TASK_NAME
+            app=account_settings.core.PROJECT_NAME, task_name=account_settings.core.SEND_EMAIL_TASK_NAME
         ).inc()
 
     task_params = retry_task.get_params()

@@ -419,14 +419,14 @@ class Jigsaw(BaseAgent):
             headers={"Token": self._get_auth_token()},
         )
 
-    def issue_reward(self) -> bool:
+    def issue_reward(self) -> str | None:
         """
         Issues jigsaw reward
 
         issued_date is set at the time of generating a new customer card ref
         expiry date is provided by jigsaw in a successful request to register reward
 
-        returns Success True or False
+        returns a Reward's associated_url on success
         """
         issued = self._generate_customer_card_ref()
         if not self.customer_card_ref:  # pragma: no cover
@@ -448,7 +448,7 @@ class Jigsaw(BaseAgent):
             associated_url=response_payload["data"]["voucher_url"],
         )
         self._send_issued_reward_activity(reward_uuid=reward.reward_uuid, issued_date=reward.issued_date)
-        return True
+        return reward.associated_url
 
     def fetch_balance(self) -> int:  # pragma: no cover
         raise NotImplementedError

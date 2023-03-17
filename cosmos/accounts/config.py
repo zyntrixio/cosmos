@@ -17,8 +17,7 @@ class AccountSettings(BaseSettings):
 
     ACCOUNT_HOLDER_ACTIVATION_TASK_NAME: str = "account-holder-activation"
     ENROLMENT_CALLBACK_TASK_NAME: str = "enrolment-callback"
-    SEND_EMAIL_TASK_NAME: str = "send-email"
-    SEND_EMAIL_TASK_RETRY_BACKOFF_BASE: float = 1
+
     CREATE_CAMPAIGN_BALANCES_TASK_NAME: str = "create-campaign-balances"
     DELETE_CAMPAIGN_BALANCES_TASK_NAME: str = "delete-campaign-balances"
     PENDING_ACCOUNTS_ACTIVATION_TASK_NAME: str = "pending-accounts-activation"

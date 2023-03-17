@@ -90,6 +90,8 @@ class CoreSettings(BaseSettings):
     TASK_RETRY_BACKOFF_BASE: float = 3
     PROMETHEUS_HTTP_SERVER_PORT: int = 9100
     SEND_EMAIL: bool = False
+    SEND_EMAIL_TASK_NAME: str = "send-email"
+    SEND_EMAIL_TASK_RETRY_BACKOFF_BASE: float = 1
     ACTIVATE_TASKS_METRICS: bool = True
 
     RABBITMQ_DSN: str = "amqp://guest:guest@localhost:5672//"
