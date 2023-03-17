@@ -103,7 +103,7 @@ def _create_advanced_warning_email_tasks(db_session: "Session") -> list["RetryTa
 
     email_tasks = sync_create_many_tasks(
         db_session,
-        task_type_name=account_settings.SEND_EMAIL_TASK_NAME,
+        task_type_name=account_settings.core.SEND_EMAIL_TASK_NAME,
         params_list=[
             {
                 "account_holder_id": data["account_holder_id"],
@@ -170,5 +170,5 @@ def send_balance_reset_nudges() -> None:
         "%d %s %s tasks enqueued.",
         len(send_email_tasks),
         EmailTemplateTypes.BALANCE_RESET.name,
-        account_settings.SEND_EMAIL_TASK_NAME,
+        account_settings.core.SEND_EMAIL_TASK_NAME,
     )

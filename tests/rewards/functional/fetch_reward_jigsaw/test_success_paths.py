@@ -108,9 +108,8 @@ def test_jigsaw_agent_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        success = agent.issue_reward()
+        assert agent.issue_reward() == sample_url
 
-    assert success
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
     assert reward.code == card_num
@@ -189,9 +188,8 @@ def test_jigsaw_agent_ok_token_already_set(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        success = agent.issue_reward()
+        assert agent.issue_reward() == sample_url
 
-    assert success
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
     assert reward.code == card_num
@@ -225,6 +223,7 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
     now = datetime.now(tz=UTC)
+    sample_url = "http://sample.url"
     httpretty.register_uri(
         "POST",
         f"{agent_config['base_url']}/order/V4/register",
@@ -243,7 +242,7 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
                     "transaction_value": tx_value,
                     "expiry_date": (now + timedelta(days=1)).isoformat(),
                     "balance": tx_value,
-                    "voucher_url": "https://sample.url",
+                    "voucher_url": sample_url,
                     "card_status": 1,
                 },
             }
@@ -282,9 +281,8 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        success = agent.issue_reward()
+        assert agent.issue_reward() == sample_url
 
-    assert success
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
     assert reward.code == card_num
@@ -323,7 +321,7 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
     now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
-
+    sample_url = "https://sample.url"
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4")
     successful_card_ref = uuid4()
     mock_uuid.side_effect = [card_ref, successful_card_ref]
@@ -378,7 +376,7 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
                             "transaction_value": tx_value,
                             "expiry_date": (now + timedelta(days=1)).isoformat(),
                             "balance": tx_value,
-                            "voucher_url": "https://sample.url",
+                            "voucher_url": sample_url,
                             "card_status": 1,
                         },
                     }
@@ -397,12 +395,11 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        success = agent.issue_reward()
+        assert agent.issue_reward() == sample_url
 
     assert answer_bot.calls["register"] == 2
     assert "reversal" not in answer_bot.calls
 
-    assert success
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == successful_card_ref)).scalar_one()
 
     assert reward.code == card_num
@@ -437,6 +434,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
     card_num = "NEW-REWARD-CODE"
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
     test_token = "test-token"
+    sample_url = "https://sample.url"
     now = datetime.now(tz=UTC)
     redis_raw.set(Jigsaw.REDIS_TOKEN_KEY, fernet.encrypt(test_token.encode()), timedelta(days=1))
     spy_redis_set = mocker.spy(redis_raw, "set")
@@ -497,7 +495,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
                                 "transaction_value": tx_value,
                                 "expiry_date": (now + timedelta(days=1)).isoformat(),
                                 "balance": tx_value,
-                                "voucher_url": "https://sample.url",
+                                "voucher_url": sample_url,
                                 "card_status": 1,
                             },
                         }
@@ -534,12 +532,11 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        success = agent.issue_reward()
+        assert agent.issue_reward() == sample_url
 
     assert answer_bot.calls["register"] == 2
     assert answer_bot.calls["reversal"] == 1
 
-    assert success
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == successful_card_ref)).scalar_one()
 
     assert reward.code == card_num

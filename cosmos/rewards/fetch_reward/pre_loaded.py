@@ -10,13 +10,13 @@ from .base import BaseAgent
 
 
 class PreLoaded(BaseAgent):
-    def issue_reward(self) -> bool:
+    def issue_reward(self) -> str | None:
         """
         Issue pre-loaded reward
 
         issued_date and expiry_date are set at the time of allocation
 
-        returns Success True | False
+        returns Reward.associated_url | None
         """
 
         validity_days: int = self.reward_config.load_required_fields_values()["validity_days"]
@@ -52,7 +52,7 @@ class PreLoaded(BaseAgent):
                 associated_url=func.format(associated_url_template, Reward.reward_uuid),
             )
             .where(Reward.id == available_reward.c.id)
-            .returning(Reward.reward_uuid, Reward.issued_date, Reward.expiry_date)
+            .returning(Reward.reward_uuid, Reward.issued_date, Reward.expiry_date, Reward.associated_url)
         )
 
         if res.rowcount > 1:  # pragma: no cover
@@ -61,22 +61,20 @@ class PreLoaded(BaseAgent):
             raise ValueError("Something went wrong, more than one Reward picked up, rolling back")
 
         success = bool(res.rowcount)
-        data_for_activity = res.first()
+        reward_data = res.first()
 
-        if success and not data_for_activity.expiry_date:  # pragma: no cover
+        if success and not reward_data.expiry_date:  # pragma: no cover
             # this should not be possbile but it's here as safeguard in case we modify db contraints
             self.db_session.rollback()
             raise ValueError("Both validity_days and expiry_date are None")
 
         if success:
             self.db_session.commit()
-            self._send_issued_reward_activity(
-                reward_uuid=data_for_activity.reward_uuid, issued_date=data_for_activity.issued_date
-            )
+            self._send_issued_reward_activity(reward_uuid=reward_data.reward_uuid, issued_date=reward_data.issued_date)
         else:
             self.db_session.rollback()
 
-        return success
+        return reward_data.associated_url if success else None
 
     def fetch_balance(self) -> int:  # pragma: no cover
         raise NotImplementedError

@@ -124,7 +124,7 @@ class BaseAgent(ABC):
         )
 
     @abstractmethod
-    def issue_reward(self) -> bool:  # pragma: no cover
+    def issue_reward(self) -> str | None:  # pragma: no cover
         ...
 
     @abstractmethod

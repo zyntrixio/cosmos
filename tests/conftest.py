@@ -732,3 +732,29 @@ def reward_issuance_task_type(db_session: "Session") -> TaskType:
     )
     db_session.commit()
     return tt
+
+
+@pytest.fixture(scope="function")
+def send_email_task_type(db_session: "Session") -> TaskType:
+    task_type = TaskType(
+        name=reward_settings.core.SEND_EMAIL_TASK_NAME,
+        path="path.to.func",
+        error_handler_path="path.to.error_handler",
+        queue_name="queue-name",
+    )
+    db_session.add(task_type)
+    db_session.flush()
+    db_session.add_all(
+        [
+            TaskTypeKey(task_type_id=task_type.task_type_id, name=key_name, type=key_type)
+            for key_name, key_type in (
+                ("retailer_id", "INTEGER"),
+                ("template_type", "STRING"),
+                ("account_holder_id", "INTEGER"),
+                ("extra_params", "JSON"),
+            )
+        ]
+    )
+
+    db_session.commit()
+    return task_type

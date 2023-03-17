@@ -91,7 +91,7 @@ def test_get_allocable_reward_ok(
     mock_datetime = mocker.patch("cosmos.rewards.fetch_reward.pre_loaded.datetime")
     mock_datetime.now.return_value = now
 
-    def issue_reward() -> bool:
+    def issue_reward() -> str | None:
         return issue_agent_specific_reward(
             db_session,
             campaign=campaign_with_rules,

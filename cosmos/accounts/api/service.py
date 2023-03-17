@@ -93,7 +93,7 @@ class AccountService(Service):
             )
             welcome_email_task = await async_create_task(
                 self.db_session,
-                task_type_name=account_settings.SEND_EMAIL_TASK_NAME,
+                task_type_name=account_settings.core.SEND_EMAIL_TASK_NAME,
                 params={
                     "account_holder_id": account_holder.id,
                     "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,

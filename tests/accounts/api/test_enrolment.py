@@ -104,7 +104,7 @@ def test_account_holder_enrol_success(
         db_session.execute(
             select(RetryTask).where(
                 TaskType.task_type_id == RetryTask.task_type_id,
-                TaskType.name == account_settings.SEND_EMAIL_TASK_NAME,
+                TaskType.name == account_settings.core.SEND_EMAIL_TASK_NAME,
             )
         )
         .unique()

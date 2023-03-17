@@ -21,8 +21,8 @@ def issue_agent_specific_reward(
     account_holder: AccountHolder,
     retry_task: "RetryTask",
     task_params: IssuanceTaskParams,
-) -> bool:
-    """issues a Reward, return True if successfull False if not."""
+) -> str | None:
+    """issues a Reward, returns the Reward's associated_url if successful None if not."""
 
     try:
         module_path, cls_name = reward_config.fetch_type.path.rsplit(".", 1)

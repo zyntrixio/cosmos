@@ -5,14 +5,21 @@ import sentry_sdk
 
 from retry_tasks_lib.db.models import RetryTask
 from retry_tasks_lib.enums import RetryTaskStatuses
-from retry_tasks_lib.utils.synchronous import enqueue_retry_task_delay, retryable_task
+from retry_tasks_lib.utils.synchronous import (
+    enqueue_retry_task,
+    enqueue_retry_task_delay,
+    retryable_task,
+    sync_create_task,
+)
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
 from cosmos.db.models import AccountHolder, Campaign, RewardConfig
 from cosmos.db.session import SyncSessionMaker
+from cosmos.retailers.enums import EmailTemplateTypes
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward import issue_agent_specific_reward
 from cosmos.rewards.schemas import IssuanceTaskParams
@@ -45,10 +52,13 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
         select(RewardConfig).where(RewardConfig.id == task_params.reward_config_id)
     ).scalar_one()
     account_holder = db_session.execute(
-        select(AccountHolder).where(AccountHolder.id == task_params.account_holder_id)
+        select(AccountHolder)
+        .options(joinedload(AccountHolder.retailer))
+        .where(AccountHolder.id == task_params.account_holder_id)
     ).scalar_one()
+    retailer = account_holder.retailer
 
-    if issue_agent_specific_reward(
+    if associated_url := issue_agent_specific_reward(
         db_session,
         campaign=campaign,
         reward_config=reward_config,
@@ -56,7 +66,25 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
         retry_task=retry_task,
         task_params=task_params,
     ):
+        send_email_task = sync_create_task(
+            db_session,
+            task_type_name=reward_settings.core.SEND_EMAIL_TASK_NAME,
+            params={
+                "account_holder_id": account_holder.id,
+                "template_type": EmailTemplateTypes.REWARD_ISSUANCE.name,
+                "retailer_id": retailer.id,
+                "extra_params": {
+                    "reward_url": associated_url,
+                    "campaign_slug": campaign.slug,
+                    "retailer_slug": retailer.slug,
+                    "retailer_name": retailer.name,
+                    "account_holder_uuid": str(account_holder.account_holder_uuid),
+                },
+            },
+        )
+        db_session.commit()
         retry_task.update_task(db_session, status=RetryTaskStatuses.SUCCESS, clear_next_attempt_time=True)
+        enqueue_retry_task(connection=redis_raw, retry_task=send_email_task)
 
     else:
         if reward_settings.MESSAGE_IF_NO_PRE_LOADED_REWARDS:
