@@ -11,8 +11,10 @@ import wtforms
 from flask import flash, redirect, request, session, url_for
 from flask_admin import expose
 from flask_admin.actions import action
+from flask_admin.contrib.sqla.fields import QuerySelectField
+from flask_admin.form import BaseForm
 from flask_admin.model import typefmt
-from sqlalchemy import inspect
+from sqlalchemy import inspect, or_
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
@@ -547,9 +549,17 @@ class EarnRuleAdmin(CanDeleteModelView):
             },
             "campaign": {
                 "validators": [wtforms.validators.DataRequired()],
-                "query_factory": lambda: self.session.query(Campaign).filter_by(earn_rule=None),
+                "query_factory": lambda: self.session.query(Campaign).where(Campaign.earn_rule == None),  # noqa: E711
             },
         }
+
+    def edit_form(self, obj: EarnRule) -> BaseForm:
+        form = super().edit_form(obj)
+        campaign_field: QuerySelectField = form.campaign
+        campaign_field.query_factory = lambda: self.session.query(Campaign).where(
+            or_(Campaign.id == obj.campaign_id, Campaign.earn_rule == None)  # noqa: E711
+        )
+        return form
 
     def on_model_delete(self, model: "EarnRule") -> None:
         validate_earn_rule_deletion(model.campaign)
@@ -661,9 +671,17 @@ class RewardRuleAdmin(CanDeleteModelView):
             },
             "campaign": {
                 "validators": [wtforms.validators.DataRequired()],
-                "query_factory": lambda: self.session.query(Campaign).filter_by(reward_rule=None),
+                "query_factory": lambda: self.session.query(Campaign).where(Campaign.reward_rule == None),  # noqa: E711
             },
         }
+
+    def edit_form(self, obj: RewardRule) -> BaseForm:
+        form = super().edit_form(obj)
+        campaign_field: QuerySelectField = form.campaign
+        campaign_field.query_factory = lambda: self.session.query(Campaign).where(
+            or_(Campaign.id == obj.campaign_id, Campaign.reward_rule == None)  # noqa: E711
+        )
+        return form
 
     def on_model_delete(self, model: "RewardRule") -> None:
         validate_reward_rule_deletion(model.campaign)
