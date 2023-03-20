@@ -209,8 +209,17 @@ class CampaignBalanceAdmin(BaseModelView):
 
 
 class MarketingPreferenceAdmin(BaseModelView):
+    column_list = (
+        "account_holder",
+        "account_holder.retailer",
+        "key_name",
+        "value",
+        "value_type",
+        "created_at",
+        "updated_at",
+    )
     column_searchable_list = ("account_holder.id", "account_holder.email", "account_holder.account_holder_uuid")
-    column_filters = ("key_name", "value_type")
-    column_labels = {"account_holder": "Account Holder"}
+    column_filters = ("key_name", "value_type", "account_holder.retailer.slug", "value")
+    column_labels = {"account_holder": "Account Holder", "account_holder.retailer": "Retailer"}
     column_formatters = {"account_holder": account_holder_repr}
     column_default_sort = ("account_holder.created_at", True)
