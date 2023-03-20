@@ -75,6 +75,7 @@ async def create_transaction(
     account_holder_id: int,
     retailer_id: int,
     transaction_data: CreateTransactionSchema,
+    tx_datetime_naive: datetime,
 ) -> Transaction:
 
     transaction_kwargs = {
@@ -83,7 +84,7 @@ async def create_transaction(
         "transaction_id": transaction_data.transaction_id,
         "amount": transaction_data.amount,
         "mid": transaction_data.mid,
-        "datetime": transaction_data.transaction_datetime.replace(tzinfo=None),
+        "datetime": tx_datetime_naive,
         "payment_transaction_id": transaction_data.payment_transaction_id,
     }
 

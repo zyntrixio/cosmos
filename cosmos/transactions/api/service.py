@@ -538,8 +538,6 @@ class TransactionService(Service):
         await self.store_activity(**activity_data)
 
     async def get_active_campaigns(self, transaction_datetime: datetime) -> list[Campaign]:
-        # database DateTimes are naive
-        transaction_datetime = transaction_datetime.replace(tzinfo=None)
         return [
             campaign
             for campaign in cast(list[Campaign], self.retailer.campaigns)
@@ -555,6 +553,9 @@ class TransactionService(Service):
         self, request_payload: CreateTransactionSchema, tx_import_activity_data: dict
     ) -> tuple[ServiceResult[str, ServiceError], list["RetryTask"] | None]:
 
+        # database DateTimes are naive
+        tx_datetime_naive = request_payload.transaction_datetime.replace(tzinfo=None)
+
         account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
@@ -563,12 +564,12 @@ class TransactionService(Service):
         if account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE)), None
 
-        if not (active_campaigns := await self.get_active_campaigns(request_payload.transaction_datetime)):
+        if not (active_campaigns := await self.get_active_campaigns(tx_datetime_naive)):
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS)), None
 
         tx_import_activity_data["campaign_slugs"] = [cmp.slug for cmp in active_campaigns]
 
-        if account_holder.created_at > request_payload.transaction_datetime.replace(tzinfo=None):
+        if account_holder.created_at > tx_datetime_naive:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_TX_DATE)), None
 
         transaction = await crud.create_transaction(
@@ -576,6 +577,7 @@ class TransactionService(Service):
             account_holder_id=account_holder.id,
             retailer_id=self.retailer.id,
             transaction_data=request_payload,
+            tx_datetime_naive=tx_datetime_naive,
         )
         if not transaction.processed:
             await self.commit_db_changes()
