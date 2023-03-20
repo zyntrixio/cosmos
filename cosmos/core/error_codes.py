@@ -77,6 +77,13 @@ class ErrorCode(enum.Enum):
             display_message="User Account not Active.",
         ),
     )
+    INVALID_TX_DATE = HttpError(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=HttpErrorDetail(
+            code="INVALID_TX_DATE",
+            display_message="Transaction dated before user join.",
+        ),
+    )
     NO_ACTIVE_CAMPAIGNS = HttpError(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=HttpErrorDetail(

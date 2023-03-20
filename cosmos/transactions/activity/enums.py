@@ -27,6 +27,7 @@ class TxImportReasons(Enum):
     NO_ACTIVE_CAMPAIGNS = "No active campaigns"
     NO_ACTIVE_USER = "No active user"
     DUPLICATE_TRANSACTION = "Transaction ID not unique"
+    INVALID_TX_DATE = "Transaction dated before user join"
     GENERIC_HANDLED_ERROR = "Internal server error"
 
 
@@ -79,6 +80,8 @@ class ActivityType(ActivityTypeMixin, Enum):
                 reason = TxImportReasons.NO_ACTIVE_USER.value
             case ErrorCode.DUPLICATE_TRANSACTION.name:
                 reason = TxImportReasons.DUPLICATE_TRANSACTION.value
+            case ErrorCode.INVALID_TX_DATE.name:
+                reason = TxImportReasons.INVALID_TX_DATE.value
             case _:
                 reason = TxImportReasons.GENERIC_HANDLED_ERROR.value
 

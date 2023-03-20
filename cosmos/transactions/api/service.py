@@ -568,6 +568,9 @@ class TransactionService(Service):
 
         tx_import_activity_data["campaign_slugs"] = [cmp.slug for cmp in active_campaigns]
 
+        if account_holder.created_at > request_payload.transaction_datetime.replace(tzinfo=None):
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_TX_DATE)), None
+
         transaction = await crud.create_transaction(
             self.db_session,
             account_holder_id=account_holder.id,
