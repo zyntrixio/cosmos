@@ -204,6 +204,40 @@ def test_transaction_user_not_active(
     )
 
 
+def test_transaction_datetime_before_account_join(
+    test_client: "TestClient",
+    setup: "SetupType",
+    sample_payload: dict,
+    campaign_with_rules: "Campaign",
+    mock_activity: "MagicMock",
+) -> None:
+    db_session, retailer, account_holder = setup
+
+    account_holder.status = "ACTIVE"
+    account_holder.created_at = datetime.now()  # noqa: DTZ005
+    db_session.commit()
+
+    sample_payload["loyalty_id"] = str(account_holder.account_holder_uuid)
+
+    assert account_holder.created_at > datetime.fromtimestamp(sample_payload["datetime"])  # noqa: DTZ006
+
+    resp = test_client.post(
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
+        json=sample_payload,
+        headers=auth_headers,
+    )
+
+    validate_error_response(resp, ErrorCode.INVALID_TX_DATE)
+
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="INVALID_TX_DATE",
+        campaign_slugs=[campaign_with_rules.slug],
+    )
+
+
 def test_transaction_no_active_campaigns(
     test_client: "TestClient", setup: "SetupType", sample_payload: dict, mock_activity: "MagicMock"
 ) -> None:
