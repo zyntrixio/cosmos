@@ -118,7 +118,7 @@ class RewardConfigAdmin(BaseModelView):
         flash("RewardConfig DEACTIVATED")
 
 
-class RewardAdmin(BaseModelView):
+class RewardAdminBase(BaseModelView):
     can_create = False
     column_list = (
         "account_holder",
@@ -165,12 +165,26 @@ class RewardAdmin(BaseModelView):
 
     def inaccessible_callback(self, name: str, **kwargs: dict | None) -> "Response":
         if self.is_read_write_user:
-            return redirect(url_for("rewards.index_view"))
+            return redirect(url_for(f"{self.rw_endpoint}.index_view"))
 
         if self.is_read_only_user:
-            return redirect(url_for("ro-rewards.index_view"))
+            return redirect(url_for(f"{self.ro_endpoint}.index_view"))
 
         return super().inaccessible_callback(name, **kwargs)
+
+
+class AllocatedRewardAdmin(RewardAdminBase):
+    can_edit = False
+    rw_endpoint = "account-holder-rewards"
+    ro_endpoint = "ro-account-holder-rewards"
+
+    def get_query(self) -> Query:
+        return super().get_query().filter(Reward.account_holder_id.is_not(None))
+
+
+class RewardAdmin(RewardAdminBase):
+    rw_endpoint = "rewards"
+    ro_endpoint = "ro-rewards"
 
     def is_action_allowed(self, name: str) -> bool:
         return self.is_read_write_user if name == "delete-rewards" else False
@@ -228,9 +242,16 @@ class ReadOnlyRewardAdmin(RewardAdmin):
     column_export_exclude_list = [*RewardAdmin.column_export_exclude_list, "associated_url"]
 
     def is_accessible(self) -> bool:
-        if self.is_read_write_user:
-            return False
-        return super(RewardAdmin, self).is_accessible()
+        return bool(self.is_read_only_user)
+
+
+class ReadOnlyAllocatedRewardAdmin(AllocatedRewardAdmin):
+    column_details_exclude_list = ["code", "associated_url"]
+    column_exclude_list = ["code", "associated_url"]
+    column_export_exclude_list = [*AllocatedRewardAdmin.column_export_exclude_list, "associated_url"]
+
+    def is_accessible(self) -> bool:
+        return bool(self.is_read_only_user)
 
 
 class FetchTypeAdmin(BaseModelView):

@@ -1,8 +1,11 @@
 from typing import TYPE_CHECKING
 
+from admin.views.accounts import CUSTOMER_MANAGEMENT_TITLE
 from admin.views.campaign_reward.campaign import CampaignAdmin, EarnRuleAdmin, RewardRuleAdmin
 from admin.views.campaign_reward.reward import (
+    AllocatedRewardAdmin,
     FetchTypeAdmin,
+    ReadOnlyAllocatedRewardAdmin,
     ReadOnlyRewardAdmin,
     RewardAdmin,
     RewardConfigAdmin,
@@ -79,6 +82,24 @@ def register_campaign_and_reward_management_admin(admin: "Admin") -> None:
             "Rewards",
             endpoint="ro-rewards",
             category=campaign_and_reward_management_title,
+        )
+    )
+    admin.add_view(
+        AllocatedRewardAdmin(
+            Reward,
+            scoped_db_session,
+            "Allocated Rewards",
+            endpoint="account-holder-rewards",
+            category=CUSTOMER_MANAGEMENT_TITLE,
+        )
+    )
+    admin.add_view(
+        ReadOnlyAllocatedRewardAdmin(
+            Reward,
+            scoped_db_session,
+            "Account Holder Rewards",
+            endpoint="ro-account-holder-rewards",
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
     admin.add_view(
