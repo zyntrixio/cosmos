@@ -39,7 +39,7 @@ class UserSessionMixin:
 
     @property
     def is_read_only_user(self) -> bool:
-        return bool(self.user_roles.intersection(self.RO_AZURE_ROLES))
+        return bool(self.user_roles.intersection(self.RO_AZURE_ROLES)) and not self.is_read_write_user
 
     @property
     def is_read_write_user(self) -> bool:

@@ -14,15 +14,17 @@ if TYPE_CHECKING:
     from flask_admin import Admin
 
 
+CUSTOMER_MANAGEMENT_TITLE = "Customer"
+
+
 def register_customer_admin(admin: "Admin") -> None:
-    customer_management_title = "Customer"
     admin.add_view(
         AccountHolderAdmin(
             AccountHolder,
             scoped_db_session,
             "Account Holders",
             endpoint="account-holders",
-            category=customer_management_title,
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
     admin.add_view(
@@ -31,7 +33,7 @@ def register_customer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Profiles",
             endpoint="profiles",
-            category=customer_management_title,
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
     admin.add_view(
@@ -40,7 +42,7 @@ def register_customer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Campaign Balances",
             endpoint="campaign-balances",
-            category=customer_management_title,
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
     admin.add_view(
@@ -49,7 +51,7 @@ def register_customer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Pending Rewards",
             endpoint="pending-rewards",
-            category=customer_management_title,
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
     admin.add_view(
@@ -58,6 +60,6 @@ def register_customer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Marketing Preferences",
             endpoint="marketing-preferences",
-            category=customer_management_title,
+            category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )
