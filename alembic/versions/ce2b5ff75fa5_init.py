@@ -456,6 +456,7 @@ def upgrade() -> None:
         sa.Column("associated_url", sa.String(), server_default="", nullable=False),
         sa.Column("retailer_id", sa.BigInteger(), nullable=False),
         sa.Column("campaign_id", sa.BigInteger(), nullable=True),
+        sa.Column("reward_file_log_id", sa.BigInteger(), nullable=True),
         sa.ForeignKeyConstraint(["account_holder_id"], ["account_holder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["retailer_id"], ["retailer.id"], ondelete="CASCADE"),
@@ -463,6 +464,7 @@ def upgrade() -> None:
             ["reward_config_id"],
             ["reward_config.id"],
         ),
+        sa.ForeignKeyConstraint(["reward_file_log_id"], ["reward_file_log.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code", "retailer_id", "reward_config_id", name="code_retailer_reward_config_unq"),
     )

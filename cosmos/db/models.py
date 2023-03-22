@@ -320,11 +320,13 @@ class Reward(IdPkMixin, Base, TimestampMixin):
 
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="SET NULL"), nullable=True)  # Set when issued
+    reward_file_log_id = Column(BigInteger, ForeignKey("reward_file_log.id"), nullable=True)
 
     reward_config = relationship("RewardConfig", back_populates="rewards")
     retailer = relationship("Retailer", back_populates="rewards")
     campaign = relationship("Campaign", back_populates="rewards")
     reward_updates = relationship("RewardUpdate", back_populates="reward")
+    reward_file_log = relationship("RewardFileLog", back_populates="rewards")
 
     class RewardStatuses(enum.Enum):
         UNALLOCATED = "unallocated"
@@ -406,6 +408,8 @@ class RewardFileLog(IdPkMixin, Base, TimestampMixin):
 
     file_name = Column(String(500), index=True, nullable=False)
     file_agent_type = Column(Enum(FileAgentType), index=True, nullable=False)
+
+    rewards = relationship("Reward", back_populates="reward_file_log")
 
     __mapper_args__ = {"eager_defaults": True}
     __table_args__ = (UniqueConstraint("file_name", "file_agent_type", name="file_name_file_agent_type_unq"),)

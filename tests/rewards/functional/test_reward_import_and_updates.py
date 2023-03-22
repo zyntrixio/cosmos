@@ -51,6 +51,14 @@ def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Mock
     reward_agent = RewardImportAgent()
     eligible_reward_codes = ["reward1", "reward2", "reward3"]
 
+    file_name = "re-test/rewards.import.test-reward-slug.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
+
     rewards = _get_reward_rows(db_session)
     assert len(rewards) == 1
     assert rewards[0] == pre_existing_reward
@@ -63,7 +71,7 @@ def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Mock
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name="re-test/rewards.import.test-reward-slug.new-reward.csv",
+        reward_file_log=reward_file_log,
         blob_content=blob_content,
         db_session=db_session,
     )
@@ -71,6 +79,9 @@ def test_import_agent__process_csv(setup_rewards: RewardsSetupType, mocker: Mock
     rewards = _get_reward_rows(db_session)
     assert len(rewards) == 4
     assert all(v in [reward.code for reward in rewards] for v in eligible_reward_codes)
+    assert all(
+        reward.reward_file_log_id == reward_file_log.id for reward in rewards if reward.code in eligible_reward_codes
+    )
     # We should be sentry warned about the existing token
     assert capture_message_spy.call_count == 2  # Errors should all be rolled up in to one call per error category
     assert (
@@ -88,9 +99,17 @@ def test_import_agent__process_csv_with_expiry_date(setup_rewards: RewardsSetupT
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
 
+    file_name = "re-test/rewards.import.test-reward-slug.expires.2023-01-16.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
+
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name="re-test/rewards.import.test-reward-slug.expires.2023-01-16.new-reward.csv",
+        reward_file_log=reward_file_log,
         blob_content="reward1\nreward2\nreward3",
         db_session=db_session,
     )
@@ -106,10 +125,18 @@ def test_import_agent__process_csv_with_bad_expiry_date(setup_rewards: RewardsSe
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
 
+    file_name = "re-test/rewards.import.test-reward-slug.expires.BAD-DATE.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
+
     with pytest.raises(BlobProcessingError) as exc_info:
         reward_agent.process_csv(
             retailer=reward_config.retailer,
-            blob_name="re-test/rewards.import.test-reward-slug.expires.BAD-DATE.new-reward.csv",
+            reward_file_log=reward_file_log,
             blob_content="reward1\nreward2\nreward3",
             db_session=db_session,
         )
@@ -134,6 +161,12 @@ def test_import_agent__process_csv_soft_deleted(
     # This means the same reward code should import OK for the 'test-reward' reward slug
     pre_existing_reward.reward_config_id = second_reward_config.id
     pre_existing_reward.deleted = True
+    file_name = "re-test/rewards.import.test-reward-slug.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
     db_session.commit()
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
@@ -150,7 +183,7 @@ def test_import_agent__process_csv_soft_deleted(
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name="re-test/rewards.import.test-reward-slug.new-reward.csv",
+        reward_file_log=reward_file_log,
         blob_content=blob_content,
         db_session=db_session,
     )
@@ -173,6 +206,12 @@ def test_import_agent__process_csv_not_soft_deleted(
     # Associate the existing reward with a different reward config i.e. a different reward slug.
     # This means the same reward code should import OK for the 'test-reward' reward type slug
     pre_existing_reward.reward_config_id = second_reward_config.id
+    file_name = "re-test/rewards.import.test-reward-slug.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
     db_session.commit()
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
@@ -189,7 +228,7 @@ def test_import_agent__process_csv_not_soft_deleted(
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name="re-test/rewards.import.test-reward-slug.new-reward.csv",
+        reward_file_log=reward_file_log,
         blob_content=blob_content,
         db_session=db_session,
     )
@@ -214,6 +253,12 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(
     """
     db_session, reward_config, pre_existing_reward = setup_rewards
     pre_existing_reward.deleted = True
+    file_name = "re-test/rewards.import.test-reward-slug.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
     db_session.commit()
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
@@ -230,7 +275,7 @@ def test_import_agent__process_csv_same_reward_slug_not_soft_deleted(
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name="re-test/rewards.import.test-reward-slug.new-reward.csv",
+        reward_file_log=reward_file_log,
         blob_content=blob_content,
         db_session=db_session,
     )
@@ -282,10 +327,17 @@ def test_import_agent__process_csv_no_reward_config(setup_rewards: RewardsSetupT
 
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
+    file_name = "re-test/rewards.import.incorrect-reward-type.new-rewards.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
     with pytest.raises(BlobProcessingError) as exc_info:
         reward_agent.process_csv(
             retailer=reward_config.retailer,
-            blob_name="re-test/rewards.import.incorrect-reward-type.new-rewards.csv",
+            reward_file_log=reward_file_log,
             blob_content="reward1\nreward2\nreward3",
             db_session=db_session,
         )
@@ -297,12 +349,20 @@ def test_import_agent__process_csv_blob_path_does_not_template(
 ) -> None:
     db_session, reward_config, _ = setup_rewards
 
+    file_name = "re-test/rewards.reward-slug.whatever.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
+
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardImportAgent()
     with pytest.raises(BlobProcessingError) as exc_info:
         reward_agent.process_csv(
             retailer=reward_config.retailer,
-            blob_name="re-test/rewards.reward-slug.whatever.csv",
+            reward_file_log=reward_file_log,
             blob_content="reward1\nreward2\nreward3",
             db_session=db_session,
         )
@@ -314,6 +374,13 @@ def test_import_agent__process_csv_blob_path_does_not_template(
 def test_updates_agent__process_csv(setup_rewards: RewardsSetupType, mocker: MockerFixture) -> None:
     db_session, reward_config, _ = setup_rewards
 
+    blob_name = "/re-test/rewards.update.test.csv"
+    reward_file_log = RewardFileLog(
+        file_name=blob_name,
+        file_agent_type=FileAgentType.UPDATE,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
     mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
     reward_agent = RewardUpdatesAgent()
     mock__process_updates = mocker.patch.object(reward_agent, "_process_updates")
@@ -327,7 +394,7 @@ TEST87654322,2021-07-30,redeemed
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name=blob_name,
+        reward_file_log=reward_file_log,
         blob_content=content,
         db_session=db_session,
     )
@@ -380,6 +447,12 @@ def test_updates_agent__process_csv_reward_code_fails_non_validating_rows(
     """If non-validating values are encountered, sentry should log a msg"""
     db_session, reward_config, reward = setup_rewards
     reward.account_holder_id = account_holder.id  # allocated/issued
+    blob_name = "/re-test/rewards.update.test.csv"
+    reward_file_log = RewardFileLog(
+        file_name=blob_name,
+        file_agent_type=FileAgentType.UPDATE,
+    )
+    db_session.add(reward_file_log)
     db_session.commit()
 
     from cosmos.rewards.imports.file_agent import sentry_sdk as file_agent_sentry_sdk
@@ -389,7 +462,6 @@ def test_updates_agent__process_csv_reward_code_fails_non_validating_rows(
     mock_settings = mocker.patch("cosmos.rewards.imports.file_agent.reward_settings")
     mock_settings.BLOB_IMPORT_LOGGING_LEVEL = logging.INFO
     reward_agent = RewardUpdatesAgent()
-    blob_name = "/re-test/rewards.update.test.csv"
     bad_date = "20210830"
     bad_status = "nosuchstatus"
     content = f"""
@@ -400,7 +472,7 @@ TEST666666,2021-07-30,{bad_status}
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name=blob_name,
+        reward_file_log=reward_file_log,
         blob_content=content,
         db_session=db_session,
     )
@@ -426,10 +498,16 @@ def test_updates_agent__process_csv_reward_code_fails_malformed_csv_rows(
     reward_agent = RewardUpdatesAgent()
     blob_name = "/re-test/rewards.update.test.csv"
     content = "TEST87654321,2021-07-30\nTEST12345678,redeemed\n"
+    reward_file_log = RewardFileLog(
+        file_name=blob_name,
+        file_agent_type=FileAgentType.UPDATE,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
 
     reward_agent.process_csv(
         retailer=reward_config.retailer,
-        blob_name=blob_name,
+        reward_file_log=reward_file_log,
         blob_content=content,
         db_session=db_session,
     )
