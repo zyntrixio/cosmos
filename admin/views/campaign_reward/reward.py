@@ -9,7 +9,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Query, joinedload
 
 from admin.activity_utils.enums import ActivityType
-from admin.helpers.custom_formatters import account_holder_export_repr, account_holder_repr
+from admin.helpers.custom_formatters import account_holder_export_repr, account_holder_repr, reward_file_log_format
 from admin.views.campaign_reward.validators import validate_required_fields_values_yaml, validate_retailer_fetch_type
 from admin.views.model_views import BaseModelView
 from cosmos.campaigns.enums import CampaignStatuses
@@ -132,13 +132,16 @@ class RewardAdmin(BaseModelView):
         "retailer",
         "associated_url",
         "campaign",
+        "reward_file_log",
     )
+    column_labels = {"reward_file_log": "Reward filename"}
     column_filters = (
         "account_holder.id",
         "account_holder.email",
         "retailer.slug",
         "campaign.slug",
         "reward_config.slug",
+        "reward_file_log.file_name",
         "issued_date",
         RewardStatusFilter(
             "status",
@@ -150,7 +153,7 @@ class RewardAdmin(BaseModelView):
         "account_holder.account_holder_uuid",
         "code",
     )
-    column_formatters = {"account_holder": account_holder_repr}
+    column_formatters = {"account_holder": account_holder_repr, "reward_file_log": reward_file_log_format}
     form_widget_args = {
         "reward_id": {"readonly": True},
         "code": {"readonly": True},

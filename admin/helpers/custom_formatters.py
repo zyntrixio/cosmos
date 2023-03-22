@@ -56,6 +56,16 @@ def account_holder_repr(
     )
 
 
+def reward_file_log_format(_v: type[BaseModelView], _c: "Context", model: "Reward", _p: str) -> str | None:
+    return (
+        Markup("<strong><a href='{0}'>{1}</a></strong>").format(
+            url_for("reward-file-log.details_view", id=model.reward_file_log.id), model.reward_file_log.file_name
+        )
+        if model.reward_file_log
+        else None
+    )
+
+
 def account_holder_repr_transaction_earn(
     _v: type[BaseModelView],
     _c: "Context",
