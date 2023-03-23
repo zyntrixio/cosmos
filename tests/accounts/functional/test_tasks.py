@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
@@ -12,6 +13,7 @@ from pytest_mock import MockerFixture
 from retry_tasks_lib.db.models import RetryTask
 from retry_tasks_lib.enums import RetryTaskStatuses
 from retry_tasks_lib.utils.synchronous import IncorrectRetryTaskStatusError
+from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from testfixtures import LogCapture
 
@@ -24,8 +26,16 @@ from cosmos.accounts.tasks.account_holder import (
     enrolment_callback,
     send_email,
 )
-from cosmos.db.models import AccountHolder, Campaign, EmailTemplateKey, Retailer
-from cosmos.retailers.enums import EmailTemplateKeys, EmailTemplateTypes, RetailerStatuses
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderEmail,
+    Campaign,
+    EmailTemplate,
+    EmailTemplateKey,
+    EmailType,
+    Retailer,
+)
+from cosmos.retailers.enums import EmailTemplateKeys, EmailTypeSlugs, RetailerStatuses
 
 
 class MockedOauthToken:
@@ -69,6 +79,14 @@ def mock_auth_retry_session() -> Generator:
 def mock_counter_inc() -> Generator:
     with mock.patch("cosmos.core.prometheus.Counter.inc", autospec=True) as mock_metrics:
         yield mock_metrics
+
+
+@pytest.fixture(scope="function")
+def welcome_email_type(db_session: "Session") -> EmailType:
+    et = EmailType(slug=EmailTypeSlugs.WELCOME_EMAIL.name)
+    db_session.add(et)
+    db_session.commit()
+    return et
 
 
 @httpretty.activate
@@ -325,16 +343,29 @@ def test_enrolment_callback(
     ]
 
 
+@pytest.mark.parametrize(
+    ("account_holder_email_exists", "campaign_slug_passed"),
+    (
+        pytest.param(False, False, id="first time running task, no campaign slug"),
+        pytest.param(False, True, id="first time running task, campaign slug in extra params"),
+        pytest.param(True, False, id="second time running task, no campaign slug"),
+        pytest.param(True, True, id="second time running task, campaign slug in extra params"),
+    ),
+)
 @httpretty.activate
 def test_send_email_task(
+    account_holder_email_exists: bool,
+    campaign_slug_passed: bool,
     db_session: "Session",
     account_holder: "AccountHolder",
-    send_welcome_email_task: RetryTask,
+    create_send_email_task: Callable[..., RetryTask],
     populate_email_template_req_keys: list[EmailTemplateKey],
-    create_email_template: Callable,
+    create_email_template: Callable[..., EmailTemplate],
     retailer: Retailer,
     mocker: MockerFixture,
     capture: LogCapture,
+    welcome_email_type: EmailType,
+    campaign_with_rules: Campaign,
 ) -> None:
     mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
     mock_settings.SEND_EMAIL = True
@@ -343,6 +374,7 @@ def test_send_email_task(
     mock_settings.MAILJET_API_SECRET_KEY = "sausage"  # noqa: S105
     account_holder.account_number = "TEST1234"
     db_session.commit()
+    mock_uuid = uuid.uuid4()
     fake_response_body = json.dumps(
         {
             "Messages": [
@@ -351,7 +383,7 @@ def test_send_email_task(
                     "To": [
                         {
                             "Email": "activate_1@test.user",
-                            "MessageUUID": "123",
+                            "MessageUUID": str(mock_uuid),
                             "MessageID": 456,
                             "MessageHref": "https://api.mailjet.com/v3/message/456",
                         }
@@ -363,11 +395,11 @@ def test_send_email_task(
     email_template_req_keys: list[EmailTemplateKey] = populate_email_template_req_keys
     email_template_params = {
         "template_id": "1234",
-        "type": EmailTemplateTypes.WELCOME_EMAIL,
+        "email_type_id": welcome_email_type.id,
         "retailer_id": retailer.id,
         "required_keys": email_template_req_keys,
     }
-    create_email_template(**email_template_params)
+    email_template = create_email_template(**email_template_params)
 
     httpretty.register_uri(
         "POST",
@@ -375,6 +407,29 @@ def test_send_email_task(
         body=fake_response_body,
         status=200,
     )
+
+    if campaign_slug_passed:
+        campaign_id = campaign_with_rules.id
+        send_welcome_email_task = create_send_email_task(extra_params={"campaign_slug": campaign_with_rules.slug})
+
+    else:
+        campaign_id = None
+        send_welcome_email_task = create_send_email_task()
+
+    if account_holder_email_exists:
+        assert not db_session.scalar(
+            select(AccountHolderEmail).where(AccountHolderEmail.retry_task_id == send_welcome_email_task.retry_task_id)
+        )
+    else:
+        db_session.add(
+            AccountHolderEmail(
+                account_holder_id=account_holder.id,
+                email_type_id=email_template.email_type_id,
+                retry_task_id=send_welcome_email_task.retry_task_id,
+                campaign_id=campaign_id,
+            )
+        )
+        db_session.commit()
 
     send_email(retry_task_id=send_welcome_email_task.retry_task_id)
 
@@ -394,6 +449,13 @@ def test_send_email_task(
             "timestamp": mocker.ANY,
         }
     ]
+    assert (
+        account_holder_email := db_session.scalar(
+            select(AccountHolderEmail).where(AccountHolderEmail.retry_task_id == send_welcome_email_task.retry_task_id)
+        )
+    )
+    assert account_holder_email.message_uuid == mock_uuid
+    assert account_holder_email.campaign_id == campaign_id
 
 
 @httpretty.activate
@@ -406,6 +468,7 @@ def test_send_email_task_with_send_email_set_to_false(
     retailer: Retailer,
     mocker: MockerFixture,
     capture: LogCapture,
+    welcome_email_type: EmailType,
 ) -> None:
     mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
     mock_settings.SEND_EMAIL = False
@@ -434,7 +497,7 @@ def test_send_email_task_with_send_email_set_to_false(
     email_template_req_keys: list[EmailTemplateKey] = populate_email_template_req_keys
     email_template_params = {
         "template_id": "1234",
-        "type": EmailTemplateTypes.WELCOME_EMAIL,
+        "email_type_id": welcome_email_type.id,
         "retailer_id": retailer.id,
         "required_keys": email_template_req_keys,
     }
@@ -467,13 +530,14 @@ def test_send_email_task_missing_req_fields(
     retailer: Retailer,
     mocker: MockerFixture,
     capture: LogCapture,
+    welcome_email_type: EmailType,
 ) -> None:
     account_holder.email = ""
     db_session.commit()
     email_template_req_keys: list[EmailTemplateKey] = populate_email_template_req_keys
     email_template_params = {
         "template_id": "test1234",
-        "type": EmailTemplateTypes.WELCOME_EMAIL,
+        "email_type_id": welcome_email_type.id,
         "retailer_id": retailer.id,
         "required_keys": email_template_req_keys,
     }
@@ -510,6 +574,7 @@ def test_send_email_task_400(
     retailer: Retailer,
     mocker: "MockerFixture",
     capture: LogCapture,
+    welcome_email_type: EmailType,
 ) -> None:
     mock_sentry = mocker.patch("cosmos.accounts.tasks.account_holder.sentry_sdk")
     mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
@@ -537,7 +602,7 @@ def test_send_email_task_400(
     email_template_req_keys: list[EmailTemplateKey] = populate_email_template_req_keys
     email_template_params = {
         "template_id": "1234",
-        "type": EmailTemplateTypes.WELCOME_EMAIL,
+        "email_type_id": welcome_email_type.id,
         "retailer_id": retailer.id,
         "required_keys": email_template_req_keys,
     }
@@ -572,7 +637,7 @@ def test_send_email_task_400(
     ]
     msg = (
         f"Email error: MailJet HTTP code: 400, retailer slug: {retailer.slug}, "
-        f"email type: {EmailTemplateTypes.WELCOME_EMAIL.name}, template id: 1234"
+        f"email type: {EmailTypeSlugs.WELCOME_EMAIL.name}, template id: 1234"
     )
     assert any(msg in record.message for record in capture.records)
     assert msg in mock_sentry.capture_message.call_args.args[0]

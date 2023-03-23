@@ -19,7 +19,7 @@ from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
 from cosmos.db.models import AccountHolder, Campaign, RewardConfig
 from cosmos.db.session import SyncSessionMaker
-from cosmos.retailers.enums import EmailTemplateTypes
+from cosmos.retailers.enums import EmailTypeSlugs
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.fetch_reward import issue_agent_specific_reward
 from cosmos.rewards.schemas import IssuanceTaskParams
@@ -71,7 +71,7 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
             task_type_name=reward_settings.core.SEND_EMAIL_TASK_NAME,
             params={
                 "account_holder_id": account_holder.id,
-                "template_type": EmailTemplateTypes.REWARD_ISSUANCE.name,
+                "template_type": EmailTypeSlugs.REWARD_ISSUANCE.name,
                 "retailer_id": retailer.id,
                 "extra_params": {
                     "reward_url": associated_url,

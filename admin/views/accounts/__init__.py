@@ -2,12 +2,20 @@ from typing import TYPE_CHECKING
 
 from admin.views.accounts.main import (
     AccountHolderAdmin,
+    AccountHolderEmailAdmin,
     CampaignBalanceAdmin,
     MarketingPreferenceAdmin,
     PendingRewardAdmin,
     ProfileAdmin,
 )
-from cosmos.db.models import AccountHolder, AccountHolderProfile, CampaignBalance, MarketingPreference, PendingReward
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderEmail,
+    AccountHolderProfile,
+    CampaignBalance,
+    MarketingPreference,
+    PendingReward,
+)
 from cosmos.db.session import scoped_db_session
 
 if TYPE_CHECKING:
@@ -60,6 +68,15 @@ def register_customer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Marketing Preferences",
             endpoint="marketing-preferences",
+            category=CUSTOMER_MANAGEMENT_TITLE,
+        )
+    )
+    admin.add_view(
+        AccountHolderEmailAdmin(
+            AccountHolderEmail,
+            scoped_db_session,
+            "Account Holder Emails",
+            endpoint="account-holder-emails",
             category=CUSTOMER_MANAGEMENT_TITLE,
         )
     )

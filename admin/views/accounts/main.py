@@ -223,3 +223,22 @@ class MarketingPreferenceAdmin(BaseModelView):
     column_labels = {"account_holder": "Account Holder", "account_holder.retailer": "Retailer"}
     column_formatters = {"account_holder": account_holder_repr}
     column_default_sort = ("account_holder.created_at", True)
+
+
+class AccountHolderEmailAdmin(BaseModelView):
+    can_view_details = True
+    can_create = False
+    can_edit = False
+    can_delete = False
+    column_searchable_list = ("retry_task_id", "message_uuid")
+    column_filters = (
+        "account_holder.id",
+        "account_holder.email",
+        "account_holder.account_holder_uuid",
+        "campaign.name",
+        "campaign.slug",
+        "email_type.slug",
+        "current_status",
+        "allow_re_send",
+    )
+    column_formatters = {"account_holder": account_holder_repr}

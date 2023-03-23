@@ -2,25 +2,19 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
-from sqlalchemy import Date, literal
+from sqlalchemy import Date, literal, tuple_
 from sqlalchemy.future import select
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
-from cosmos.accounts.config import account_settings
-from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.activity.tasks import sync_send_activity
-from cosmos.core.config import redis_raw
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
-from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
-from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer
+from cosmos.db.models import AccountHolder, AccountHolderEmail, Campaign, CampaignBalance, EmailType, Retailer
 from cosmos.db.session import SyncSessionMaker
-from cosmos.retailers.enums import EmailTemplateTypes
+from cosmos.retailers.enums import EmailTypeSlugs
 
 from . import logger
 
 if TYPE_CHECKING:
-    from retry_tasks_lib.db.models import RetryTask
     from sqlalchemy.engine import Row
     from sqlalchemy.orm import Session
 
@@ -42,8 +36,8 @@ def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
         .join(Retailer)
         .join(Campaign, CampaignBalance.campaign_id == Campaign.id)
         .where(CampaignBalance.reset_date <= today, Retailer.balance_lifespan is not None)
-        .subquery("balances_to_update")
-    )
+    ).cte("balances_to_update")
+
     update_stmt = (
         CampaignBalance.__table__.update()
         .values(balance=0, reset_date=balances_to_update.c.reset_date)
@@ -51,6 +45,8 @@ def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
             CampaignBalance.id == balances_to_update.c.balance_id,
         )
         .returning(
+            CampaignBalance.account_holder_id,
+            CampaignBalance.campaign_id,
             CampaignBalance.reset_date,
             CampaignBalance.updated_at,
             CampaignBalance.id,
@@ -62,72 +58,23 @@ def _retrieve_and_update_balances(db_session: "Session") -> list["Row"]:
         )
     )
     res = db_session.execute(update_stmt).all()
+    db_session.flush()
+    # re-enables BALANCE_RESET nudges for updated account holders.
+    db_session.execute(
+        AccountHolderEmail.__table__.update()
+        .values(allow_re_send=True)
+        .where(
+            AccountHolderEmail.email_type_id == EmailType.id,
+            EmailType.slug == EmailTypeSlugs.BALANCE_RESET.name,
+            AccountHolderEmail.allow_re_send.is_(False),
+            tuple_(AccountHolderEmail.account_holder_id, AccountHolderEmail.campaign_id).in_(
+                [(row.account_holder_id, row.campaign_id) for row in res]
+            ),
+        )
+    )
+
     db_session.commit()
     return res
-
-
-def _create_advanced_warning_email_tasks(db_session: "Session") -> list["RetryTask"]:
-    tz_info = ZoneInfo(cron_scheduler.tz)
-    today = datetime.now(tz=tz_info).date()
-    balance_reset_retailers_cte = (
-        select(
-            Retailer.id.label("retailer_id"),
-            Retailer.balance_reset_advanced_warning_days.label("nudge_delta"),
-        )
-        .where(Retailer.balance_lifespan is not None)
-        .cte("balance_reset_retailers")
-    )
-    ah_to_notify_stmt = db_session.execute(
-        select(
-            AccountHolder.id.label("account_holder_id"),
-            AccountHolder.account_holder_uuid,
-            AccountHolder.retailer_id,
-            CampaignBalance.balance,
-            CampaignBalance.reset_date,
-            Retailer.slug.label("retailer_slug"),
-            Retailer.name.label("retailer_name"),
-            Campaign.slug.label("campaign_slug"),
-            Campaign.loyalty_type,
-        )
-        .select_from(CampaignBalance)
-        .join(AccountHolder)
-        .join(Retailer)
-        .join(Campaign, CampaignBalance.campaign_id == Campaign.id)
-        .where(
-            AccountHolder.retailer_id == balance_reset_retailers_cte.c.retailer_id,
-            CampaignBalance.reset_date == literal(today, Date) + balance_reset_retailers_cte.c.nudge_delta,
-            CampaignBalance.balance > 0,
-        )
-    ).all()
-    lookup_time = datetime.now(tz=tz_info)
-
-    email_tasks = sync_create_many_tasks(
-        db_session,
-        task_type_name=account_settings.core.SEND_EMAIL_TASK_NAME,
-        params_list=[
-            {
-                "account_holder_id": data["account_holder_id"],
-                "template_type": EmailTemplateTypes.BALANCE_RESET.name,
-                "retailer_id": data["retailer_id"],
-                "extra_params": {
-                    "current_balance": pence_integer_to_currency_string(
-                        data["balance"], currency="GBP", currency_sign=False
-                    )
-                    if data["loyalty_type"] == LoyaltyTypes.ACCUMULATOR
-                    else raw_stamp_value_to_string(data["balance"]),
-                    "balance_reset_date": data["reset_date"].strftime("%d/%m/%Y"),
-                    "datetime": lookup_time.strftime("%H:%M %d/%m/%Y"),
-                    "campaign_slug": data["campaign_slug"],
-                    "retailer_slug": data["retailer_slug"],
-                    "retailer_name": data["retailer_name"],
-                    "account_holder_uuid": str(data["account_holder_uuid"]),
-                },
-            }
-            for data in ah_to_notify_stmt
-        ],
-    )
-    db_session.commit()
-    return email_tasks
 
 
 @acquire_lock(runner=cron_scheduler)
@@ -153,22 +100,3 @@ def reset_balances() -> None:
             ),
             routing_key=AccountsActivityType.BALANCE_CHANGE.value,
         )
-
-
-@acquire_lock(runner=cron_scheduler)
-def send_balance_reset_nudges() -> None:
-    logger.info("Enqueueing email nudges tasks for balance resets.")
-    with SyncSessionMaker() as db_session:
-
-        send_email_tasks = _create_advanced_warning_email_tasks(db_session)
-        enqueue_many_retry_tasks(
-            db_session=db_session,
-            retry_tasks_ids=[task.retry_task_id for task in send_email_tasks],
-            connection=redis_raw,
-        )
-    logger.info(
-        "%d %s %s tasks enqueued.",
-        len(send_email_tasks),
-        EmailTemplateTypes.BALANCE_RESET.name,
-        account_settings.core.SEND_EMAIL_TASK_NAME,
-    )

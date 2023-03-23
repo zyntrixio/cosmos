@@ -20,7 +20,7 @@ from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_task
 from cosmos.core.error_codes import ErrorCode
-from cosmos.retailers.enums import EmailTemplateTypes
+from cosmos.retailers.enums import EmailTypeSlugs
 from cosmos.retailers.schemas import (
     retailer_marketing_info_validation_factory,
     retailer_profile_info_validation_factory,
@@ -96,7 +96,7 @@ class AccountService(Service):
                 task_type_name=account_settings.core.SEND_EMAIL_TASK_NAME,
                 params={
                     "account_holder_id": account_holder.id,
-                    "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
+                    "template_type": EmailTypeSlugs.WELCOME_EMAIL.name,
                     "retailer_id": self.retailer.id,
                 },
             )

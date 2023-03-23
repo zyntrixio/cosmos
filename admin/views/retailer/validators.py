@@ -3,7 +3,7 @@ import re
 
 from typing import TYPE_CHECKING, Literal
 
-import pydantic
+import pydantic as pd
 import wtforms
 import yaml
 
@@ -17,7 +17,11 @@ if TYPE_CHECKING:
     from cosmos.db.models import Retailer
 
 REQUIRED_ACCOUNTS_JOIN_FIELDS = ["first_name", "last_name", "email"]
-
+FIELD_TYPES = {
+    "integer": int,
+    "float": float,
+    "string": str,
+}
 INVALID_YAML_ERROR = StopValidation("The submitted YAML is not valid.")
 
 
@@ -31,7 +35,7 @@ def _get_optional_profile_field_names() -> list[str]:  # pragma: no cover
 
 def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
     class FieldOptionsConfig(BaseConfig):
-        extra = pydantic.Extra.forbid
+        extra = pd.Extra.forbid
 
     class FieldOptions(BaseModel):
         required: bool
@@ -56,7 +60,7 @@ def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
         field for field in _get_optional_profile_field_names() if field in form_data
     ]
 
-    retailer_config_model = pydantic.create_model(  # type: ignore [call-overload]
+    retailer_config_model = pd.create_model(  # type: ignore [call-overload]
         "RetailerConfigModel",
         __config__=FieldOptionsConfig,
         __validators__={
@@ -68,7 +72,7 @@ def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
 
     try:
         retailer_config_model(**form_data)
-    except pydantic.ValidationError as ex:
+    except pd.ValidationError as ex:
         raise wtforms.ValidationError(  # noqa: B904
             ", ".join([f"{' -> '.join(err.get('loc'))}: {err.get('msg')}" for err in json.loads(ex.json())])
         )
@@ -91,7 +95,7 @@ def validate_marketing_config(_: wtforms.Form, field: wtforms.Field) -> None:
         type: Literal["boolean", "integer", "float", "string", "string_list", "date", "datetime"]  # noqa: A003
         label: LabelVal
 
-        extra = pydantic.Extra.forbid  # type: pydantic.Extra
+        extra = pd.Extra.forbid  # type: pd.Extra
 
     class MarketingPreferenceConfigVal(BaseModel):
         __root__: dict[KeyNameVal, FieldOptions]
@@ -106,7 +110,7 @@ def validate_marketing_config(_: wtforms.Form, field: wtforms.Field) -> None:
 
     try:
         validated_data = MarketingPreferenceConfigVal(__root__=form_data)
-    except pydantic.ValidationError as ex:
+    except pd.ValidationError as ex:
         formatted_errors = []
         for err in json.loads(ex.json()):
             loc = err.get("loc")[1:]
@@ -190,9 +194,54 @@ def validate_optional_yaml(_: wtforms.Form, field: wtforms.Field) -> None:
         field_data = yaml.safe_load(field.data)
 
     except (yaml.YAMLError, AttributeError):  # pragma: no cover
-        raise INVALID_YAML_ERROR  # noqa: B904
+        raise INVALID_YAML_ERROR from None
 
     if not isinstance(field_data, dict):
         raise INVALID_YAML_ERROR
 
     field.data = yaml.dump(field_data, indent=2)
+
+
+def _validate_required_fields_values(required_fields: dict, fields_to_check: dict) -> pd.BaseModel:
+    class Config(pd.BaseConfig):
+        extra = pd.Extra.forbid
+        anystr_lower = True
+        anystr_strip_whitespace = True
+        min_anystr_length = 2
+
+    required_fields_value_model = pd.create_model(  # type: ignore
+        "RequiredFieldsValuesModel",
+        __config__=Config,
+        **{k: (FIELD_TYPES[v], ...) for k, v in required_fields.items()},
+    )
+
+    try:
+        return required_fields_value_model(**fields_to_check)
+    except pd.ValidationError as ex:
+        raise StopValidation(
+            ", ".join([f"{' -> '.join(err.get('loc'))}: {err.get('msg')}" for err in json.loads(ex.json())])
+        ) from None
+
+
+def validate_required_fields_values_yaml(form: wtforms.Form, field: wtforms.Field) -> None:
+    if (required_fields_raw := form.email_type.data.required_fields) in (None, ""):
+        required_fields = None
+    else:
+        required_fields = yaml.safe_load(required_fields_raw)
+
+    try:
+        field_data = yaml.safe_load(field.data) if field.data else None
+    except (yaml.YAMLError, AttributeError):  # pragma: no cover
+        raise INVALID_YAML_ERROR from None
+
+    if not required_fields:
+        if field_data == required_fields:
+            field.data = None
+            return
+
+        raise StopValidation("'required_fields_values' must be empty for this email type.")
+
+    if not isinstance(field_data, dict):
+        raise INVALID_YAML_ERROR
+
+    field.data = yaml.dump(_validate_required_fields_values(required_fields, field_data).dict(), indent=2)

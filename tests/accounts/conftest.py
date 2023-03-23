@@ -1,6 +1,6 @@
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -10,7 +10,7 @@ from testfixtures import LogCapture
 
 from cosmos.accounts.config import account_settings
 from cosmos.db.models import AccountHolder, EmailTemplate, EmailTemplateKey, Retailer
-from cosmos.retailers.enums import EmailTemplateTypes
+from cosmos.retailers.enums import EmailTypeSlugs
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -168,14 +168,38 @@ def create_email_template(db_session: "Session") -> Callable:
 
 
 @pytest.fixture(scope="function")
+def create_send_email_task(
+    db_session: "Session", account_holder: AccountHolder, send_email_task_type: TaskType, retailer: Retailer
+) -> Callable[..., RetryTask]:
+    params = {
+        "retailer_id": retailer.id,
+        "template_type": EmailTypeSlugs.WELCOME_EMAIL.name,
+        "account_holder_id": account_holder.id,
+    }
+
+    def _create_send_email_task(**updated_params: Any) -> RetryTask:  # noqa: ANN401
+        task = sync_create_task(
+            task_type_name=send_email_task_type.name,
+            params=params | updated_params,
+            db_session=db_session,
+        )
+
+        db_session.add(task)
+        db_session.commit()
+        return task
+
+    return _create_send_email_task
+
+
+@pytest.fixture(scope="function")
 def send_welcome_email_task(
     db_session: "Session", account_holder: AccountHolder, send_email_task_type: TaskType, retailer: Retailer
-) -> Generator:
+) -> RetryTask:
     task = sync_create_task(
         task_type_name=send_email_task_type.name,
         params={
             "retailer_id": retailer.id,
-            "template_type": EmailTemplateTypes.WELCOME_EMAIL.name,
+            "template_type": EmailTypeSlugs.WELCOME_EMAIL.name,
             "account_holder_id": account_holder.id,
         },
         db_session=db_session,

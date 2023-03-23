@@ -19,6 +19,7 @@ from admin.views.retailer.validators import (
     validate_balance_lifespan_and_warning_days,
     validate_marketing_config,
     validate_optional_yaml,
+    validate_required_fields_values_yaml,
     validate_retailer_config,
     validate_retailer_config_new_values,
 )
@@ -289,10 +290,19 @@ marketing_pref:
         return redirect(url_for("retailers.delete_retailer", ids=ids))
 
 
+class EmailTypeAdmin(BaseModelView):
+    can_view_details = True
+    can_create = False
+    can_edit = False
+    can_delete = False
+    column_searchable_list = ("slug",)
+    column_exclude_list = ("email_templates",)
+
+
 class EmailTemplateAdmin(CanDeleteModelView):
     column_list = (
         "template_id",
-        "type",
+        "email_type",
         "required_keys",
         "retailer",
         "created_at",
@@ -300,18 +310,26 @@ class EmailTemplateAdmin(CanDeleteModelView):
     )
     column_searchable_list = ("template_id",)
     column_filters = (
-        "type",
+        "email_type.slug",
         "required_keys.name",
         "retailer.slug",
         "retailer.name",
         "retailer.id",
     )
-    column_details_list = ("template_id", "type", "required_keys", "retailer")
+    column_details_list = ("template_id", "email_type", "required_keys", "retailer")
     form_excluded_columns = (
         "created_at",
         "updated_at",
     )
     column_labels = {"required_keys": "Template Key", "retailer": "Retailer"}
+    form_args = {
+        "required_fields_values": {
+            "validators": [
+                validate_required_fields_values_yaml,
+            ],
+            "description": "Configuration in YAML format",
+        },
+    }
 
 
 class EmailTemplateKeyAdmin(BaseModelView):
