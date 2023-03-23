@@ -100,10 +100,10 @@ class TransactionService(Service):
         trc_reached = False
 
         if reward_rule.reward_cap and (
-            n_reward_achieved > reward_rule.reward_cap.value
+            n_reward_achieved > reward_rule.reward_cap
             or adjustment_amount > reward_rule.reward_cap * reward_rule.reward_goal
         ):
-            n_reward_achieved = reward_rule.reward_cap.value
+            n_reward_achieved = reward_rule.reward_cap
             trc_reached = True
 
         return n_reward_achieved, trc_reached

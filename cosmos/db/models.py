@@ -29,7 +29,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Index
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
-from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes, RewardCap
+from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.core.config import core_settings
 from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
@@ -187,7 +187,8 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
     reward_goal = Column(Integer, nullable=False)
     allocation_window = Column(Integer, nullable=False, server_default="0")
     reward_cap = Column(
-        Enum(RewardCap, values_callable=lambda _: [str(e.value) for e in RewardCap]),
+        Integer,
+        CheckConstraint("(reward_cap >= 1 and reward_cap <= 10) OR reward_cap IS NULL", name="reward_cap_check"),
         nullable=True,
     )
     campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, unique=True)
