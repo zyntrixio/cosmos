@@ -29,3 +29,8 @@ def create_check_constaints() -> None:
         table_name="transaction",
         condition="processed IS NULL OR processed IS TRUE",
     )
+    op.create_check_constraint(
+        constraint_name="reward_cap_check",
+        table_name="reward_rule",
+        condition="(reward_cap >= 1 and reward_cap <= 10) OR reward_cap IS NULL",
+    )

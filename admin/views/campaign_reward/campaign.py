@@ -643,6 +643,7 @@ class RewardRuleAdmin(CanDeleteModelView):
         "allocation_window": "Refund Window",
     }
     column_type_formatters = typefmt.BASE_FORMATTERS | {type(None): lambda _view, _value: "-"}
+    form_overrides = {"reward_cap": wtforms.SelectField}
 
     @property
     def form_args(self) -> dict:
@@ -665,9 +666,13 @@ class RewardRuleAdmin(CanDeleteModelView):
             },
             "reward_cap": {
                 "default": None,
-                "validators": [validate_reward_cap_for_loyalty_type],
-                "blank_text": "None",
+                "validators": [
+                    validate_reward_cap_for_loyalty_type,
+                    wtforms.validators.NumberRange(min=1, max=10),
+                ],
                 "description": ("Transaction reward cap. Accumulator campaigns only."),
+                "choices": [("", "Not set")] + [(n, n) for n in range(1, 11)],
+                "coerce": lambda x: int(x) if x else None,
             },
             "campaign": {
                 "validators": [wtforms.validators.DataRequired()],

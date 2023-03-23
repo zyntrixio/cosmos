@@ -166,15 +166,16 @@ def test__process_callback_connection_error(
     assert enrolment_callback_task.audit_data == []  # This is set in the exception handler
 
 
-@httpretty.activate
-def test__get_active_campaigns(setup: SetupType) -> None:
-    db_session, retailer, campaign = setup
-    campaign.slug = "slug1"
-    db_session.commit()
-    expected_slug = "slug1"
-    campaigns = _get_active_campaigns(db_session, retailer)
-    for campaign in campaigns:
-        assert campaign.slug == expected_slug
+# FIXME: This test is all wrong. The campaign object is actually an AccountHolder
+# @httpretty.activate
+# def test__get_active_campaigns(setup: SetupType) -> None:
+#     db_session, retailer, campaign = setup
+#     campaign.slug = "slug1"
+#     db_session.commit()
+#     expected_slug = "slug1"
+#     campaigns = _get_active_campaigns(db_session, retailer)
+#     for campaign in campaigns:
+#         assert campaign.slug == expected_slug
 
 
 @pytest.mark.parametrize("balance_lifespan", [10, None])
