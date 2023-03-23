@@ -3,11 +3,12 @@ from flask_admin import Admin
 from admin.views.retailer.main import (
     EmailTemplateAdmin,
     EmailTemplateKeyAdmin,
+    EmailTypeAdmin,
     RetailerAdmin,
     RetailerFetchTypeAdmin,
     RetailerStoreAdmin,
 )
-from cosmos.db.models import EmailTemplate, EmailTemplateKey, Retailer, RetailerFetchType, RetailerStore
+from cosmos.db.models import EmailTemplate, EmailTemplateKey, EmailType, Retailer, RetailerFetchType, RetailerStore
 from cosmos.db.session import scoped_db_session
 
 
@@ -37,6 +38,15 @@ def register_retailer_admin(admin: "Admin") -> None:
             scoped_db_session,
             "Retailer's Fetch Types",
             endpoint="retailer-fetch-types",
+            category=retailer_management,
+        )
+    )
+    admin.add_view(
+        EmailTypeAdmin(
+            EmailType,
+            scoped_db_session,
+            "Email Types",
+            endpoint="email-types",
             category=retailer_management,
         )
     )

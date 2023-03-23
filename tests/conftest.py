@@ -23,6 +23,8 @@ from cosmos.db.models import (
     Campaign,
     CampaignBalance,
     EarnRule,
+    EmailTemplate,
+    EmailType,
     FetchType,
     PendingReward,
     Retailer,
@@ -759,3 +761,28 @@ def send_email_task_type(db_session: "Session") -> TaskType:
 
     db_session.commit()
     return task_type
+
+
+@pytest.fixture(scope="function")
+def balance_reset_email_type(db_session: "Session") -> EmailType:
+    email_type = EmailType(
+        slug="BALANCE_RESET",
+        send_email_params_fn="cosmos.accounts.send_email_params_gen.get_balance_reset_nudge_params",
+    )
+    db_session.add(email_type)
+    db_session.commit()
+    return email_type
+
+
+@pytest.fixture(scope="function")
+def balance_reset_email_template(setup: SetupType, balance_reset_email_type: EmailType) -> EmailTemplate:
+    db_session, retailer, _ = setup
+
+    template = EmailTemplate(
+        template_id="12345",
+        email_type_id=balance_reset_email_type.id,
+        retailer_id=retailer.id,
+    )
+    db_session.add(template)
+    db_session.commit()
+    return template

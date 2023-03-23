@@ -33,7 +33,7 @@ from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
 from cosmos.core.config import core_settings
 from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
-from cosmos.retailers.enums import EmailTemplateTypes, RetailerStatuses
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 
 
@@ -54,6 +54,10 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
     current_balances = relationship("CampaignBalance", back_populates="account_holder")
     marketing_preferences = relationship("MarketingPreference", back_populates="account_holder")
     transactions = relationship("Transaction", back_populates="account_holder")
+    sent_emails = relationship(
+        "AccountHolderEmail",
+        back_populates="account_holder",
+    )
 
     __table_args__ = (
         UniqueConstraint("email", "retailer_id", name="email_retailer_unq"),
@@ -161,6 +165,7 @@ class Campaign(IdPkMixin, Base, TimestampMixin):
     pending_rewards = relationship("PendingReward", back_populates="campaign")
     current_balances = relationship("CampaignBalance", back_populates="campaign")
     rewards = relationship("Reward", back_populates="campaign")
+    sent_emails = relationship("AccountHolderEmail", back_populates="campaign")
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.name} ({self.slug})"
@@ -195,20 +200,36 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
         CheckConstraint("(reward_cap >= 1 and reward_cap <= 10) OR reward_cap IS NULL", name="reward_cap_check"),
         nullable=True,
     )
-    campaign_id = Column(Integer, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, unique=True)
+    campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=False, unique=True)
     reward_config_id = Column(Integer, ForeignKey("reward_config.id", ondelete="CASCADE"), nullable=False)
 
     campaign = relationship("Campaign", back_populates="reward_rule")
     reward_config = relationship("RewardConfig", back_populates="reward_rules")
 
 
+class EmailType(IdPkMixin, Base, TimestampMixin):
+    __tablename__ = "email_type"
+
+    slug = Column(String, nullable=False, unique=True, index=True)
+    send_email_params_fn = Column(String, nullable=True)
+    required_fields = Column(Text, nullable=True)
+
+    email_templates = relationship("EmailTemplate", back_populates="email_type")
+    sent_emails = relationship("AccountHolderEmail", back_populates="email_type")
+
+    def __repr__(self) -> str:
+        return self.slug
+
+
 class EmailTemplate(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "email_template"
 
     template_id = Column(String, nullable=False)
-    type = Column(Enum(EmailTemplateTypes), nullable=False)  # noqa: A003
+    required_fields_values = Column(Text, nullable=True)
+    email_type_id = Column(BigInteger, ForeignKey("email_type.id", ondelete="CASCADE"), nullable=False)
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), index=True)
 
+    email_type = relationship("EmailType", back_populates="email_templates")
     retailer = relationship("Retailer", back_populates="email_templates")
 
     required_keys = relationship(
@@ -217,10 +238,10 @@ class EmailTemplate(IdPkMixin, Base, TimestampMixin):
         secondary="email_template_required_key",
     )
 
-    __table_args__ = (UniqueConstraint("type", "retailer_id", name="type_retailer_unq"),)
+    __table_args__ = (UniqueConstraint("email_type_id", "retailer_id", name="type_retailer_unq"),)
 
     def __repr__(self) -> str:
-        return f"{self.retailer.slug}: {self.type}"
+        return f"{self.retailer.slug}: {self.template_type}"
 
 
 class EmailTemplateKey(IdPkMixin, Base, TimestampMixin):
@@ -247,6 +268,26 @@ class EmailTemplateRequiredKey(Base, TimestampMixin):
     email_template_key_id = Column(Integer, ForeignKey("email_template_key.id", ondelete="CASCADE"), nullable=False)
 
     __table_args__ = (PrimaryKeyConstraint("email_template_id", "email_template_key_id"),)
+
+
+class AccountHolderEmail(IdPkMixin, Base, TimestampMixin):
+    __tablename__ = "account_holder_email"
+
+    account_holder_id = Column(
+        BigInteger, ForeignKey("account_holder.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email_type_id = Column(BigInteger, ForeignKey("email_type.id", ondelete="CASCADE"), nullable=False, index=True)
+    campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="CASCADE"), nullable=True, index=True)
+    retry_task_id = Column(
+        BigInteger, ForeignKey("retry_task.retry_task_id", ondelete="CASCADE"), nullable=True, index=True, unique=True
+    )
+    message_uuid = Column(UUID(as_uuid=True), nullable=True, index=True, unique=True)
+    current_status = Column(String, nullable=True)
+    allow_re_send = Column(Boolean, default=False, nullable=False, index=True)
+
+    account_holder = relationship("AccountHolder", back_populates="sent_emails")
+    email_type = relationship("EmailType", back_populates="sent_emails")
+    campaign = relationship("Campaign", back_populates="sent_emails")
 
 
 class RetailerStore(IdPkMixin, Base, TimestampMixin):

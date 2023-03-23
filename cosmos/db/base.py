@@ -9,7 +9,6 @@ from cosmos.db.models import (
     EmailTemplate,
     EmailTemplateKey,
     EmailTemplateRequiredKey,
-    EmailTemplateTypes,
     FetchType,
     Retailer,
     RetailerFetchType,

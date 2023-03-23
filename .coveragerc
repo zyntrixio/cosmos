@@ -3,13 +3,13 @@ omit = *test*
        *alembic*
        tests/*
        cosmos/version.py
-       cosmos/
-       data_gen
+       data_gen/*
+       admin/**/main.py
+       admin/**/__init__.py
 branch = True
 concurrency = thread
               greenlet
 
 [report]
 fail_under = 85
-exclude_lines =
-        pragma: no cover
+exclude_lines = pragma: no cover

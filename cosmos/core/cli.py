@@ -16,10 +16,12 @@ from rq import Worker
 from cosmos.accounts.config import account_settings
 from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
-from cosmos.core.scheduled_tasks.balances import reset_balances, send_balance_reset_nudges
+from cosmos.core.scheduled_tasks.balances import reset_balances
+from cosmos.core.scheduled_tasks.scheduled_email import scheduled_email_by_type
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.core.scheduled_tasks.task_cleanup import cleanup_old_tasks
 from cosmos.db.session import SyncSessionMaker
+from cosmos.retailers.enums import EmailTypeSlugs
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
 from cosmos.rewards.scheduled_tasks.pending_rewards import process_pending_rewards
@@ -98,7 +100,10 @@ def cron_scheduler(  # noqa: PLR0913
             coalesce_jobs=True,
         )
         scheduler.add_job(
-            send_balance_reset_nudges,
+            scheduled_email_by_type,
+            kwargs={
+                "email_type_slug": EmailTypeSlugs.BALANCE_RESET.name,
+            },
             schedule_fn=lambda: account_settings.RESET_BALANCE_NUDGES_SCHEDULE,
             coalesce_jobs=True,
         )

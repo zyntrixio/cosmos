@@ -1,7 +1,7 @@
 import enum
 
 
-class EmailTemplateTypes(enum.Enum):
+class EmailTypeSlugs(enum.Enum):
     WELCOME_EMAIL = enum.auto()
     REWARD_ISSUANCE = enum.auto()
     BALANCE_RESET = enum.auto()

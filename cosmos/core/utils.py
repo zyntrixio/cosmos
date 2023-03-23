@@ -2,6 +2,8 @@ import random
 
 from babel.numbers import format_currency
 
+from cosmos.campaigns.enums import LoyaltyTypes
+
 MINIMUM_ACCOUNT_NUMBER_LENGTH = 10
 
 
@@ -23,3 +25,13 @@ def raw_stamp_value_to_string(value: int, stamp_suffix: bool = True) -> str:
     stamp_val = value // 100
     suffix = f" stamp{'s' if abs(stamp_val) != 1 else ''}"
     return f"{stamp_val}{suffix if stamp_suffix else ''}"
+
+
+def get_formatted_balance_by_loyalty_type(value: int, loyalty_type: LoyaltyTypes, sign: bool = True) -> str:
+    match loyalty_type:
+        case LoyaltyTypes.STAMPS:
+            return raw_stamp_value_to_string(value, stamp_suffix=sign)
+        case LoyaltyTypes.ACCUMULATOR:
+            return pence_integer_to_currency_string(value, "GBP", currency_sign=sign)
+
+    raise ValueError(f"Unexpected value {loyalty_type} for loyalty_type.")
