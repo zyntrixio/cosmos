@@ -479,9 +479,7 @@ def upgrade() -> None:
         ),
         sa.Column("reward_goal", sa.Integer(), nullable=False),
         sa.Column("allocation_window", sa.Integer(), server_default="0", nullable=False),
-        sa.Column(
-            "reward_cap", sa.Enum("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", name="rewardcap"), nullable=True
-        ),
+        sa.Column("reward_cap", sa.Integer(), nullable=True),
         sa.Column("campaign_id", sa.Integer(), nullable=False),
         sa.Column("reward_config_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
