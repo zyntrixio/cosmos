@@ -185,7 +185,11 @@ class RewardRule(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "reward_rule"
 
     reward_goal = Column(Integer, nullable=False)
-    allocation_window = Column(Integer, nullable=False, server_default="0")
+    allocation_window = Column(
+        Integer,
+        CheckConstraint("allocation_window > 0 OR allocation_window IS NULL", name="allocation_window_check"),
+        nullable=True,
+    )
     reward_cap = Column(
         Integer,
         CheckConstraint("(reward_cap >= 1 and reward_cap <= 10) OR reward_cap IS NULL", name="reward_cap_check"),

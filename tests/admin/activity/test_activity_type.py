@@ -576,7 +576,7 @@ def test_get_reward_rule_updated_activity_data(mocker: MockFixture) -> None:
     original_values = {
         "reward_goal": 800,
         "campaign_slug": original_campaign_slug,
-        "allocation_window": 0,
+        "allocation_window": None,
         "reward_cap": 1,
     }
 
@@ -676,7 +676,7 @@ def test_get_reward_rule_deleted_activity_data(mocker: MockFixture) -> None:
     activity_datetime = datetime.now(tz=UTC)
 
     reward_goal = 800
-    allocation_window = 0
+    allocation_window = None
     reward_cap = 1
 
     payload = ActivityType.get_reward_rule_deleted_activity_data(

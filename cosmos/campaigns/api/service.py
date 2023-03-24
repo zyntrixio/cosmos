@@ -126,7 +126,7 @@ class CampaignService(Service):
     ) -> list["RetryTask"]:
 
         reward_issuance_tasks: list["RetryTask"] = []
-        if campaign.reward_rule.allocation_window > 0 and requested_status in (
+        if campaign.reward_rule.allocation_window and requested_status in (
             CampaignStatuses.ENDED,
             CampaignStatuses.CANCELLED,
         ):

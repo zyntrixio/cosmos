@@ -364,7 +364,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         activity_datetime: datetime,
         campaign_slug: str,
         reward_goal: int,
-        refund_window: int,
+        refund_window: int | None,
         reward_cap: int | None,
     ) -> dict:
 
@@ -387,7 +387,7 @@ class ActivityType(ActivityTypeMixin, Enum):
                         "reward_cap": reward_cap,
                     },
                 }
-            ).dict(exclude_unset=True, exclude_none=True),
+            ).dict(exclude_unset=True),
         )
 
     @classmethod

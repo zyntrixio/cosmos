@@ -108,7 +108,7 @@ class EarnRuleDeletedActivitySchema(BaseModel):
 class _RewardRuleCreatedValuesSchema(BaseModel):
     campaign_slug: str
     reward_goal: int
-    refund_window: int
+    refund_window: int | None
     reward_cap: int | None
 
 

@@ -480,7 +480,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(), server_default=sa.text("TIMEZONE('utc', CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("reward_goal", sa.Integer(), nullable=False),
-        sa.Column("allocation_window", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("allocation_window", sa.Integer(), nullable=True),
         sa.Column("reward_cap", sa.Integer(), nullable=True),
         sa.Column("campaign_id", sa.Integer(), nullable=False),
         sa.Column("reward_config_id", sa.Integer(), nullable=False),
