@@ -148,6 +148,7 @@ class RewardAdminBase(BaseModelView):
     )
     column_searchable_list = (
         "account_holder.account_holder_uuid",
+        "account_holder.email",
         "code",
     )
     column_formatters = {"account_holder": account_holder_repr}
