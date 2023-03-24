@@ -88,7 +88,7 @@ def generate_account_holders_and_rewards(
     campaign_slug: str,
     max_val: int,
     unallocated_rewards_to_create: int,
-    refund_window: int,
+    refund_window: int | None,
     tx_history: bool,
     loyalty_type: str,
 ) -> None:
@@ -124,7 +124,7 @@ def generate_retailer_base_config(
     retailer_slug: str,
     campaign_slug: str,
     reward_slug: str,
-    refund_window: int,
+    refund_window: int | None,
     fetch_type: str,
     loyalty_type: str,
     add_fetch_types: bool,

@@ -347,7 +347,9 @@ def setup_retailer(
     db_session.add(retailer)
     db_session.flush()
     for i in range(1, 6):
-        db_session.add(RetailerStore(store_name=f"Super Store {i}", mid=f"mid-{i}", retailer_id=retailer.id))
+        db_session.add(
+            RetailerStore(store_name=f"Super Store {i}", mid=f"{retailer.slug}-mid-{i}", retailer_id=retailer.id)
+        )
     db_session.add(RetailerFetchType(**retailer_fetch_type_payload(retailer.id, fetch_type.id)))
     reward_config = RewardConfig(**reward_config_payload(retailer.id, fetch_type.id, reward_slug))
     db_session.add(reward_config)

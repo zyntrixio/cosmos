@@ -295,15 +295,13 @@ def campaign_payload(retailer_id: int, campaign_slug: str, loyalty_type: str) ->
 
 
 def reward_rule_payload(campaign_id: int, reward_config_id: int, refund_window: int | None) -> dict:
-    payload = {
+    return {
         "campaign_id": campaign_id,
         "reward_config_id": reward_config_id,
         "reward_goal": 1000,
+        "allocation_window": refund_window,
+        "reward_cap": None,
     }
-    if refund_window is not None:
-        payload["allocation_window"] = refund_window
-
-    return payload
 
 
 def earn_rule_payload(campaign_id: int, loyalty_type: str) -> dict:

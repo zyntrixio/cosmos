@@ -93,7 +93,7 @@ def populate(
         help="Sets up retailer, campaign, and reward config in addition to the usual account holders and rewards",
     ),
     refund_window: int = typer.Option(
-        0,
+        None,
         "--refund-window",
         help="Sets a refund window for reward rule. If reward goal is reached, pending rewards are created",
     ),
@@ -160,6 +160,7 @@ def populate(
         )
     except Exception as exc:  # noqa: BLE001
         db_session.rollback()
+        raise
     else:
         db_session.commit()
     finally:
