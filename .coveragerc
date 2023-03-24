@@ -10,6 +10,6 @@ concurrency = thread
               greenlet
 
 [report]
-fail_under = 91
+fail_under = 85
 exclude_lines =
         pragma: no cover

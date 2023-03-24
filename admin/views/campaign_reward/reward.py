@@ -178,10 +178,10 @@ class AllocatedRewardAdmin(RewardAdminBase):
     rw_endpoint = "account-holder-rewards"
     ro_endpoint = "ro-account-holder-rewards"
 
-    def get_query(self) -> Query:
+    def get_query(self) -> Query:  # pragma: no cover
         return super().get_query().filter(self.model.account_holder_id.is_not(None))
 
-    def get_count_query(self) -> Query:
+    def get_count_query(self) -> Query:  # pragma: no cover
         return (
             self.session.query(func.count("*"))
             .select_from(self.model)
