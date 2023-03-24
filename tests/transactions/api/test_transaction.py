@@ -421,18 +421,18 @@ def test_transaction_ok_amount_over_max(
 @pytest.mark.parametrize(
     ("allocation_window", "threshold", "reward_goal", "tx_amount", "expected_rewards_n", "reward_cap"),
     (
-        pytest.param(0, 250, 250, 400, 2, None, id="2 rewards issued"),
+        pytest.param(None, 250, 250, 400, 2, None, id="2 rewards issued"),
         pytest.param(10, 250, 250, 400, 2, None, id="pending reward with count=2 issued"),
-        pytest.param(0, 100, 500, 400, 1, None, id="1 rewards issued"),
+        pytest.param(None, 100, 500, 400, 1, None, id="1 rewards issued"),
         pytest.param(10, 100, 500, 400, 1, None, id="pending reward with count=1 issued"),
-        pytest.param(0, 100, 600, 400, 0, None, id="0 rewards"),
+        pytest.param(None, 100, 600, 400, 0, None, id="0 rewards"),
         pytest.param(10, 100, 600, 400, 0, None, id="no pending reward"),
-        pytest.param(0, 100, 200, 500, 3, 2, id="rewards over cap"),
+        pytest.param(None, 100, 200, 500, 3, 2, id="rewards over cap"),
         pytest.param(10, 100, 200, 500, 3, 2, id="pending reward count over cap"),
     ),
 )
 def test_transaction_ok_accumulator(
-    allocation_window: int,
+    allocation_window: int | None,
     threshold: int,
     reward_goal: int,
     tx_amount: int,
@@ -545,11 +545,11 @@ def test_transaction_ok_accumulator(
     ("allocation_window", "expected_balance", "expected_message"),
     (
         pytest.param(10, 500, "Refund accepted", id="Refund accepted"),
-        pytest.param(0, 1000, "Refunds not accepted", id="Refund not accepted"),
+        pytest.param(None, 1000, "Refunds not accepted", id="Refund not accepted"),
     ),
 )
 def test_transaction_refund(
-    allocation_window: int,
+    allocation_window: int | None,
     expected_balance: int,
     expected_message: str,
     test_client: "TestClient",

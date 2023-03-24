@@ -63,7 +63,7 @@ class TransactionService(Service):
         return "Refunds not accepted" if is_refund else "Threshold not met"
 
     def _adjustment_amount_for_earn_rule(
-        self, tx_amount: int, loyalty_type: LoyaltyTypes, earn_rule: EarnRule, allocation_window: int
+        self, tx_amount: int, loyalty_type: LoyaltyTypes, earn_rule: EarnRule, allocation_window: int | None
     ) -> int | None:
 
         if loyalty_type == LoyaltyTypes.ACCUMULATOR:
@@ -77,7 +77,7 @@ class TransactionService(Service):
         raise ValueError(f"Invalid Loyalty Type {loyalty_type}")
 
     def _calculate_amount_for_accumulator(
-        self, tx_amount: int, earn_rule: EarnRule, allocation_window: int
+        self, tx_amount: int, earn_rule: EarnRule, allocation_window: int | None
     ) -> int | None:
         is_acceptable_refund = bool(tx_amount < 0 and allocation_window)
         adjustment_amount: int | None = None
@@ -458,7 +458,7 @@ class TransactionService(Service):
             )
             logger.info("Decreasing balance by total rewards value (%s) %s", tot_cost_to_user, log_suffix)
 
-        if campaign.reward_rule.allocation_window > 0:
+        if campaign.reward_rule.allocation_window:
             await self.allocate_pending_reward(
                 transaction=transaction,
                 campaign=campaign,

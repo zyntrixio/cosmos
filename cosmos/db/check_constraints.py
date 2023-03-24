@@ -34,3 +34,8 @@ def create_check_constaints() -> None:
         table_name="reward_rule",
         condition="(reward_cap >= 1 and reward_cap <= 10) OR reward_cap IS NULL",
     )
+    op.create_check_constraint(
+        constraint_name="allocation_window_check",
+        table_name="reward_rule",
+        condition="allocation_window > 0 OR allocation_window IS NULL",
+    )

@@ -130,13 +130,13 @@ async def create_pending_reward(
     *,
     account_holder_id: int,
     campaign_id: int,
-    allocation_window: int,
+    allocation_window: int | None,
     value: int,
     count: int,
     total_cost_to_user: int,
 ) -> PendingReward:
     now = datetime.now(tz=UTC)
-    conversion_date = (now + timedelta(days=allocation_window)).date()
+    conversion_date = (now + timedelta(days=allocation_window or 0)).date()
 
     async def _query(savepoint: "AsyncSessionTransaction") -> PendingReward:
         pending_reward = PendingReward(
