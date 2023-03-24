@@ -83,7 +83,7 @@ def create_app(with_activities: bool = True) -> Flask:
             redis=redis_raw,
             endpoint_prefix="activity-",
             url_prefix="activity",
-            menu_title="Activity Tasks",
+            menu_title="Activity",
         )
 
         @app.teardown_appcontext

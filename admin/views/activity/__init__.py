@@ -8,7 +8,6 @@ if TYPE_CHECKING:
 
 
 def register_hubble_admin(admin: "Admin") -> None:
-    from admin.hubble.db.models import Base
     from admin.hubble.db.session import activity_scoped_session
 
     menu_title = "Activity"
