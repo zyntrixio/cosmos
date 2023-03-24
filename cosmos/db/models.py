@@ -320,7 +320,7 @@ class Reward(IdPkMixin, Base, TimestampMixin):
 
     retailer_id = Column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), nullable=False)
     campaign_id = Column(BigInteger, ForeignKey("campaign.id", ondelete="SET NULL"), nullable=True)  # Set when issued
-    reward_file_log_id = Column(BigInteger, ForeignKey("reward_file_log.id"), nullable=True)
+    reward_file_log_id = Column(BigInteger, ForeignKey("reward_file_log.id", ondelete="SET NULL"), nullable=True)
 
     reward_config = relationship("RewardConfig", back_populates="rewards")
     retailer = relationship("Retailer", back_populates="rewards")

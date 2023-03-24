@@ -464,7 +464,7 @@ def upgrade() -> None:
             ["reward_config_id"],
             ["reward_config.id"],
         ),
-        sa.ForeignKeyConstraint(["reward_file_log_id"], ["reward_file_log.id"]),
+        sa.ForeignKeyConstraint(["reward_file_log_id"], ["reward_file_log.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code", "retailer_id", "reward_config_id", name="code_retailer_reward_config_unq"),
     )
