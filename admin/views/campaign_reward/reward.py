@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from flask import Markup, flash, redirect, url_for
 from flask_admin.actions import action
 from flask_admin.contrib.sqla.filters import FilterEqual
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.future import select
 from sqlalchemy.orm import Query, joinedload
 
@@ -179,7 +179,14 @@ class AllocatedRewardAdmin(RewardAdminBase):
     ro_endpoint = "ro-account-holder-rewards"
 
     def get_query(self) -> Query:
-        return super().get_query().filter(Reward.account_holder_id.is_not(None))
+        return super().get_query().filter(self.model.account_holder_id.is_not(None))
+
+    def get_count_query(self) -> Query:
+        return (
+            self.session.query(func.count("*"))
+            .select_from(self.model)
+            .filter(self.model.account_holder_id.is_not(None))
+        )
 
 
 class RewardAdmin(RewardAdminBase):
