@@ -19,7 +19,6 @@ from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.accounts.tasks.account_holder import (
-    _get_active_campaigns,
     _process_callback,
     account_holder_activation,
     enrolment_callback,
@@ -27,7 +26,6 @@ from cosmos.accounts.tasks.account_holder import (
 )
 from cosmos.db.models import AccountHolder, Campaign, EmailTemplateKey, Retailer
 from cosmos.retailers.enums import EmailTemplateKeys, EmailTemplateTypes, RetailerStatuses
-from tests.conftest import SetupType
 
 
 class MockedOauthToken:
@@ -164,18 +162,6 @@ def test__process_callback_connection_error(
     assert isinstance(excinfo.value, requests.Timeout)
     assert excinfo.value.response is None
     assert enrolment_callback_task.audit_data == []  # This is set in the exception handler
-
-
-# FIXME: This test is all wrong. The campaign object is actually an AccountHolder
-# @httpretty.activate
-# def test__get_active_campaigns(setup: SetupType) -> None:
-#     db_session, retailer, campaign = setup
-#     campaign.slug = "slug1"
-#     db_session.commit()
-#     expected_slug = "slug1"
-#     campaigns = _get_active_campaigns(db_session, retailer)
-#     for campaign in campaigns:
-#         assert campaign.slug == expected_slug
 
 
 @pytest.mark.parametrize("balance_lifespan", [10, None])
