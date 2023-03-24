@@ -658,8 +658,8 @@ class RewardRuleAdmin(CanDeleteModelView):
                 ),
             },
             "allocation_window": {
-                "default": 0,
-                "validators": [validate_reward_rule_allocation_window, wtforms.validators.NumberRange(min=0)],
+                "default": None,
+                "validators": [validate_reward_rule_allocation_window, wtforms.validators.NumberRange(min=1)],
                 "description": (
                     "Period of time before a reward is allocated to an AccountHolder in days."
                     " Accumulator campaigns only."
