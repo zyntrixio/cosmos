@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-import requests
 import sentry_sdk
 
 from requests.exceptions import HTTPError
@@ -18,7 +17,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
-from cosmos.campaigns.enums import CampaignStatuses, HttpErrors
+from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.tasks import sync_send_activity
 from cosmos.core.config import redis
 from cosmos.core.prometheus import task_processing_time_callback_fn, tasks_run_total
@@ -134,11 +133,16 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
         select(AccountHolder).where(AccountHolder.id == task_params["account_holder_id"])
     ).scalar_one()
 
-    logger.info(f"Getting campaign slugs for {account_holder.retailer.slug}")
-    try:
-        campaigns: list[Campaign] = _get_active_campaigns(db_session=db_session, retailer=account_holder.retailer)
-    except requests.HTTPError:
-        raise HttpErrors.NO_ACTIVE_CAMPAIGNS.value  # noqa: B904
+    logger.info(f"Getting active campaigns for {account_holder.retailer.slug}")
+    campaigns: list[Campaign] = (
+        db_session.execute(
+            select(Campaign).where(
+                Campaign.retailer_id == account_holder.retailer_id, Campaign.status == CampaignStatuses.ACTIVE
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     # If there are no active campaigns for the retailer, the new account holder
     # will stay in PENDING unless the retailer is in TEST status
