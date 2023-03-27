@@ -234,7 +234,7 @@ def test_transaction_datetime_before_account_join(
         mock_activity=mock_activity,
         tx_payload=sample_payload,
         error="INVALID_TX_DATE",
-        campaign_slugs=[campaign_with_rules.slug],
+        campaign_slugs=[],
     )
 
 

@@ -209,6 +209,7 @@ def account_holder(
     )
     db_session.add(acc_holder)
     db_session.flush()
+    acc_holder.created_at -= timedelta(days=10)
 
     profile = AccountHolderProfile(
         account_holder_id=acc_holder.id, **test_account_holder_activation_data["credentials"]

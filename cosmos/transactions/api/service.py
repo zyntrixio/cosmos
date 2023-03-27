@@ -564,13 +564,13 @@ class TransactionService(Service):
         if account_holder.status != AccountHolderStatuses.ACTIVE:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_ACTIVE)), None
 
+        if account_holder.created_at > tx_datetime_naive:
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_TX_DATE)), None
+
         if not (active_campaigns := await self.get_active_campaigns(tx_datetime_naive)):
             return ServiceResult(error=ServiceError(error_code=ErrorCode.NO_ACTIVE_CAMPAIGNS)), None
 
         tx_import_activity_data["campaign_slugs"] = [cmp.slug for cmp in active_campaigns]
-
-        if account_holder.created_at > tx_datetime_naive:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_TX_DATE)), None
 
         transaction = await crud.create_transaction(
             self.db_session,
