@@ -25,7 +25,7 @@ sentry-sdk = {version = "^1.10.1", extras = ["flask"]}
 azure-identity = "^1.11.0"
 azure-keyvault = "^4.2.0"
 rq = "^1.11.1"
-redis = "^4.3.4"
+redis = "^4.5.3"
 python-dotenv = "^0.21.0"
 psycopg2-binary = "^2.9.5"
 babel = "^2.11.0"
