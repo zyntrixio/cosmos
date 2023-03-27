@@ -120,7 +120,7 @@ class RewardConfigAdmin(BaseModelView):
 
 class RewardAdminBase(BaseModelView):
     can_create = False
-    column_list = (
+    column_list = [
         "account_holder",
         "reward_uuid",
         "code",
@@ -133,9 +133,9 @@ class RewardAdminBase(BaseModelView):
         "associated_url",
         "campaign",
         "reward_file_log",
-    )
+    ]
     column_labels = {"reward_file_log": "Reward filename"}
-    column_filters = (
+    column_filters = [
         "account_holder.id",
         "account_holder.email",
         "retailer.slug",
@@ -148,12 +148,12 @@ class RewardAdminBase(BaseModelView):
             "Status",
             options=[(opt.value, opt.name) for opt in Reward.RewardStatuses],
         ),
-    )
-    column_searchable_list = (
+    ]
+    column_searchable_list = [
         "account_holder.account_holder_uuid",
         "account_holder.email",
         "code",
-    )
+    ]
     column_formatters = {"account_holder": account_holder_repr, "reward_file_log": reward_file_log_format}
     form_widget_args = {
         "reward_id": {"readonly": True},
@@ -181,6 +181,15 @@ class AllocatedRewardAdmin(RewardAdminBase):
     can_edit = False
     rw_endpoint = "account-holder-rewards"
     ro_endpoint = "ro-account-holder-rewards"
+
+    column_list = RewardAdminBase.column_list.copy()
+    column_list.remove("reward_file_log")
+
+    column_filters = RewardAdminBase.column_filters.copy()
+    column_filters.remove("reward_file_log.file_name")
+
+    column_searchable_list = RewardAdminBase.column_searchable_list.copy()
+    column_searchable_list.remove("code")
 
     def get_query(self) -> Query:  # pragma: no cover
         return super().get_query().filter(self.model.account_holder_id.is_not(None))
