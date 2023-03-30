@@ -2,7 +2,11 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from cosmos.campaigns.activity.schemas import BalanceChangeActivityDataSchema, CampaignStatusChangeActivitySchema
+from cosmos.campaigns.activity.schemas import (
+    BalanceChangeActivityDataSchema,
+    CampaignMigrationActivitySchema,
+    CampaignStatusChangeActivitySchema,
+)
 from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.activity.enums import ActivityTypeMixin
@@ -16,6 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class ActivityType(ActivityTypeMixin, Enum):
     CAMPAIGN = f"activity.{campaign_settings.core.PROJECT_NAME}.campaign.status.change"
     BALANCE_CHANGE = f"activity.{campaign_settings.core.PROJECT_NAME}.balance.change"
+    CAMPAIGN_MIGRATION = f"activity.{campaign_settings.core.PROJECT_NAME}.campaign.migration"
 
     @classmethod
     def get_campaign_status_change_activity_data(
@@ -50,6 +55,44 @@ class ActivityType(ActivityTypeMixin, Enum):
                     },
                 }
             ).dict(exclude_unset=True),
+        )
+
+    @classmethod
+    def get_campaign_migration_activity_data(
+        cls,
+        *,
+        retailer_slug: str,
+        from_campaign_slug: str,
+        to_campaign_slug: str,
+        sso_username: str,
+        activity_datetime: datetime,
+        balance_conversion_rate: int,
+        qualify_threshold: int,
+        pending_rewards: str,
+        transfer_balance_requested: bool,
+    ) -> dict:
+
+        return cls._assemble_payload(
+            cls.CAMPAIGN_MIGRATION.name,
+            underlying_datetime=activity_datetime,
+            summary=(
+                f"{retailer_slug} Campaign {from_campaign_slug} has ended"
+                f" and account holders have been migrated to Campaign {to_campaign_slug}"
+            ),
+            associated_value="N/A",
+            retailer_slug=retailer_slug,
+            data=CampaignMigrationActivitySchema(
+                transfer_balance_requested=transfer_balance_requested,
+                ended_campaign=from_campaign_slug,
+                activated_campaign=to_campaign_slug,
+                balance_conversion_rate=balance_conversion_rate,
+                qualify_threshold=qualify_threshold,
+                pending_rewards=pending_rewards,
+            ).dict(),
+            activity_identifier=retailer_slug,
+            reasons=[f"Campaign {from_campaign_slug} was ended"],
+            campaigns=[from_campaign_slug, to_campaign_slug],
+            user_id=sso_username,
         )
 
     @classmethod

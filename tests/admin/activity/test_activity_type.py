@@ -951,8 +951,26 @@ def test_get_retailer_update_activity_data(mocker: MockFixture) -> None:
     retailer_slug = "test-retailer"
     retailer_name = "Test retailer"
     activity_datetime = datetime.now(tz=UTC)
-    original_values = {"balance_reset_advanced_warning_days": 10, "balance_lifespan": 20}
-    new_values = {"balance_reset_advanced_warning_days": 7, "balance_lifespan": 30}
+    original_values = {
+        "balance_reset_advanced_warning_days": 10,
+        "balance_lifespan": 20,
+        "profile_config": [{"potato": "carrot-fest-21"}],
+    }
+    new_values = {
+        "balance_reset_advanced_warning_days": 7,
+        "balance_lifespan": 30,
+        "profile_config": [{"potato": "potato-fest-21"}],
+    }
+    original_altered_values = {
+        "balance_reset_advanced_warning_days": 10,
+        "balance_lifespan": 20,
+        "enrolment_config": [{"potato": "carrot-fest-21"}],
+    }
+    new_altered_values = {
+        "balance_reset_advanced_warning_days": 7,
+        "balance_lifespan": 30,
+        "enrolment_config": [{"potato": "potato-fest-21"}],
+    }
 
     payload = ActivityType.get_retailer_update_activity_data(
         sso_username=user_name,
@@ -976,8 +994,8 @@ def test_get_retailer_update_activity_data(mocker: MockFixture) -> None:
         "campaigns": [],
         "data": {
             "retailer": {
-                "new_values": new_values,
-                "original_values": original_values,
+                "new_values": new_altered_values,
+                "original_values": original_altered_values,
             },
         },
     }

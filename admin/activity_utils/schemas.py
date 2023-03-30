@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Literal
 
 from cosmos_message_lib.schemas import ActivitySchema, utc_datetime
-from pydantic import BaseModel, Field, NonNegativeInt, root_validator, validator
+from pydantic import BaseModel, Field, NonNegativeInt, validator
 
 
 def format_datetime(dt: utc_datetime | None) -> str | None:
@@ -147,35 +147,6 @@ class RewardStatusWholeActivitySchema(ActivitySchema):
     """
 
     data: _RewardStatusActivityDataSchema
-
-
-class CampaignMigrationActivitySchema(BaseModel):
-    transfer_balance_requested: bool
-
-    ended_campaign: str
-    activated_campaign: str
-    balance_conversion_rate: int
-    qualify_threshold: int
-    pending_rewards: str
-
-    @validator("balance_conversion_rate", "qualify_threshold", pre=False, always=True)
-    @classmethod
-    def convert_to_percentage_string(cls, v: int) -> str:
-        return f"{v}%"
-
-    @validator("pending_rewards", pre=False, always=True)
-    @classmethod
-    def convert_to_lower(cls, v: str) -> str:
-        return v.lower()
-
-    @root_validator
-    @classmethod
-    def format_payload(cls, values: dict) -> dict:
-        if not values.pop("transfer_balance_requested"):
-            values.pop("balance_conversion_rate")
-            values.pop("qualify_threshold")
-
-        return values
 
 
 class _RewardRuleUpdateValuesSchema(BaseModel):
