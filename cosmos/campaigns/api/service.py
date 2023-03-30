@@ -360,5 +360,22 @@ class CampaignService(Service):
         await self.commit_db_changes()
         if reward_issuance_tasks:
             await self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
+        await self.store_activity(
+            activity_type=CampaignActivityType.CAMPAIGN_MIGRATION,
+            payload_formatter_fn=CampaignActivityType.get_campaign_migration_activity_data,
+            formatter_kwargs=[
+                {
+                    "retailer_slug": self.retailer.slug,
+                    "from_campaign_slug": campaigns.active.slug,
+                    "to_campaign_slug": campaigns.draft.slug,
+                    "sso_username": payload.activity_metadata.sso_username,
+                    "activity_datetime": datetime.now(tz=UTC),
+                    "balance_conversion_rate": payload.balance_action.conversion_rate,
+                    "qualify_threshold": payload.balance_action.qualifying_threshold,
+                    "pending_rewards": payload.pending_rewards_action,
+                    "transfer_balance_requested": payload.balance_action.transfer,
+                }
+            ],
+        )
         await self.format_and_send_stored_activities()
         return ServiceResult({})

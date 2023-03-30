@@ -7,7 +7,6 @@ from cosmos_message_lib.schemas import utc_datetime
 from admin.activity_utils.schemas import (
     CampaignCreatedActivitySchema,
     CampaignDeletedActivitySchema,
-    CampaignMigrationActivitySchema,
     CampaignUpdatedActivitySchema,
     EarnRuleCreatedActivitySchema,
     EarnRuleDeletedActivitySchema,
@@ -29,7 +28,6 @@ class ActivityType(ActivityTypeMixin, Enum):
     CAMPAIGN = f"activity.{admin_settings.core.PROJECT_NAME}.campaign.change"
     EARN_RULE = f"activity.{admin_settings.core.PROJECT_NAME}.earn_rule.change"
     REWARD_RULE = f"activity.{admin_settings.core.PROJECT_NAME}.reward_rule.change"
-    CAMPAIGN_MIGRATION = f"activity.{admin_settings.core.PROJECT_NAME}.campaign.migration"
     RETAILER_CREATED = f"activity.{admin_settings.core.PROJECT_NAME}.retailer.created"
     RETAILER_CHANGED = f"activity.{admin_settings.core.PROJECT_NAME}.retailer.changed"
     RETAILER_DELETED = f"activity.{admin_settings.core.PROJECT_NAME}.retailer.deleted"
@@ -282,44 +280,6 @@ class ActivityType(ActivityTypeMixin, Enum):
             activity_identifier=campaign_slug,
             reasons=["Created"],
             campaigns=[campaign_slug],
-            user_id=sso_username,
-        )
-
-    @classmethod
-    def get_campaign_migration_activity_data(
-        cls,
-        *,
-        retailer_slug: str,
-        from_campaign_slug: str,
-        to_campaign_slug: str,
-        sso_username: str,
-        activity_datetime: datetime,
-        balance_conversion_rate: int,
-        qualify_threshold: int,
-        pending_rewards: str,
-        transfer_balance_requested: bool,
-    ) -> dict:
-
-        return cls._assemble_payload(
-            cls.CAMPAIGN_MIGRATION.name,
-            underlying_datetime=activity_datetime,
-            summary=(
-                f"{retailer_slug} Campaign {from_campaign_slug} has ended"
-                f" and account holders have been migrated to Campaign {to_campaign_slug}"
-            ),
-            associated_value="N/A",
-            retailer_slug=retailer_slug,
-            data=CampaignMigrationActivitySchema(
-                transfer_balance_requested=transfer_balance_requested,
-                ended_campaign=from_campaign_slug,
-                activated_campaign=to_campaign_slug,
-                balance_conversion_rate=balance_conversion_rate,
-                qualify_threshold=qualify_threshold,
-                pending_rewards=pending_rewards,
-            ).dict(),
-            activity_identifier=retailer_slug,
-            reasons=[f"Campaign {from_campaign_slug} was ended"],
-            campaigns=[from_campaign_slug, to_campaign_slug],
             user_id=sso_username,
         )
 

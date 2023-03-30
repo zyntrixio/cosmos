@@ -56,6 +56,13 @@ from cosmos.transactions.api.service import AdjustmentAmount
             "Test Retailer Transaction Import Failed",
             id="Internal server error",
         ),
+        pytest.param(
+            False,
+            "INVALID_TX_DATE",
+            ["Transaction dated before user join"],
+            "Test Retailer Transaction Import Failed",
+            id="Invalid transaction",
+        ),
     ),
 )
 def test_tx_import_activity_payload(
