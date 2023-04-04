@@ -130,7 +130,7 @@ def populate(
         typer.echo("the number of account holders to create must be between 1 and 1,000,000,000.")
         sys.exit(-1)
 
-    db_uri = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    db_uri = f"postgresql+psycopg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(db_uri, poolclass=NullPool, echo=sql_debug)
 
     db_session: "Session" = scoped_session(sessionmaker(bind=engine))()
