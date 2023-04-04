@@ -22,6 +22,7 @@ from cosmos.db.models import (
 )
 
 if TYPE_CHECKING:
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 

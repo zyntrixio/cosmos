@@ -27,6 +27,7 @@ from cosmos.retailers.schemas import (
 )
 
 if TYPE_CHECKING:
+
     from fastapi import Request
 
     from cosmos.db.models import AccountHolder, Retailer
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
 
 class AccountService(Service):
     def _validate_profile_data(self, profile_data: dict, retailer_profile_config: dict) -> dict:
-        ProfileConfigSchema = retailer_profile_info_validation_factory(retailer_profile_config)  # noqa N806
+        ProfileConfigSchema = retailer_profile_info_validation_factory(retailer_profile_config)  # noqa: N806
         return ProfileConfigSchema(**profile_data).dict(exclude_unset=True)
 
     def _process_and_validate_marketing_data(
@@ -44,7 +45,7 @@ class AccountService(Service):
             return []
 
         marketing_config = yaml.safe_load(marketing_config_raw)
-        MarketingConfigSchema = retailer_marketing_info_validation_factory(marketing_config)  # noqa N806
+        MarketingConfigSchema = retailer_marketing_info_validation_factory(marketing_config)  # noqa: N806
         validated_marketing_data = MarketingConfigSchema(**{mk.key: mk.value for mk in marketing_prefs}).dict(
             exclude_unset=False
         )

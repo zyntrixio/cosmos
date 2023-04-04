@@ -1,9 +1,12 @@
-from datetime import date
+from datetime import date, datetime
+from typing import TYPE_CHECKING
 
-from cosmos_message_lib.schemas import ActivitySchema
-from pydantic import BaseModel, Field, NonNegativeInt, validator
+from pydantic import BaseModel, Extra, Field, NonNegativeInt, validator
 
 from cosmos.accounts.api.schemas.utils import UTCDatetime
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class EarnedSchema(BaseModel):
@@ -48,7 +51,7 @@ class RefundNotRecoupedDataSchema(BaseModel):
     amount_not_recouped: NonNegativeInt
 
 
-class _BalanceResetDataSchema(BalanceChangeDataSchema):
+class BalanceResetDataSchema(BalanceChangeDataSchema):
     reset_date: date | None
 
     @validator("reset_date", pre=False, always=True)
@@ -57,5 +60,20 @@ class _BalanceResetDataSchema(BalanceChangeDataSchema):
         return value.isoformat() if value else None
 
 
-class BalanceResetWholeDataSchema(ActivitySchema):
-    data: _BalanceResetDataSchema
+class EmailEventActivityDataSchema(BaseModel):
+
+    time: int = Field(..., alias="event_datetime")
+    Message_GUID: str = Field(..., alias="message_uuid")
+
+    @validator("time", pre=True, always=True)
+    @classmethod
+    def timestamp_from_datetime(cls, v: datetime) -> int:
+        return int(v.timestamp())
+
+    @validator("Message_GUID", pre=True, always=True)
+    @classmethod
+    def string_from_uuid(cls, v: "UUID") -> str:
+        return str(v)
+
+    class Config:
+        extra = Extra.allow

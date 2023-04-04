@@ -26,7 +26,7 @@ def test_reset_balances_ok_retailer_has_lifespan(
     now = datetime.now(tz=ZoneInfo(cron_scheduler.tz))
 
     mock_logger = mocker.patch("cosmos.core.scheduled_tasks.balances.logger")
-    mock_datetime = mocker.patch("cosmos.core.scheduled_tasks.balances.datetime")
+    mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
     mock_datetime.now.return_value = now
 
     today = now.date()
@@ -78,7 +78,7 @@ def test_reset_balances_ok_retailer_has_lifespan(
     def mock_send_activities(activities: Iterable, *, routing_key: str) -> None:
         nonlocal sent_activities
         for activity in activities:
-            del activity["id"]
+
             sent_activities.append(activity)
 
     mocker.patch("cosmos.core.scheduled_tasks.balances.sync_send_activity", mock_send_activities)
@@ -131,7 +131,7 @@ def test_reset_balances_ok_retailer_has_lifespan(
             assert not account_holder_email.allow_re_send
 
 
-def test_reset_balances_ok_ratailer_does_not_have_lifespan(
+def test_reset_balances_ok_retailer_does_not_have_lifespan(
     mocker: MockerFixture,
     db_session: "Session",
     create_campaign: Callable[..., "Campaign"],

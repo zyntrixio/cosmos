@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, cast
 from zoneinfo import ZoneInfo
 
@@ -89,12 +89,10 @@ def reset_balances() -> None:
     with SyncSessionMaker() as db_session:
         updated_balances = _retrieve_and_update_balances(db_session)
         logger.info("Operation completed successfully, %d balances have been set to 0", len(updated_balances))
-        activity_datetime = datetime.now(tz=UTC)
         sync_send_activity(
             (
                 AccountsActivityType.get_balance_reset_activity_data(
                     reset_date=updated_balance.reset_date,
-                    activity_datetime=activity_datetime,
                     underlying_datetime=updated_balance.updated_at,
                     retailer_slug=updated_balance.retailer_slug,
                     balance_lifespan=updated_balance.balance_lifespan,

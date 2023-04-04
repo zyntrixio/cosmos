@@ -2,13 +2,14 @@ import logging
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import get_session
-from cosmos.public.api.schemas import RewardMicrositeResponseSchema
-from cosmos.public.api.service import PublicService
+from cosmos.public.api.schemas import AccountHolderEmailEvent, RewardMicrositeResponseSchema
+from cosmos.public.api.service import CallbackService, PublicService
 from cosmos.public.config import public_settings
 
 if TYPE_CHECKING:
@@ -17,6 +18,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger("opt-out-marketing")
 
 public_router = APIRouter(prefix=public_settings.PUBLIC_API_PREFIX)
+security = HTTPBasic()
+
+
+def validate_mailjet_credentials(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> None:
+    if (
+        credentials.username != public_settings.MAIL_EVENT_CALLBACK_USERNAME
+        or credentials.password != public_settings.MAIL_EVENT_CALLBACK_PASSWORD
+    ):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 
 @public_router.get(
@@ -47,4 +57,13 @@ async def get_reward_for_micorsite(
 ) -> "Reward":
     service = PublicService(db_session=db_session, retailer_slug=retailer_slug)
     service_result = await service.handle_get_reward_for_microsite(reward_uuid)
+    return service_result.handle_service_result()
+
+
+@public_router.post(path="/email/event", dependencies=[Depends(validate_mailjet_credentials)])
+async def account_holder_email_callback_event(
+    payload: AccountHolderEmailEvent, db_session: Annotated[AsyncSession, Depends(get_session)]
+) -> dict:
+    service = CallbackService(db_session=db_session)
+    service_result = await service.handle_email_event(payload=payload)
     return service_result.handle_service_result()
