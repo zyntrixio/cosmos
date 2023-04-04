@@ -3,25 +3,36 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
+from deepdiff import DeepDiff
+from fastapi import status
 from pytest_mock import MockerFixture
-from starlette import status
 
 from cosmos.accounts.activity.enums import ActivityType as AccountActivityType
 from cosmos.core.error_codes import ErrorCode
-from cosmos.db.models import AccountHolder, MarketingPreference, MarketingPreferenceValueTypes, Retailer, Reward
-from cosmos.public.api.service import RESPONSE_TEMPLATE
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderEmail,
+    MarketingPreference,
+    MarketingPreferenceValueTypes,
+    Retailer,
+    Reward,
+)
+from cosmos.public.api.service import RESPONSE_TEMPLATE, CallbackService
 from cosmos.public.config import public_settings
-from tests.conftest import SetupType
 
 if TYPE_CHECKING:
 
     from fastapi.testclient import TestClient
 
+    from cosmos.db.models import EmailType
+    from tests.conftest import SetupType
+
 PUBLIC_API_PREFIX = public_settings.PUBLIC_API_PREFIX
 
 
-def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, test_client: "TestClient") -> None:
+def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: "SetupType", test_client: "TestClient") -> None:
     db_session, retailer, account_holder = setup
     mock_get_marketing_preference_change_activity_data = mocker.patch(
         "cosmos.accounts.activity.enums.ActivityType.get_marketing_preference_change_activity_data",
@@ -82,7 +93,7 @@ def test_opt_out_marketing_preferences(mocker: MockerFixture, setup: SetupType, 
 
 
 def test_opt_out_marketing_preferences_wrong_retailer(
-    mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
+    mocker: MockerFixture, setup: "SetupType", test_client: "TestClient"
 ) -> None:
     db_session = setup.db_session
     account_holder = setup.account_holder
@@ -108,7 +119,7 @@ def test_opt_out_marketing_preferences_wrong_retailer(
 
 
 def test_opt_out_marketing_preferences_invalid_opt_out_token(
-    mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
+    mocker: MockerFixture, setup: "SetupType", test_client: "TestClient"
 ) -> None:
     mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
@@ -122,7 +133,7 @@ def test_opt_out_marketing_preferences_invalid_opt_out_token(
 
 
 def test_opt_out_marketing_preferences_wrong_opt_out_token(
-    mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
+    mocker: MockerFixture, setup: "SetupType", test_client: "TestClient"
 ) -> None:
     mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
@@ -136,7 +147,7 @@ def test_opt_out_marketing_preferences_wrong_opt_out_token(
 
 
 def test_opt_out_marketing_preferences_no_opt_out_token_provided(
-    mocker: MockerFixture, setup: SetupType, test_client: "TestClient"
+    mocker: MockerFixture, setup: "SetupType", test_client: "TestClient"
 ) -> None:
     mock_sync_send_activity = mocker.patch("cosmos.public.api.service.async_send_activity")
     retailer = setup.retailer
@@ -149,7 +160,7 @@ def test_opt_out_marketing_preferences_no_opt_out_token_provided(
     mock_sync_send_activity.assert_not_called()
 
 
-def test_get_reward_for_microsite(setup: SetupType, user_reward: Reward, test_client: "TestClient") -> None:
+def test_get_reward_for_microsite(setup: "SetupType", user_reward: Reward, test_client: "TestClient") -> None:
     db_session, retailer, account_holder = setup
     now = datetime.now(tz=UTC)
     user_reward.expiry_date = now + timedelta(days=10)
@@ -170,7 +181,7 @@ def test_get_reward_for_microsite(setup: SetupType, user_reward: Reward, test_cl
 
 
 def test_get_reward_for_microsite_invalid_reward_uuid(
-    setup: SetupType, user_reward: Reward, test_client: "TestClient"
+    setup: "SetupType", user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
     now = datetime.now(tz=UTC)
@@ -186,7 +197,7 @@ def test_get_reward_for_microsite_invalid_reward_uuid(
 
 
 def test_get_reward_for_microsite_invalid_retailer(
-    setup: SetupType, user_reward: Reward, test_client: "TestClient"
+    setup: "SetupType", user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, _, account_holder = setup
     now = datetime.now(tz=UTC)
@@ -202,7 +213,7 @@ def test_get_reward_for_microsite_invalid_retailer(
 
 
 def test_get_reward_for_microsite_past_expiry_date(
-    setup: SetupType, user_reward: Reward, test_client: "TestClient"
+    setup: "SetupType", user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
     now = datetime.now(tz=UTC)
@@ -224,7 +235,7 @@ def test_get_reward_for_microsite_past_expiry_date(
 
 
 def test_get_reward_for_microsite_redeemed_reward(
-    setup: SetupType, user_reward: Reward, test_client: "TestClient"
+    setup: "SetupType", user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, account_holder = setup
     now = datetime.now(tz=UTC)
@@ -248,7 +259,7 @@ def test_get_reward_for_microsite_redeemed_reward(
 
 
 def test_get_reward_for_microsite_bad_reward_uuid(
-    setup: SetupType, user_reward: Reward, test_client: "TestClient"
+    setup: "SetupType", user_reward: Reward, test_client: "TestClient"
 ) -> None:
     db_session, retailer, _ = setup
     now = datetime.now(tz=UTC)
@@ -264,7 +275,7 @@ def test_get_reward_for_microsite_bad_reward_uuid(
 
 
 def test_get_reward_for_microsite_reward_uuid_for_wrong_retailer(
-    setup: SetupType,
+    setup: "SetupType",
     user_reward: Reward,
     test_client: "TestClient",
     create_mock_reward: Callable,
@@ -305,3 +316,145 @@ def test_get_reward_for_microsite_reward_uuid_for_wrong_retailer(
     )
 
     assert resp.status_code == ErrorCode.INVALID_REQUEST.value.status_code
+
+
+def test_account_holder_email_callback_event_wrong_auth(test_client: "TestClient", mocker: MockerFixture) -> None:
+    mocked_format_and_send_activity = mocker.patch.object(CallbackService, "format_and_send_stored_activities")
+
+    resp = test_client.post(f"{public_settings.PUBLIC_API_PREFIX}/email/event")
+
+    assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+    mocked_format_and_send_activity.assert_not_called()
+
+    resp = test_client.post(f"{public_settings.PUBLIC_API_PREFIX}/email/event", auth=("ping", "pong"))
+
+    assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+    mocked_format_and_send_activity.assert_not_called()
+
+
+def test_account_holder_email_callback_event_message_uuid_not_found(
+    test_client: "TestClient", mocker: MockerFixture
+) -> None:
+    mocked_format_and_send_activity = mocker.patch.object(CallbackService, "format_and_send_stored_activities")
+    message_uuid = uuid4()
+    new_status = "open"
+
+    mock_logger = mocker.MagicMock()
+    mocker.patch("cosmos.core.api.service.logging", getLogger=lambda _: mock_logger)
+
+    resp = test_client.post(
+        f"{public_settings.PUBLIC_API_PREFIX}/email/event",
+        auth=(
+            public_settings.MAIL_EVENT_CALLBACK_USERNAME,
+            public_settings.MAIL_EVENT_CALLBACK_PASSWORD,
+        ),
+        json={
+            "event": new_status,
+            "time": 1433333949,
+            "MessageID": 19421777835146490,
+            "Message_GUID": str(message_uuid),
+            "email": "api@mailjet.com",
+            "mj_campaign_id": 7257,
+            "mj_contact_id": 4,
+            "customcampaign": "",
+            "mj_message_id": "19421777835146490",
+            "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
+            "CustomID": "helloworld",
+        },
+    )
+    assert resp.status_code == status.HTTP_200_OK
+    mock_logger.exception.assert_called_once_with(
+        "Failed to update AccountHolderEmail with message_uuid %s with current_status %s",
+        message_uuid,
+        new_status,
+    )
+    mocked_format_and_send_activity.assert_not_called()
+
+
+def test_account_holder_email_callback_event_ok(
+    test_client: "TestClient", setup: "SetupType", balance_reset_email_type: "EmailType", mocker: MockerFixture
+) -> None:
+    db_session, retailer, account_holder = setup
+    mock_now = datetime.now(tz=UTC)
+
+    mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
+    mock_datetime.now.return_value = mock_now
+
+    sent_activities = []
+
+    async def format_stored_activities(self: CallbackService) -> None:
+        nonlocal sent_activities
+
+        for stored_activity in self._stored_activities:
+            sent_activities.append(stored_activity["payload_formatter_fn"](**stored_activity["formatter_kwargs"]))
+
+    mocker.patch.object(CallbackService, "format_and_send_stored_activities", format_stored_activities)
+
+    event_timestamp = int(mock_now.timestamp())
+    event_datetime = datetime.fromtimestamp(event_timestamp, tz=UTC)
+    message_uuid = uuid4()
+    new_status = "open"
+    account_holder_email = AccountHolderEmail(
+        account_holder_id=account_holder.id,
+        email_type_id=balance_reset_email_type.id,
+        message_uuid=message_uuid,
+    )
+    db_session.add(account_holder_email)
+    db_session.commit()
+
+    assert not account_holder_email.current_status
+
+    resp = test_client.post(
+        f"{public_settings.PUBLIC_API_PREFIX}/email/event",
+        auth=(
+            public_settings.MAIL_EVENT_CALLBACK_USERNAME,
+            public_settings.MAIL_EVENT_CALLBACK_PASSWORD,
+        ),
+        json={
+            "event": new_status,
+            "time": event_timestamp,
+            "MessageID": 19421777835146490,
+            "Message_GUID": str(message_uuid),
+            "email": "api@mailjet.com",
+            "mj_campaign_id": 7257,
+            "mj_contact_id": 4,
+            "customcampaign": "",
+            "mj_message_id": "19421777835146490",
+            "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
+            "CustomID": "helloworld",
+        },
+    )
+
+    assert resp.status_code == status.HTTP_200_OK
+
+    db_session.refresh(account_holder_email)
+    assert account_holder_email.current_status == new_status
+    assert len(sent_activities) == 1
+    assert not DeepDiff(
+        sent_activities[0],
+        {
+            "type": "EMAIL_EVENT",
+            "datetime": mock_now,
+            "underlying_datetime": event_datetime,
+            "summary": f"{new_status} Mailjet event received",
+            "reasons": ["MailJet Event received"],
+            "activity_identifier": str(message_uuid),
+            "user_id": str(account_holder.account_holder_uuid),
+            "associated_value": new_status,
+            "retailer": retailer.slug,
+            "campaigns": [],
+            "data": {
+                "event": new_status,
+                "time": event_timestamp,
+                "MessageID": 19421777835146490,
+                "Message_GUID": str(message_uuid),
+                "email": "api@mailjet.com",
+                "mj_campaign_id": 7257,
+                "mj_contact_id": 4,
+                "customcampaign": "",
+                "mj_message_id": "19421777835146490",
+                "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
+                "CustomID": "helloworld",
+            },
+        },
+    )

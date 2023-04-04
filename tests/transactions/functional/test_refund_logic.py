@@ -107,7 +107,7 @@ async def test__process_refund(
     await async_db_session.commit()
 
     mocked_store_activity = mocker.patch.object(TransactionService, "store_activity")
-    service = TransactionService(async_db_session, account_holder.retailer)
+    service = TransactionService(async_db_session, retailer=account_holder.retailer)
 
     await service._adjust_balance(
         campaign=balance_object.campaign,

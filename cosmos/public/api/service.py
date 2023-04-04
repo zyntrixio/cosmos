@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.core.activity.tasks import async_send_activity
@@ -10,14 +9,15 @@ from cosmos.core.api.crud import get_reward
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.prometheus import invalid_marketing_opt_out, microsite_reward_requests
+from cosmos.public.activity.enums import ActivityType as PublicActivityType
 from cosmos.public.api import crud
 from cosmos.public.config import public_settings
 from cosmos.retailers.crud import get_retailer_by_slug
 
 if TYPE_CHECKING:  # pragma: no cover
-    from asyncio import Task
 
     from cosmos.db.models import Reward
+    from cosmos.public.api.schemas import AccountHolderEmailEvent
 
 RESPONSE_TEMPLATE = """
 <!DOCTYPE HTML>
@@ -33,12 +33,6 @@ RESPONSE_TEMPLATE = """
 
 
 class PublicService(Service):
-    def __init__(self, db_session: "AsyncSession", retailer_slug: str) -> None:
-        self.db_session = db_session
-        self.retailer_slug = retailer_slug
-        self._stored_activities: list[dict] = []
-        self._asyncio_tasks: set["Task"] = set()
-
     async def handle_marketing_unsubscribe(self, u: str | None) -> ServiceResult[str, ServiceError]:
         msg = "You have opted out of any further marketing"
         if u:
@@ -122,3 +116,35 @@ class PublicService(Service):
             invalid_reward_uuid=retailer is not None,
         ).inc()
         return ServiceResult(error=ServiceError(error_code=ErrorCode.INVALID_REQUEST))
+
+
+class CallbackService(Service):
+    async def handle_email_event(self, *, payload: "AccountHolderEmailEvent") -> ServiceResult[dict, ServiceError]:
+
+        try:
+            account_holder_uuid, retailer_slug = await crud.update_account_holder_email_status(
+                self.db_session, payload.message_uuid, payload.event
+            )
+        except Exception:
+            self.logger.exception(
+                "Failed to update AccountHolderEmail with message_uuid %s with current_status %s",
+                payload.message_uuid,
+                payload.event,
+            )
+
+        else:
+            await self.store_activity(
+                activity_type=PublicActivityType.EMAIL_EVENT,
+                payload_formatter_fn=PublicActivityType.get_email_event_activity_data,
+                formatter_kwargs={
+                    "event": payload.event,
+                    "message_uuid": payload.message_uuid,
+                    "underlying_timestamp": payload.event_datetime,
+                    "retailer_slug": retailer_slug,
+                    "account_holder_uuid": account_holder_uuid,
+                    "payload": payload.dict(),
+                },
+            )
+            await self.format_and_send_stored_activities()
+
+        return ServiceResult({})

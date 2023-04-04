@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from collections.abc import Callable, Coroutine, Iterable
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
 
 from cosmos.core.activity.tasks import async_send_activity
 from cosmos.core.api.crud import commit
@@ -53,10 +53,28 @@ class ServiceResult(Generic[ServiceResultValue, ServiceResultError]):
 
 
 class Service:
-    def __init__(self, db_session: "AsyncSession", retailer: "Retailer") -> None:
+    @overload
+    def __init__(self, db_session: "AsyncSession") -> None:
+        ...
+
+    @overload
+    def __init__(self, db_session: "AsyncSession", *, retailer: "Retailer") -> None:
+        ...
+
+    @overload
+    def __init__(self, db_session: "AsyncSession", *, retailer_slug: str) -> None:
+        ...
+
+    def __init__(self, db_session: "AsyncSession", **kwargs: "Retailer | str") -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.db_session = db_session
-        self.retailer = retailer
+
+        if retailer := kwargs.get("retailer"):
+            self.retailer = cast("Retailer", retailer)
+
+        if retailer_slug := kwargs.get("retailer_slug"):
+            self.retailer_slug = cast(str, retailer_slug)
+
         self._stored_activities: list[dict] = []
         self._asyncio_tasks: set["Task"] = set()
 

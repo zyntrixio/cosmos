@@ -6,7 +6,7 @@ from cosmos.accounts.activity.schemas import (
     AccountEventSchema,
     AccountRequestSchema,
     BalanceChangeDataSchema,
-    BalanceResetWholeDataSchema,
+    BalanceResetDataSchema,
     MarketingPreferenceChangeSchema,
 )
 from cosmos.accounts.config import account_settings
@@ -162,9 +162,10 @@ class ActivityType(ActivityTypeMixin, Enum):
             associated_value=str(new_balance),
             retailer_slug=retailer_slug,
             campaigns=campaigns,
-            data=BalanceChangeDataSchema(new_balance=new_balance, original_balance=original_balance).dict(
-                exclude_unset=True
-            ),
+            data=BalanceChangeDataSchema(
+                new_balance=new_balance,
+                original_balance=original_balance,
+            ).dict(exclude_unset=True),
         )
 
     @classmethod
@@ -172,7 +173,6 @@ class ActivityType(ActivityTypeMixin, Enum):
         cls,
         *,
         reset_date: date,
-        activity_datetime: datetime,
         underlying_datetime: datetime,
         retailer_slug: str,
         balance_lifespan: int,
@@ -180,20 +180,19 @@ class ActivityType(ActivityTypeMixin, Enum):
         old_balance: int,
         account_holder_uuid: str,
     ) -> dict:
-        return BalanceResetWholeDataSchema(
-            type=ActivityType.BALANCE_CHANGE.name,
-            datetime=activity_datetime,
+        return cls._assemble_payload(
+            activity_type=ActivityType.BALANCE_CHANGE.name,
             underlying_datetime=underlying_datetime,
             summary=f"{retailer_slug} {campaign_slug} Balance {old_balance}",
             reasons=[f"Balance Reset every {balance_lifespan} days"],
             activity_identifier="N/A",
             user_id=account_holder_uuid,
-            associated_value=0,
-            retailer=retailer_slug,
+            associated_value="0",
+            retailer_slug=retailer_slug,
             campaigns=[campaign_slug],
-            data={
-                "reset_date": reset_date,
-                "new_balance": 0,
-                "original_balance": old_balance,
-            },
-        ).dict()
+            data=BalanceResetDataSchema(
+                reset_date=reset_date,
+                new_balance=0,
+                original_balance=old_balance,
+            ).dict(),
+        )
