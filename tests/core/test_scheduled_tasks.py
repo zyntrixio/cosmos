@@ -3,13 +3,11 @@ from typing import TYPE_CHECKING
 
 from deepdiff import DeepDiff
 from retry_tasks_lib.db.models import RetryTask
-from retry_tasks_lib.enums import RetryTaskStatuses
 from sqlalchemy.future import select
 
 from cosmos.core.config import core_settings, redis_raw
 from cosmos.core.scheduled_tasks.scheduled_email import scheduled_email_by_type
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler
-from cosmos.core.scheduled_tasks.task_cleanup import cleanup_old_tasks
 from cosmos.db.models import AccountHolderEmail
 
 if TYPE_CHECKING:
@@ -17,47 +15,9 @@ if TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
     from retry_tasks_lib.db.models import TaskType
-    from sqlalchemy.orm import Session
 
     from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, EmailTemplate
     from tests.conftest import SetupType
-
-
-def test_cleanup_old_tasks(
-    db_session: "Session", create_mock_task: "Callable[..., RetryTask]", mocker: "MockerFixture"
-) -> None:
-
-    now = datetime.now(tz=UTC)
-
-    deletable_task = create_mock_task()
-    deletable_task.status = RetryTaskStatuses.SUCCESS
-    deletable_task.created_at = now - timedelta(days=181)
-    deleted_task_id = deletable_task.retry_task_id
-
-    wrong_status_task = create_mock_task()
-    wrong_status_task.status = RetryTaskStatuses.FAILED
-    wrong_status_task.created_at = now - timedelta(days=200)
-
-    not_old_enough_task = create_mock_task()
-    not_old_enough_task.status = RetryTaskStatuses.SUCCESS
-    not_old_enough_task.created_at = now - timedelta(days=10)
-
-    db_session.commit()
-
-    mock_logger = mocker.patch("cosmos.core.scheduled_tasks.task_cleanup.logger")
-
-    cleanup_old_tasks()
-
-    logger_calls = mock_logger.info.call_args_list
-
-    assert logger_calls[0].args == ("Cleaning up tasks created before %s...", (now - timedelta(days=6 * 30)).date())
-    assert logger_calls[1].args == ("Deleted %d tasks. ( °╭ ︿ ╮°)", 1)
-
-    db_session.expire_all()
-
-    assert not db_session.get(RetryTask, deleted_task_id)
-    assert wrong_status_task.retry_task_id
-    assert not_old_enough_task.retry_task_id
 
 
 def test_scheduled_email_by_type(
