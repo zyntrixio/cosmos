@@ -86,6 +86,7 @@ class CoreSettings(BaseSettings):
     REPORT_TASKS_SUMMARY_SCHEDULE: str = "5,20,35,50 */1 * * *"
     REPORT_JOB_QUEUE_LENGTH_SCHEDULE: str = "*/10 * * * *"
     TASK_CLEANUP_SCHEDULE: str = "0 1 * * *"
+    TASK_DATA_RETENTION_DAYS: int = 180
 
     TASK_MAX_RETRIES: int = 6
     TASK_RETRY_BACKOFF_BASE: float = 3
