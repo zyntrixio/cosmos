@@ -33,6 +33,27 @@
           </span>
         {% endif %}
       </div>
+      <div class="row" style="padding-top: 10px">
+        <h3 class="panel-heading">Scheduler Configs</h3>
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered table-hover model-list">
+            <thead>
+              <tr>
+                <th class="column-header">Config Name</th>
+                <th class="column-header">Schedule</th>
+                <th class="column-header">Description</th>
+              </tr>
+            </thead>
+              {% for config in scheduler_configs %}
+              <tr>
+                <td>{{ config.name }}</td>
+                <td>{{ config.schedule }}</td>
+                <td>{{ config.description }}</td>
+              </tr>
+              {% endfor %}
+            </table>
+        </div>
+      </div>
     </div>
     <div class="col-md-4">
       <h3>Documentation</h3>
