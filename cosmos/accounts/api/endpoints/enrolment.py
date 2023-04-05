@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,9 +23,9 @@ router = APIRouter(prefix=account_settings.ACCOUNT_API_PREFIX)
 )
 async def endpoint_accounts_enrolment(
     payload: AccountHolderEnrolment,
+    db_session: Annotated[AsyncSession, Depends(get_session)],
+    retailer: Annotated[Retailer, Depends(get_retailer)],
     bpl_user_channel: str = Header(None),
-    retailer: Retailer = Depends(get_retailer),
-    db_session: AsyncSession = Depends(get_session),
 ) -> dict:
 
     service = AccountService(db_session=db_session, retailer=retailer)

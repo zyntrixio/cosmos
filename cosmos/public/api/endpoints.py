@@ -1,6 +1,6 @@
 import logging
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import HTMLResponse
@@ -26,8 +26,8 @@ public_router = APIRouter(prefix=public_settings.PUBLIC_API_PREFIX)
 )
 async def opt_out_marketing_preferences(
     retailer_slug: str,
+    db_session: Annotated[AsyncSession, Depends(get_session)],
     u: str | None = None,
-    db_session: AsyncSession = Depends(get_session),
 ) -> str:
     service = PublicService(db_session=db_session, retailer_slug=retailer_slug)
     service_result = await service.handle_marketing_unsubscribe(u)
@@ -43,7 +43,7 @@ async def opt_out_marketing_preferences(
 async def get_reward_for_micorsite(
     reward_uuid: str,
     retailer_slug: str,
-    db_session: AsyncSession = Depends(get_session),
+    db_session: Annotated[AsyncSession, Depends(get_session)],
 ) -> "Reward":
     service = PublicService(db_session=db_session, retailer_slug=retailer_slug)
     service_result = await service.handle_get_reward_for_microsite(reward_uuid)

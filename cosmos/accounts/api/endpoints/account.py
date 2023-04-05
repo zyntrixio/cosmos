@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,10 +37,10 @@ bpl_operations_router = APIRouter(
 )
 async def get_account_holder_by_credentials(
     payload: GetAccountHolderByCredentials,
-    tx_qty: int = 10,
+    db_session: Annotated[AsyncSession, Depends(get_session)],
+    retailer: Annotated[Retailer, Depends(get_retailer)],
     bpl_user_channel: str = Header(None),
-    retailer: "Retailer" = Depends(get_retailer),
-    db_session: AsyncSession = Depends(get_session),
+    tx_qty: int = 10,
 ) -> "AccountHolder":
     service = AccountService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_account_auth(payload, tx_qty=tx_qty, channel=bpl_user_channel)
@@ -54,9 +54,9 @@ async def get_account_holder_by_credentials(
 async def get_account_holder(
     account_holder_uuid: AccountHolderUUIDValidator,
     request: Request,
+    db_session: Annotated[AsyncSession, Depends(get_session)],
+    retailer: Annotated[Retailer, Depends(get_retailer)],
     tx_qty: int = 10,
-    retailer: "Retailer" = Depends(get_retailer),
-    db_session: AsyncSession = Depends(get_session),
 ) -> "AccountHolder":
     service = AccountService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_get_account(

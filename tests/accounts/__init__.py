@@ -6,7 +6,7 @@ from cosmos.accounts.api.app import app
 from cosmos.accounts.config import account_settings
 
 if TYPE_CHECKING:
-    from requests import Response
+    from httpx import Response
 
 client = TestClient(app)
 accounts_auth_headers = {

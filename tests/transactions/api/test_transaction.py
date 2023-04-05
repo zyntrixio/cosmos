@@ -113,7 +113,7 @@ def test_transaction_mangled_json(test_client: "TestClient", setup: "SetupType",
 
     resp = test_client.post(
         f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
-        data=b"{",
+        data=b"{",  # type: ignore [arg-type]
         headers=auth_headers,
     )
 

@@ -34,7 +34,7 @@ def test_status_change_mangled_json(test_client: "TestClient", setup: SetupType)
 
     resp = test_client.post(
         f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/status-change",
-        data=b"{",
+        data=b"{",  # type: ignore [arg-type]
         headers=auth_headers,
     )
 

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
@@ -14,7 +16,7 @@ async def livez() -> dict:
 
 
 @healthz_router.get(path="/readyz")
-async def readyz(db_session: AsyncSession = Depends(get_session)) -> dict:
+async def readyz(db_session: Annotated[AsyncSession, Depends(get_session)]) -> dict:
     try:
         await db_session.execute(text("SELECT 1"))
     except Exception as ex:  # noqa BLE001
