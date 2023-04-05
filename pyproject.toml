@@ -44,14 +44,15 @@ requests = "^2.28.2"
 cosmos-message-lib = {version = "^1.3.0", source = "bink-pypi"}
 fastapi-prometheus-metrics = {version = "^0.2.3", source = "bink-pypi"}
 cryptography = "^39.0.1"
+psycopg = {extras = ["binary", "pool"], version = "^3.1.8"}
+retry-tasks-lib = "^3.1.0"
 
 # ADMIN DEPENDENCIES
 Flask = { version = "^2.2.2", optional = true }
 Flask-Admin = { version = "^1.6.0", optional = true }
 Authlib = { version = "^1.1.0", optional = true }
 Flask-WTF = { version = "^1.0.1", optional = true }
-psycopg = {extras = ["binary", "pool"], version = "^3.1.8"}
-retry-tasks-lib = "^3.1.0"
+cron-descriptor = { version = "^1.2.35", optional = true }
 
 [tool.poetry.extras]
 admin = [
@@ -59,6 +60,7 @@ admin = [
     "Flask-Admin",
     "Authlib",
     "Flask-WTF",
+    "cron-descriptor",
 ]
 
 [tool.poetry.group.dev.dependencies]
