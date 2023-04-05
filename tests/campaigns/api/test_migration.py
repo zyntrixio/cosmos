@@ -27,7 +27,7 @@ from . import auth_headers
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from requests import Response
+    from httpx import Response
 
     from cosmos.db.models import Campaign
 
@@ -75,7 +75,7 @@ def test_migration_mangled_json(test_client: "TestClient", setup: SetupType) -> 
 
     resp = test_client.post(
         f"{campaign_settings.CAMPAIGN_API_PREFIX}/{retailer.slug}/migration",
-        data=b"{",
+        data=b"{",  # type: ignore [arg-type]
         headers=auth_headers,
     )
 

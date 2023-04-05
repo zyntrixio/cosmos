@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
 
-    from requests import Response
+    from httpx import Response
 
     from cosmos.core.error_codes import ErrorCode
 

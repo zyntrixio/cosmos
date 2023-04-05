@@ -236,7 +236,7 @@ def test_account_holder_get_by_credentials_mangled_json(setup: SetupType) -> Non
 
     resp = client.post(
         f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
-        data=b"{",
+        data=b"{",  # type: ignore [arg-type]
         headers=accounts_auth_headers,
     )
 

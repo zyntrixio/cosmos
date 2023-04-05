@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,8 +27,8 @@ get_retailer = RetailerDependency(
 )
 async def process_transaction(
     payload: CreateTransactionSchema,
-    retailer: Retailer = Depends(get_retailer),
-    db_session: AsyncSession = Depends(get_session),
+    db_session: Annotated[AsyncSession, Depends(get_session)],
+    retailer: Annotated[Retailer, Depends(get_retailer)],
 ) -> str:
     service = TransactionService(db_session=db_session, retailer=retailer)
     service_result = await service.handle_incoming_transaction(payload)

@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import suppress
+from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +30,9 @@ class RetailerDependency:
         self.join_campaign_data = join_active_campaign_data
         self.lock_retailer = lock_retailer
 
-    async def __call__(self, retailer_slug: str, db_session: AsyncSession = Depends(get_session)) -> Retailer | None:
+    async def __call__(
+        self, retailer_slug: str, db_session: Annotated[AsyncSession, Depends(get_session)]
+    ) -> Retailer | None:
         retailer = await get_retailer_by_slug(
             db_session,
             retailer_slug=retailer_slug,
@@ -61,7 +64,7 @@ class UserIsAuthorised:
     def __init__(self, expected_token: str) -> None:
         self.expected_token = expected_token
 
-    def __call__(self, token: str = Depends(get_authorization_token)) -> None:
+    def __call__(self, token: Annotated[str, Depends(get_authorization_token)]) -> None:
         if token != self.expected_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
