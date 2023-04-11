@@ -11,7 +11,7 @@ from sqlalchemy.future import select
 from wtforms.validators import StopValidation
 
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
-from cosmos.db.models import Campaign, EarnRule
+from cosmos.db.models import Campaign, EarnRule, Retailer
 from cosmos.db.session import scoped_db_session
 from cosmos.retailers.enums import RetailerStatuses
 
@@ -168,7 +168,7 @@ def validate_campaign_start_date_change(
         raise wtforms.ValidationError("Can not amend the start date field of anything other than a draft campaign.")
 
 
-def validate_retailer_update(old_retailer: str, new_retailer: str, campaign_status: CampaignStatuses) -> None:
+def validate_retailer_update(old_retailer: Retailer, new_retailer: Retailer, campaign_status: CampaignStatuses) -> None:
     if old_retailer != new_retailer and campaign_status != CampaignStatuses.DRAFT:
         raise wtforms.ValidationError("Can only change retailer for a draft campaign")
 
