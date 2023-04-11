@@ -28,6 +28,7 @@ class AccountSettings(BaseSettings):
     ANONYMISE_ACCOUNT_HOLDER_TASK_NAME: str = "anonymise-account-holder"
     RESET_BALANCES_SCHEDULE: str = "0 3 * * *"
     RESET_BALANCE_NUDGES_SCHEDULE = "0 3 * * *"
+    PURCHASE_PROMPT_SCHEDULE = "30 17 * * *"
     USE_CALLBACK_OAUTH2: bool = True
 
     class Config:

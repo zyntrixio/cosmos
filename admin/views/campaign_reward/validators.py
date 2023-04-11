@@ -108,9 +108,9 @@ def _validate_required_fields_values(required_fields: dict, fields_to_check: dic
     try:
         return required_fields_value_model(**fields_to_check)
     except pd.ValidationError as ex:
-        raise StopValidation(  # noqa: B904
+        raise StopValidation(
             ", ".join([f"{' -> '.join(err.get('loc'))}: {err.get('msg')}" for err in json.loads(ex.json())])
-        )
+        ) from None
 
 
 def validate_required_fields_values_yaml(form: wtforms.Form, field: wtforms.Field) -> None:
@@ -121,8 +121,8 @@ def validate_required_fields_values_yaml(form: wtforms.Form, field: wtforms.Fiel
 
     try:
         field_data = None if field.data is None else yaml.safe_load(field.data)
-    except (yaml.YAMLError, AttributeError):  # pragma: no cover
-        raise INVALID_YAML_ERROR  # noqa: B904
+    except (yaml.YAMLError, AttributeError) as e:  # pragma: no cover
+        raise INVALID_YAML_ERROR from e
 
     if required_fields is None:
         if field_data == required_fields:

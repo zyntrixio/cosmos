@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+import yaml
 
 from psycopg import OperationalError, ProgrammingError
 from pytest_mock import MockerFixture
@@ -854,6 +855,33 @@ def balance_reset_email_template(setup: SetupType, balance_reset_email_type: Ema
         template_id="12345",
         email_type_id=balance_reset_email_type.id,
         retailer_id=retailer.id,
+    )
+    db_session.add(template)
+    db_session.commit()
+    return template
+
+
+@pytest.fixture(scope="function")
+def purchase_prompt_email_type(db_session: "Session") -> EmailType:
+    email_type = EmailType(
+        slug="PURCHASE_PROMPT",
+        send_email_params_fn="cosmos.accounts.send_email_params_gen.get_purchase_prompt_params",
+        required_fields=yaml.safe_dump({"purchase_prompt_days": "integer"}),
+    )
+    db_session.add(email_type)
+    db_session.commit()
+    return email_type
+
+
+@pytest.fixture(scope="function")
+def purchase_prompt_email_template(setup: SetupType, purchase_prompt_email_type: EmailType) -> EmailTemplate:
+    db_session, retailer, _ = setup
+
+    template = EmailTemplate(
+        template_id="54321",
+        email_type_id=purchase_prompt_email_type.id,
+        retailer_id=retailer.id,
+        required_fields_values=yaml.safe_dump({"purchase_prompt_days": 10}),
     )
     db_session.add(template)
     db_session.commit()

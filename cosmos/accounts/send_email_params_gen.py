@@ -13,30 +13,28 @@ If any change to the function name or path is made, please reflect it in the dat
 
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
-from sqlalchemy import select, tuple_
+from sqlalchemy import func, select, tuple_
 
 from cosmos.core.utils import get_formatted_balance_by_loyalty_type
-from cosmos.db.models import AccountHolder, AccountHolderEmail, Campaign, CampaignBalance
+from cosmos.db.models import AccountHolder, AccountHolderEmail, Campaign, CampaignBalance, EmailTemplate, Transaction
 
 if TYPE_CHECKING:
     from zoneinfo import ZoneInfo
 
     from sqlalchemy.orm import Session
 
-    from cosmos.db.models import EmailType, Retailer
-
 
 class SendEmailParams(TypedDict):
     account_holder_id: int
     retailer_id: int
     template_type: str
-    extra_params: dict
+    extra_params: NotRequired[dict]
 
 
 def get_balance_reset_nudge_params(
-    *, db_session: "Session", email_type: "EmailType", retailer: "Retailer", scheduler_tz: "ZoneInfo"
+    *, db_session: "Session", email_template: "EmailTemplate", scheduler_tz: "ZoneInfo"
 ) -> list[SendEmailParams]:
     """
     send_email_params_fn for EmailType of slug BALANCE_RESET
@@ -60,6 +58,9 @@ def get_balance_reset_nudge_params(
         ...,
     ]
     """
+    retailer = email_template.retailer
+    email_type = email_template.email_type
+
     advance_days: int | None = retailer.balance_reset_advanced_warning_days
     if not advance_days:
         return []
@@ -117,4 +118,61 @@ def get_balance_reset_nudge_params(
             campaign_slug,
             loyalty_type,
         ) in eligible_accounts_data
+    ]
+
+
+def get_purchase_prompt_params(
+    *, db_session: "Session", email_template: "EmailTemplate", scheduler_tz: "ZoneInfo"
+) -> list[SendEmailParams]:
+    """
+    send_email_params_fn for EmailType of slug PURCHASE_PROMPT
+
+    return example:
+    ```python
+    [
+        {
+            "account_holder_id": 1,
+            "retailer_id": 1,
+            "template_type": "PURCHASE_PROMPT",
+        },
+        ...,
+    ]
+    """
+    retailer = email_template.retailer
+    email_type = email_template.email_type
+
+    already_processed = select(AccountHolderEmail.account_holder_id).where(
+        AccountHolderEmail.allow_re_send.is_(False),
+        AccountHolderEmail.email_type_id == email_type.id,
+        AccountHolder.retailer_id == retailer.id,
+    )
+
+    accounts_with_transactions = (
+        select(Transaction.account_holder_id)
+        .join(AccountHolder)
+        .where(Transaction.processed.is_(True), Transaction.amount > 0, AccountHolder.retailer_id == retailer.id)
+    )
+    excluded_account_holder_ids = already_processed.union_all(accounts_with_transactions).scalar_subquery()
+
+    prompt_days = email_template.load_required_fields_values()["purchase_prompt_days"]
+    eligible_account_ids = (
+        db_session.execute(
+            select(AccountHolder.id).where(
+                AccountHolder.retailer_id == retailer.id,
+                func.DATE(AccountHolder.created_at)
+                <= datetime.now(tz=scheduler_tz).date() - timedelta(days=int(prompt_days)),
+                AccountHolder.id.not_in(excluded_account_holder_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return [
+        {
+            "account_holder_id": account_holder_id,
+            "retailer_id": retailer.id,
+            "template_type": email_type.slug,
+        }
+        for account_holder_id in eligible_account_ids
     ]

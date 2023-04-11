@@ -16,11 +16,11 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
     from retry_tasks_lib.db.models import TaskType
 
-    from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, EmailTemplate
+    from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, EmailTemplate, EmailType, Transaction
     from tests.conftest import SetupType
 
 
-def test_scheduled_email_by_type(
+def test_scheduled_email_by_type__balance_reset(
     setup: "SetupType",
     mocker: "MockerFixture",
     create_account_holder: "Callable[..., AccountHolder]",
@@ -122,7 +122,7 @@ def test_scheduled_email_by_type(
     )
 
 
-def test_scheduled_email_by_type_mail_already_sent(
+def test_scheduled_email_by_type_mail_already_sent__balance_reset(
     setup: "SetupType",
     mocker: "MockerFixture",
     create_account_holder: "Callable[..., AccountHolder]",
@@ -211,3 +211,117 @@ def test_scheduled_email_by_type_mail_already_sent(
             },
         },
     )
+
+
+def test_scheduled_email_by_type__purchase_prompt(
+    setup: "SetupType",
+    mocker: "MockerFixture",
+    create_account_holder: "Callable[..., AccountHolder]",
+    create_transaction: "Callable[..., Transaction]",
+    send_email_task_type: "TaskType",
+    purchase_prompt_email_type: "EmailType",
+    purchase_prompt_email_template: "EmailTemplate",
+    campaign: "Campaign",
+) -> None:
+    redis_raw.delete(f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_email_by_type.__qualname__}")
+
+    db_session, _, account_holder_1 = setup
+
+    mock_now = datetime.now(tz=UTC)
+
+    # Should get notification:
+    account_holder_1.created_at = mock_now - timedelta(days=10)
+
+    # refund transaction within prompt days
+    account_holder_2 = create_account_holder(email="test@account.2", created_at=mock_now - timedelta(days=10))
+    create_transaction(
+        account_holder=account_holder_2,
+        **{
+            "datetime": mock_now - timedelta(days=1),
+            "transaction_id": "ah2_tx1",
+            "mid": "amid",
+            "amount": -100,
+            "processed": True,
+        },
+    )
+
+    # Should NOT get notification
+    # not 10 days since joining
+    account_holder_3 = create_account_holder(email="test@account.3", created_at=mock_now - timedelta(days=9))
+
+    # purchase transaction within prompt days
+    account_holder_4 = create_account_holder(email="test@account.4", created_at=mock_now - timedelta(days=10))
+    create_transaction(
+        account_holder=account_holder_4,
+        **{
+            "datetime": mock_now - timedelta(days=1),
+            "transaction_id": "ah4_tx1",
+            "mid": "amid",
+            "amount": 100,
+            "processed": True,
+        },
+    )
+
+    db_session.commit()
+
+    mock_enqueue = mocker.patch("cosmos.core.scheduled_tasks.scheduled_email.enqueue_many_retry_tasks")
+    mock_datetime = mocker.patch("cosmos.accounts.send_email_params_gen.datetime")
+    mock_datetime.now.return_value = mock_now
+
+    scheduled_email_by_type(email_type_slug="PURCHASE_PROMPT")
+
+    retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
+    assert len(retry_tasks) == 2
+
+    mock_enqueue.assert_called_once_with(
+        mocker.ANY,
+        retry_tasks_ids=[task.retry_task_id for task in retry_tasks],
+        connection=mocker.ANY,
+    )
+
+    task_1 = retry_tasks[0]
+    assert task_1.get_params() == {
+        "account_holder_id": account_holder_1.id,
+        "retailer_id": account_holder_1.retailer_id,
+        "template_type": "PURCHASE_PROMPT",
+    }
+    task_2 = retry_tasks[1]
+    assert task_2.get_params() == {
+        "account_holder_id": account_holder_2.id,
+        "retailer_id": account_holder_2.retailer_id,
+        "template_type": "PURCHASE_PROMPT",
+    }
+
+    # Add AccountHolderEmails to simulate emails already sent for account_holder_1 and account_holder_2
+    for account_holder, task in ((account_holder_1, task_1), (account_holder_2, task_2)):
+        ahe = AccountHolderEmail(
+            account_holder_id=account_holder.id,
+            email_type_id=purchase_prompt_email_type.id,
+            retry_task_id=task.retry_task_id,
+            campaign_id=campaign.id,
+        )
+        db_session.add(ahe)
+
+    # now move account holder 3 into scope and make sure it's the only new task
+    account_holder_3.created_at = mock_now - timedelta(days=12)
+
+    db_session.commit()
+
+    scheduled_email_by_type(email_type_slug="PURCHASE_PROMPT")
+
+    retry_tasks = (
+        db_session.scalars(
+            select(RetryTask).where(RetryTask.retry_task_id.not_in([task_1.retry_task_id, task_2.retry_task_id]))
+        )
+        .unique()
+        .all()
+    )
+
+    assert len(retry_tasks) == 1
+
+    task_3 = retry_tasks[0]
+    assert task_3.get_params() == {
+        "account_holder_id": account_holder_3.id,
+        "retailer_id": account_holder_3.retailer_id,
+        "template_type": "PURCHASE_PROMPT",
+    }

@@ -76,6 +76,7 @@ def cron_scheduler(  # noqa: PLR0913
     report_tasks: bool = True,
     report_rq_queues: bool = True,
     task_cleanup: bool = True,
+    purchase_prompt: bool = True,
 ) -> None:  # pragma: no cover
 
     logger.info("Initialising scheduler...")
@@ -162,6 +163,15 @@ def cron_scheduler(  # noqa: PLR0913
             coalesce_jobs=True,
         )
 
+    if purchase_prompt:
+        scheduler.add_job(
+            scheduled_email_by_type,
+            kwargs={
+                "email_type_slug": EmailTypeSlugs.PURCHASE_PROMPT.name,
+            },
+            schedule_fn=lambda: account_settings.PURCHASE_PROMPT_SCHEDULE,
+            coalesce_jobs=True,
+        )
     logger.info(f"Starting scheduler {cron_scheduler}...")
     scheduler.run()
 
