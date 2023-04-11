@@ -386,11 +386,18 @@ class RetailerFetchTypeAdmin(CanDeleteModelView):
         "fetch_type": lambda _v, _c, model, _p: model.fetch_type.name,
     }
     column_labels = {"retailer": "Retailer"}
-    form_args = {
-        "agent_config": {
-            "description": "Optional configuration in YAML format",
-            "validators": [
-                validate_optional_yaml,
-            ],
-        },
-    }
+
+    @property
+    def form_args(self) -> dict:
+        return {
+            "agent_config": {
+                "description": "Optional configuration in YAML format",
+                "validators": [
+                    validate_optional_yaml,
+                ],
+            },
+            "retailer": {
+                "validators": [wtforms.validators.DataRequired()],
+                "query_factory": lambda: self.session.query(Retailer).filter(~Retailer.retailer_fetch_type.has()),
+            },
+        }

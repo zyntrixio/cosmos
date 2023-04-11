@@ -143,7 +143,7 @@ class CampaignAdmin(CanDeleteModelView):
             )
             validate_retailer_update(
                 old_retailer=form.retailer.object_data,
-                new_retailer=model.retailer.slug,
+                new_retailer=model.retailer,
                 campaign_status=model.status,
             )
             validate_campaign_slug_update(
@@ -551,7 +551,7 @@ class EarnRuleAdmin(CanDeleteModelView):
             },
             "campaign": {
                 "validators": [wtforms.validators.DataRequired()],
-                "query_factory": lambda: self.session.query(Campaign).where(Campaign.earn_rule == None),  # noqa: E711
+                "query_factory": lambda: self.session.query(Campaign).where(~Campaign.earn_rule.has()),
             },
         }
 
@@ -559,7 +559,10 @@ class EarnRuleAdmin(CanDeleteModelView):
         form = super().edit_form(obj)
         campaign_field: QuerySelectField = form.campaign
         campaign_field.query_factory = lambda: self.session.query(Campaign).where(
-            or_(Campaign.id == obj.campaign_id, Campaign.earn_rule == None)  # noqa: E711
+            or_(
+                Campaign.id == obj.campaign_id,
+                ~Campaign.earn_rule.has(),
+            )
         )
         return form
 
@@ -678,7 +681,7 @@ class RewardRuleAdmin(CanDeleteModelView):
             },
             "campaign": {
                 "validators": [wtforms.validators.DataRequired()],
-                "query_factory": lambda: self.session.query(Campaign).where(Campaign.reward_rule == None),  # noqa: E711
+                "query_factory": lambda: self.session.query(Campaign).where(~Campaign.reward_rule.has()),
             },
         }
 
@@ -686,7 +689,10 @@ class RewardRuleAdmin(CanDeleteModelView):
         form = super().edit_form(obj)
         campaign_field: QuerySelectField = form.campaign
         campaign_field.query_factory = lambda: self.session.query(Campaign).where(
-            or_(Campaign.id == obj.campaign_id, Campaign.reward_rule == None)  # noqa: E711
+            or_(
+                Campaign.id == obj.campaign_id,
+                ~Campaign.reward_rule.has(),
+            )
         )
         return form
 

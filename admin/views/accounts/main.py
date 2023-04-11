@@ -216,6 +216,7 @@ class CampaignBalanceAdmin(BaseModelView):
     column_filters = ("account_holder.retailer.slug", "campaign.slug", "reset_date")
     column_formatters = {"account_holder": account_holder_repr, "campaign": campaign_slug_repr}
     form_widget_args = {"account_holder": {"disabled": True}}
+    form_excluded_columns = ("created_at", "updated_at", "campaign", "account_holder")
 
 
 class MarketingPreferenceAdmin(BaseModelView):
