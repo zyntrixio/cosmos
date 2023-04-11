@@ -221,7 +221,7 @@ class EmailType(IdPkMixin, Base, TimestampMixin):
 class EmailTemplate(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "email_template"
 
-    template_id: Mapped[str]  # FIXME: This should be unique
+    template_id: Mapped[str] = mapped_column(unique=True)
     required_fields_values: Mapped[str | None] = mapped_column(Text)
     email_type_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("email_type.id", ondelete="CASCADE"))
     retailer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), index=True)
@@ -237,6 +237,9 @@ class EmailTemplate(IdPkMixin, Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"{self.retailer.slug}: {self.email_type.slug}"
+
+    def load_required_fields_values(self) -> dict:
+        return yaml.safe_load(self.required_fields_values) if self.required_fields_values else {}
 
 
 class EmailTemplateKey(IdPkMixin, Base, TimestampMixin):

@@ -5,6 +5,7 @@ class EmailTypeSlugs(enum.Enum):
     WELCOME_EMAIL = enum.auto()
     REWARD_ISSUANCE = enum.auto()
     BALANCE_RESET = enum.auto()
+    PURCHASE_PROMPT = enum.auto()
 
 
 class EmailTemplateKeys(enum.Enum):

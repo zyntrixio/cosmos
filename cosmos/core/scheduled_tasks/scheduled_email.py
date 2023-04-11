@@ -1,8 +1,6 @@
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-import yaml
-
 from retry_tasks_lib.utils import resolve_callable_from_path
 from retry_tasks_lib.utils.synchronous import enqueue_many_retry_tasks, sync_create_many_tasks
 from sqlalchemy import select
@@ -44,22 +42,10 @@ def scheduled_email_by_type(*, email_type_slug: str) -> None:
         email_template: EmailTemplate
         for email_template in email_type.email_templates:
 
-            try:
-                extras: dict = {}
-                if email_template.required_fields_values:
-                    extras = yaml.safe_load(email_template.required_fields_values)
-            except Exception:
-                logger.exception(
-                    "Failed to parse required_fields_values as yaml for EmailTemplate %d", email_template.id
-                )
-                continue
-
             send_task_params_list: list["SendEmailParams"] = send_email_params_fn(
                 db_session=db_session,
-                email_type=email_type,
-                retailer=email_template.retailer,
+                email_template=email_template,
                 scheduler_tz=ZoneInfo(cron_scheduler.tz),
-                **extras,
             )
 
             retry_tasks = sync_create_many_tasks(
