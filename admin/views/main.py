@@ -40,6 +40,10 @@ class CosmosAdminPanelIndexView(AdminIndexView, UserSessionMixin):
                 "Balance Reset Nudge Schedule",
                 account_settings.RESET_BALANCE_NUDGES_SCHEDULE,
             ),
+            self._build_schedule_config_data(
+                "Customer Purchase Prompt Schedule",
+                account_settings.PURCHASE_PROMPT_SCHEDULE,
+            ),
         ]
 
     @expose("/")
