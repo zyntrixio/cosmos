@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pydantic import parse_obj_as
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cosmos.core.api.deps import get_session
@@ -15,7 +16,7 @@ from cosmos.public.config import public_settings
 if TYPE_CHECKING:
     from cosmos.db.models import Reward
 
-logger = logging.getLogger("opt-out-marketing")
+logger = logging.getLogger(__name__)
 
 public_router = APIRouter(prefix=public_settings.PUBLIC_API_PREFIX)
 security = HTTPBasic()
@@ -62,8 +63,14 @@ async def get_reward_for_micorsite(
 
 @public_router.post(path="/email/event", dependencies=[Depends(validate_mailjet_credentials)])
 async def account_holder_email_callback_event(
-    payload: AccountHolderEmailEvent, db_session: Annotated[AsyncSession, Depends(get_session)]
+    payload: dict, db_session: Annotated[AsyncSession, Depends(get_session)]
 ) -> dict:
+    try:
+        parsed_payload = parse_obj_as(AccountHolderEmailEvent, payload)
+    except Exception:
+        logger.exception("failed to parse payload %s", payload)
+        raise
+
     service = CallbackService(db_session=db_session)
-    service_result = await service.handle_email_event(payload=payload)
+    service_result = await service.handle_email_event(payload=parsed_payload)
     return service_result.handle_service_result()
