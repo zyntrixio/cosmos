@@ -10,7 +10,7 @@ logger = logging.getLogger("key_vault")
 
 
 class VaultSettings(BaseSettings):
-    KEY_VAULT_URI: str = "https://bink-uksouth-dev-com.vault.azure.net/"
+    KEY_VAULT_URI: str = "https://uksouth-dev-2p5g.vault.azure.net/"
     TESTING: bool = False
 
     @validator("TESTING")
