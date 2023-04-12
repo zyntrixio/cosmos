@@ -65,6 +65,7 @@ async def get_reward_for_micorsite(
 async def account_holder_email_callback_event(
     payload: dict, db_session: Annotated[AsyncSession, Depends(get_session)]
 ) -> dict:
+    logger.warning("Received payload %s", payload)
     try:
         parsed_payload = parse_obj_as(AccountHolderEmailEvent, payload)
     except Exception:
