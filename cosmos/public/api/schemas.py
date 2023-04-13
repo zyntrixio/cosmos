@@ -30,7 +30,7 @@ class RewardMicrositeResponseSchema(BaseModel):
         allow_population_by_field_name = True
 
 
-class AccountHolderEmailEvent(BaseModel):
+class AccountHolderEmailEvent(BaseModel, extra=Extra.allow):
     """
     Expected Mailjet callback payload:
     ```json
@@ -59,6 +59,3 @@ class AccountHolderEmailEvent(BaseModel):
     @classmethod
     def datetime_from_timestamp(cls, v: int) -> datetime:
         return datetime.fromtimestamp(v, tz=UTC)
-
-    class Config:
-        extra = Extra.allow

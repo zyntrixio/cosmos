@@ -7,8 +7,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-class EmailEventActivityDataSchema(BaseModel):
-
+class EmailEventActivityDataSchema(BaseModel, extra=Extra.allow):
     time: int = Field(..., alias="event_datetime")
     Message_GUID: str = Field(..., alias="message_uuid")
 
@@ -21,6 +20,3 @@ class EmailEventActivityDataSchema(BaseModel):
     @classmethod
     def string_from_uuid(cls, v: "UUID") -> str:
         return str(v)
-
-    class Config:
-        extra = Extra.allow

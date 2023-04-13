@@ -15,7 +15,6 @@ from cosmos.public.config import public_settings
 from cosmos.retailers.crud import get_retailer_by_slug
 
 if TYPE_CHECKING:  # pragma: no cover
-
     from cosmos.db.models import Reward
     from cosmos.public.api.schemas import AccountHolderEmailEvent
 
@@ -63,7 +62,7 @@ class PublicService(Service):
                 await self.commit_db_changes()
                 msg += f" for {data.retailer_name}"
 
-                for (pref_name, updated_at) in updates:
+                for pref_name, updated_at in updates:
                     activity_payload = AccountsActivityType.get_marketing_preference_change_activity_data(
                         account_holder_uuid=data.account_holder_uuid,
                         retailer_slug=data.retailer_slug,
@@ -119,8 +118,15 @@ class PublicService(Service):
 
 
 class CallbackService(Service):
-    async def handle_email_event(self, *, payload: "AccountHolderEmailEvent") -> ServiceResult[dict, ServiceError]:
+    async def handle_email_events(
+        self, *, payload: "list[AccountHolderEmailEvent]"
+    ) -> ServiceResult[dict, ServiceError]:
+        for data in payload:
+            await self._handle_email_event(payload=data)
 
+        return ServiceResult({})
+
+    async def _handle_email_event(self, *, payload: "AccountHolderEmailEvent") -> None:
         try:
             account_holder_uuid, retailer_slug = await crud.update_account_holder_email_status(
                 self.db_session, payload.message_uuid, payload.event
@@ -146,5 +152,3 @@ class CallbackService(Service):
                 },
             )
             await self.format_and_send_stored_activities()
-
-        return ServiceResult({})
