@@ -17,8 +17,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint(None, "email_template", ["template_id"])
-
     conn = op.get_bind()
     email_type = sa.Table("email_type", sa.MetaData(), autoload_with=conn)
     conn.execute(
@@ -31,8 +29,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(None, "email_template", type_="unique")
-
     conn = op.get_bind()
     email_type = sa.Table("email_type", sa.MetaData(), autoload_with=conn)
     conn.execute(sa.delete(email_type).where(email_type.c.slug == "PURCHASE_PROMPT"))
