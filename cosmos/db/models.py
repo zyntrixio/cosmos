@@ -221,7 +221,7 @@ class EmailType(IdPkMixin, Base, TimestampMixin):
 class EmailTemplate(IdPkMixin, Base, TimestampMixin):
     __tablename__ = "email_template"
 
-    template_id: Mapped[str] = mapped_column(unique=True)
+    template_id: Mapped[str]
     required_fields_values: Mapped[str | None] = mapped_column(Text)
     email_type_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("email_type.id", ondelete="CASCADE"))
     retailer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("retailer.id", ondelete="CASCADE"), index=True)
