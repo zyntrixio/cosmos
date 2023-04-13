@@ -8,7 +8,9 @@ import yaml
 from flask import Markup, flash, redirect, request, session, url_for
 from flask_admin import expose
 from flask_admin.actions import action
-from sqlalchemy import update
+from flask_admin.contrib.sqla.fields import QuerySelectField
+from flask_admin.form import BaseForm
+from sqlalchemy import or_, update
 from sqlalchemy.future import select
 from wtforms.validators import DataRequired, Optional
 
@@ -26,7 +28,7 @@ from admin.views.retailer.validators import (
 )
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.activity.tasks import sync_send_activity
-from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer
+from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer, RetailerFetchType
 from cosmos.retailers.enums import RetailerStatuses
 
 if TYPE_CHECKING:
@@ -401,3 +403,14 @@ class RetailerFetchTypeAdmin(CanDeleteModelView):
                 "query_factory": lambda: self.session.query(Retailer).filter(~Retailer.retailer_fetch_type.has()),
             },
         }
+
+    def edit_form(self, obj: RetailerFetchType) -> BaseForm:
+        form = super().edit_form(obj)
+        retailer_field: QuerySelectField = form.retailer
+        retailer_field.query_factory = lambda: self.session.query(Retailer).where(
+            or_(
+                Retailer.id == obj.retailer_id,
+                ~Retailer.retailer_fetch_type.has(),
+            )
+        )
+        return form
