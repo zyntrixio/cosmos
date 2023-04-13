@@ -3014,14 +3014,14 @@ reference = "bink-pypi"
 
 [[package]]
 name = "retry-tasks-lib"
-version = "3.1.0"
+version = "3.1.1"
 description = "helpers functions and models for setting up tasks with rq"
 category = "main"
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "retry_tasks_lib-3.1.0-py3-none-any.whl", hash = "sha256:0ef8ef1ab92bdd2d967a545a733ce71d8c929b9c83ee7f83f1430210b1865a41"},
-    {file = "retry_tasks_lib-3.1.0.tar.gz", hash = "sha256:690848c43a3131c0cb41a6da9ffafbd41027edf529f7fec531c4e81dc57590bf"},
+    {file = "retry_tasks_lib-3.1.1-py3-none-any.whl", hash = "sha256:76f44ac1d8270891c823c02dce0ff1c0d58b6597d9ad21bca1681bcadc180794"},
+    {file = "retry_tasks_lib-3.1.1.tar.gz", hash = "sha256:3e64a73b77f0e9ae701563c125ed8708653bd993f4b098c3ee68d3857a7940bb"},
 ]
 
 [package.dependencies]
