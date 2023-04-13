@@ -63,14 +63,16 @@ async def get_reward_for_micorsite(
 
 @public_router.post(path="/email/event", dependencies=[Depends(validate_mailjet_credentials)])
 async def account_holder_email_callback_event(
-    payload: dict, db_session: Annotated[AsyncSession, Depends(get_session)]
+    payload: dict | list[dict], db_session: Annotated[AsyncSession, Depends(get_session)]
 ) -> dict:
     try:
-        parsed_payload = parse_obj_as(AccountHolderEmailEvent, payload)
+        parsed_payload = parse_obj_as(
+            list[AccountHolderEmailEvent], payload if isinstance(payload, list) else [payload]
+        )
     except Exception:
         logger.exception("failed to parse payload %s", payload)
-        raise
+        return {}
 
     service = CallbackService(db_session=db_session)
-    service_result = await service.handle_email_event(payload=parsed_payload)
+    service_result = await service.handle_email_events(payload=parsed_payload)
     return service_result.handle_service_result()

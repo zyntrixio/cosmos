@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import pytest
+
 from deepdiff import DeepDiff
 from fastapi import status
 from pytest_mock import MockerFixture
@@ -23,7 +25,6 @@ from cosmos.public.api.service import RESPONSE_TEMPLATE, CallbackService
 from cosmos.public.config import public_settings
 
 if TYPE_CHECKING:
-
     from fastapi.testclient import TestClient
 
     from cosmos.db.models import EmailType
@@ -332,6 +333,37 @@ def test_account_holder_email_callback_event_wrong_auth(test_client: "TestClient
     mocked_format_and_send_activity.assert_not_called()
 
 
+def test_account_holder_email_callback_missing_guid(test_client: "TestClient", mocker: MockerFixture) -> None:
+    mocked_format_and_send_activity = mocker.patch.object(CallbackService, "format_and_send_stored_activities")
+    mock_logger = mocker.patch("cosmos.public.api.endpoints.logger")
+
+    payload = {
+        "event": "test",
+        "time": 1433333949,
+        "MessageID": 19421777835146490,
+        "email": "api@mailjet.com",
+        "mj_campaign_id": 7257,
+        "mj_contact_id": 4,
+        "customcampaign": "",
+        "mj_message_id": "19421777835146490",
+        "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
+        "CustomID": "helloworld",
+    }
+    resp = test_client.post(
+        f"{public_settings.PUBLIC_API_PREFIX}/email/event",
+        auth=(
+            public_settings.MAIL_EVENT_CALLBACK_USERNAME,
+            public_settings.MAIL_EVENT_CALLBACK_PASSWORD,
+        ),
+        json=payload,
+    )
+
+    assert resp.status_code == status.HTTP_200_OK
+
+    mocked_format_and_send_activity.assert_not_called()
+    mock_logger.exception.assert_called_once_with("failed to parse payload %s", payload)
+
+
 def test_account_holder_email_callback_event_message_uuid_not_found(
     test_client: "TestClient", mocker: MockerFixture
 ) -> None:
@@ -371,8 +403,19 @@ def test_account_holder_email_callback_event_message_uuid_not_found(
     mocked_format_and_send_activity.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "payload_is_list",
+    (
+        pytest.param(True, id="Payload is a list of dicts"),
+        pytest.param(False, id="Payload is a dict"),
+    ),
+)
 def test_account_holder_email_callback_event_ok(
-    test_client: "TestClient", setup: "SetupType", balance_reset_email_type: "EmailType", mocker: MockerFixture
+    payload_is_list: bool,
+    test_client: "TestClient",
+    setup: "SetupType",
+    balance_reset_email_type: "EmailType",
+    mocker: MockerFixture,
 ) -> None:
     db_session, retailer, account_holder = setup
     mock_now = datetime.now(tz=UTC)
@@ -404,25 +447,27 @@ def test_account_holder_email_callback_event_ok(
 
     assert not account_holder_email.current_status
 
+    payload = {
+        "event": new_status,
+        "time": event_timestamp,
+        "MessageID": 19421777835146490,
+        "Message_GUID": str(message_uuid),
+        "email": "api@mailjet.com",
+        "mj_campaign_id": 7257,
+        "mj_contact_id": 4,
+        "customcampaign": "",
+        "mj_message_id": "19421777835146490",
+        "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
+        "CustomID": "helloworld",
+    }
+
     resp = test_client.post(
         f"{public_settings.PUBLIC_API_PREFIX}/email/event",
         auth=(
             public_settings.MAIL_EVENT_CALLBACK_USERNAME,
             public_settings.MAIL_EVENT_CALLBACK_PASSWORD,
         ),
-        json={
-            "event": new_status,
-            "time": event_timestamp,
-            "MessageID": 19421777835146490,
-            "Message_GUID": str(message_uuid),
-            "email": "api@mailjet.com",
-            "mj_campaign_id": 7257,
-            "mj_contact_id": 4,
-            "customcampaign": "",
-            "mj_message_id": "19421777835146490",
-            "smtp_reply": "sent (250 2.0.0 OK 1433333948 fa5si855896wjc.199 - gsmtp)",
-            "CustomID": "helloworld",
-        },
+        json=[payload] if payload_is_list else payload,
     )
 
     assert resp.status_code == status.HTTP_200_OK
