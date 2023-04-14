@@ -62,34 +62,6 @@ def enrolment_callback_task_type(db_session: "Session") -> TaskType:
 
 
 @pytest.fixture(scope="function")
-def account_holder_activation_task_type(db_session: "Session") -> TaskType:
-    task_type = TaskType(
-        name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
-        path="path.to.func",
-        error_handler_path="path.to.error_handler",
-        queue_name="queue-name",
-    )
-    db_session.add(task_type)
-    db_session.flush()
-
-    db_session.add_all(
-        [
-            TaskTypeKey(task_type_id=task_type.task_type_id, name=key_name, type=key_type)
-            for key_name, key_type in (
-                ("account_holder_id", "INTEGER"),
-                ("callback_retry_task_id", "INTEGER"),
-                ("welcome_email_retry_task_id", "INTEGER"),
-                ("channel", "STRING"),
-                ("third_party_identifier", "STRING"),
-            )
-        ]
-    )
-
-    db_session.commit()
-    return task_type
-
-
-@pytest.fixture(scope="function")
 def enrolment_callback_task(
     db_session: "Session", account_holder: AccountHolder, enrolment_callback_task_type: TaskType
 ) -> Generator:
@@ -138,7 +110,6 @@ def test_email_template_req_keys() -> list[dict]:
 def populate_email_template_req_keys(
     db_session: "Session", test_email_template_req_keys: list[dict]
 ) -> list[EmailTemplateKey]:
-
     email_template_req_keys = []
 
     for data in test_email_template_req_keys:

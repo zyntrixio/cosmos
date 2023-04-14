@@ -9,7 +9,6 @@ from cosmos.core.api.crud import commit
 from cosmos.core.error_codes import ErrorCode
 
 if TYPE_CHECKING:
-
     from asyncio import Task
     from enum import Enum
 
@@ -112,7 +111,6 @@ class Service:
             payload_formatter_fn: Callable[..., dict],
             formatter_kwargs: list[dict] | dict,
         ) -> None:
-
             try:
                 payload: Iterable[dict] | dict
                 if isinstance(formatter_kwargs, dict):

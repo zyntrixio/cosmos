@@ -40,7 +40,6 @@ async def get_campaign_by_slug(
     db_session: "AsyncSession", campaign_slug: str, retailer: Retailer, load_rules: bool = False, lock_row: bool = True
 ) -> Campaign | None:
     async def _query() -> Campaign | None:
-
         option: "Callable"
         match load_rules, lock_row:
             case True, False:
@@ -69,7 +68,6 @@ async def get_campaign_by_slug(
 async def get_active_campaigns(
     db_session: "AsyncSession", retailer: Retailer, transaction: Transaction | None = None, join_rules: bool = False
 ) -> Sequence[Campaign]:
-
     opt = [joinedload(Campaign.earn_rule), joinedload(Campaign.reward_rule)] if join_rules else []
 
     async def _query() -> Sequence[Campaign]:
@@ -193,7 +191,6 @@ async def lock_balances_for_campaign(db_session: "AsyncSession", *, campaign: Ca
 async def transfer_balance(
     db_session: "AsyncSession", *, from_campaign: Campaign, to_campaign: Campaign, threshold: int, rate_percent: int
 ) -> list["BalanceTransferRes"]:
-
     min_balance = int((from_campaign.reward_rule.reward_goal / 100) * threshold)
     rate_multiplier = rate_percent / 100
 
