@@ -5,9 +5,13 @@ from typing import TYPE_CHECKING
 from fastapi import status
 from retry_tasks_lib.utils.asynchronous import async_create_many_tasks
 
+from cosmos.accounts.api import crud as accounts_crud
+from cosmos.accounts.config import account_settings
+from cosmos.accounts.utils import get_accounts_queueable_task_ids
 from cosmos.campaigns.activity.enums import ActivityType as CampaignActivityType
 from cosmos.campaigns.api import crud
 from cosmos.campaigns.enums import CampaignStatuses
+from cosmos.core.api import crud as core_crud
 from cosmos.core.api.service import Service, ServiceError, ServiceListError, ServiceResult
 from cosmos.core.api.tasks import enqueue_many_tasks
 from cosmos.core.error_codes import ErrorCode, ErrorCodeDetails
@@ -24,6 +28,8 @@ from cosmos.rewards.crud import (
 from cosmos.rewards.enums import PendingRewardActions, PendingRewardMigrationActions
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Sequence
+
     from retry_tasks_lib.db.models import RetryTask
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,8 +43,11 @@ class MigrationCampaigns:
 
 
 class CampaignService(Service):
-    async def _check_valid_campaign(self, campaign: Campaign, requested_status: CampaignStatuses) -> ErrorCode | None:
+    def __init__(self, db_session: "AsyncSession", retailer: "Retailer") -> None:
+        super().__init__(db_session, retailer=retailer)
+        self.tasks_to_enqueue_ids: set[int] = set()
 
+    async def _check_valid_campaign(self, campaign: Campaign, requested_status: CampaignStatuses) -> ErrorCode | None:
         if requested_status.is_valid_status_transition(current_status=campaign.status):
             if requested_status == CampaignStatuses.ACTIVE and not campaign.is_activable():
                 return ErrorCode.MISSING_CAMPAIGN_COMPONENTS
@@ -62,7 +71,6 @@ class CampaignService(Service):
         return ErrorCode.INVALID_STATUS_REQUESTED if error else None
 
     async def _issue_pending_rewards_for_campaign(self, campaign: Campaign) -> list["RetryTask"]:
-
         del_data = await delete_pending_rewards_for_campaign(db_session=self.db_session, campaign=campaign)
         return await async_create_many_tasks(
             self.db_session,
@@ -124,25 +132,41 @@ class CampaignService(Service):
 
     async def _handle_pending_rewards(
         self, campaign: "Campaign", pending_rewards_action: PendingRewardActions, requested_status: CampaignStatuses
-    ) -> list["RetryTask"]:
-
-        reward_issuance_tasks: list["RetryTask"] = []
-
+    ) -> None:
         if campaign.reward_rule.allocation_window and requested_status in (
             CampaignStatuses.ENDED,
             CampaignStatuses.CANCELLED,
         ):
             if pending_rewards_action == PendingRewardActions.CONVERT and requested_status == CampaignStatuses.ENDED:
                 reward_issuance_tasks = await self._issue_pending_rewards_for_campaign(campaign=campaign)
+                self.tasks_to_enqueue_ids |= {task.retry_task_id for task in reward_issuance_tasks}
             elif (
                 pending_rewards_action == PendingRewardActions.REMOVE or requested_status == CampaignStatuses.CANCELLED
             ):
                 await self._delete_pending_rewards_for_campaign(campaign)
-        return reward_issuance_tasks
 
-    async def _handle_balances(self, campaign: "Campaign", requested_status: CampaignStatuses) -> None:
+    async def activate_pending_account_holders(self) -> None:
+        activated_ah_ids = await accounts_crud.activate_pending_account_holders(self.db_session, retailer=self.retailer)
+        await self._enqueue_pending_account_holders_tasks(activated_ah_ids)
+
+    async def _enqueue_pending_account_holders_tasks(self, activated_ah_ids: "Sequence[int]") -> None:
+        # Get the original account activation tasks to requeue
+        activation_tasks = await core_crud.get_waiting_retry_tasks_by_key_value_in(
+            self.db_session,
+            account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+            "account_holder_id",
+            [str(ah_id) for ah_id in activated_ah_ids],
+        )
+        tasks_to_enqueue_ids = get_accounts_queueable_task_ids(activation_tasks, set(activated_ah_ids))
+        self.tasks_to_enqueue_ids |= set(tasks_to_enqueue_ids)
+
+    async def _handle_balance_and_rewards_collateral_actions(
+        self, campaign: "Campaign", requested_status: CampaignStatuses
+    ) -> None:
         if requested_status == CampaignStatuses.ACTIVE:
             await crud.create_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaign)
+            await self.activate_pending_account_holders()
+
         elif requested_status in (CampaignStatuses.ENDED, CampaignStatuses.CANCELLED):
             await crud.delete_campaign_balances(self.db_session, retailer=self.retailer, campaign=campaign)
 
@@ -174,7 +198,6 @@ class CampaignService(Service):
         )
 
     async def handle_status_change(self, payload: "CampaignsStatusChangeSchema") -> ServiceResult[dict, ServiceError]:
-
         requested_status = payload.requested_status
         campaign = await crud.get_campaign_by_slug(
             db_session=self.db_session, campaign_slug=payload.campaign_slug, retailer=self.retailer, load_rules=True
@@ -192,19 +215,19 @@ class CampaignService(Service):
         ):
             return ServiceResult(error=ServiceError(error_code=error_code))
 
-        reward_issuance_tasks = await self._handle_pending_rewards(
-            campaign, payload.pending_rewards_action, requested_status
-        )
+        await self._handle_pending_rewards(campaign, payload.pending_rewards_action, requested_status)
         await self._change_campaign_status(
             campaign=campaign,
             requested_status=requested_status,
             sso_username=payload.activity_metadata.sso_username,
         )
-        await self._handle_balances(campaign, requested_status)
+        await self._handle_balance_and_rewards_collateral_actions(campaign, requested_status)
 
         await self.commit_db_changes()
-        if reward_issuance_tasks:
-            await self.trigger_asyncio_task(enqueue_many_tasks([task.retry_task_id for task in reward_issuance_tasks]))
+
+        if self.tasks_to_enqueue_ids:
+            await self.trigger_asyncio_task(enqueue_many_tasks(list(self.tasks_to_enqueue_ids)))
+
         await self.format_and_send_stored_activities()
         return ServiceResult({})
 
@@ -231,7 +254,6 @@ class CampaignService(Service):
     async def _transfer_balance(
         self, *, payload: "CampaignsMigrationSchema", from_campaign: Campaign, to_campaign: Campaign
     ) -> None:
-
         updated_balances = await crud.transfer_balance(
             self.db_session,
             from_campaign=from_campaign,
@@ -291,7 +313,6 @@ class CampaignService(Service):
     async def _check_campaigns_for_migration(
         self, from_campaign: Campaign, to_campaign: Campaign
     ) -> ServiceError | ServiceListError | None:
-
         #  this is already checked in the Admin panel action and should not happen
         if from_campaign.loyalty_type != to_campaign.loyalty_type:
             return ServiceError(error_code=ErrorCode.INVALID_REQUEST)
@@ -325,7 +346,6 @@ class CampaignService(Service):
     async def handle_migration(
         self, payload: "CampaignsMigrationSchema"
     ) -> ServiceResult[dict, ServiceError | ServiceListError]:
-
         campaigns = await self._fetch_campaigns(
             from_campaign_slug=payload.from_campaign, to_campaign_slug=payload.to_campaign
         )

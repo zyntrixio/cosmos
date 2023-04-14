@@ -8,14 +8,17 @@ import pytest
 from fastapi import status as fastapi_http_status
 from pytest_mock import MockerFixture
 from retry_tasks_lib.db.models import RetryTask, TaskType
+from retry_tasks_lib.enums import RetryTaskStatuses
+from retry_tasks_lib.utils.synchronous import sync_create_task
 from sqlalchemy.future import select
 
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.api.service import CampaignService
 from cosmos.campaigns.config import campaign_settings
 from cosmos.campaigns.enums import CampaignStatuses
 from cosmos.core.error_codes import ErrorCode
-from cosmos.db.models import CampaignBalance, PendingReward, Reward
+from cosmos.db.models import AccountHolder, CampaignBalance, PendingReward, Reward
 from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.config import reward_settings
 from tests import validate_error_response
@@ -66,7 +69,6 @@ def test_status_change_invalid_token(test_client: "TestClient", setup: SetupType
 
 
 def test_status_change_invalid_retailer(test_client: "TestClient", campaign: "Campaign") -> None:
-
     payload = {
         "requested_status": "ended",
         "campaign_slug": campaign.slug,
@@ -221,7 +223,6 @@ def test_status_change_illegal_state(
 def test_status_change_no_active_campaign_left_error_for_active_retailer(
     test_client: "TestClient", setup: SetupType, campaign: "Campaign"
 ) -> None:
-
     db_session, retailer, _ = setup
 
     campaign.status = CampaignStatuses.ACTIVE
@@ -259,7 +260,6 @@ def test_status_change_no_active_campaign_left_ok_for_test_retailer(
     campaign_with_rules: "Campaign",
     mock_activity: mock.MagicMock,
 ) -> None:
-
     db_session, retailer, _ = setup
 
     campaign_with_rules.status = CampaignStatuses.ACTIVE
@@ -286,12 +286,14 @@ def test_status_change_no_active_campaign_left_ok_for_test_retailer(
     mock_activity.assert_called()
 
 
+# TODO: add non active account holder and make sure it's activated
 def test_status_change_activating_a_campaign_ok(
     test_client: "TestClient",
     setup: SetupType,
     campaign_with_rules: "Campaign",
     mock_activity: mock.MagicMock,
     mocker: MockerFixture,
+    account_holder_activation_task_type: TaskType,
 ) -> None:
     now = datetime.now(tz=UTC)
     db_session, retailer, account_holder = setup
@@ -307,12 +309,36 @@ def test_status_change_activating_a_campaign_ok(
     assert get_balances() == []
     assert not retailer.balance_lifespan
 
+    inactive_account_holder = AccountHolder(
+        email="test@pending.user",
+        account_number="TST12345INACTIVE",
+        retailer_id=retailer.id,
+    )
+    db_session.add(inactive_account_holder)
+    db_session.flush()
+
+    ah_activation_task = sync_create_task(
+        db_session,
+        task_type_name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+        params={
+            "account_holder_id": inactive_account_holder.id,
+            "callback_retry_task_id": 1,
+            "welcome_email_retry_task_id": 1,
+            "third_party_identifier": "test-value",
+            "channel": "pytest",
+        },
+    )
+    ah_activation_task.status = RetryTaskStatuses.WAITING
+
     account_holder.status = AccountHolderStatuses.ACTIVE
     campaign_with_rules.start_date = None
     campaign_with_rules.end_date = None
     campaign_with_rules.status = CampaignStatuses.DRAFT
     db_session.commit()
 
+    assert inactive_account_holder.status == AccountHolderStatuses.PENDING
+
+    mock_enqueue = mocker.patch("cosmos.campaigns.api.service.enqueue_many_tasks")
     mock_datetime = mocker.patch("cosmos.campaigns.api.crud.datetime")
     mock_datetime.now.return_value = now
 
@@ -344,7 +370,11 @@ def test_status_change_activating_a_campaign_ok(
     assert new_balance.balance == 0
     assert new_balance.reset_date is None
 
+    db_session.refresh(inactive_account_holder)
+    assert inactive_account_holder.status == AccountHolderStatuses.ACTIVE
+
     mock_activity.assert_called_once()
+    mock_enqueue.assert_called_once_with([ah_activation_task.retry_task_id])
 
 
 @pytest.mark.parametrize("missing_rule", ("earn_rule", "reward_rule"))

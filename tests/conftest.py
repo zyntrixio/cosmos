@@ -14,6 +14,7 @@ from retry_tasks_lib.db.models import TaskType, TaskTypeKey
 from sqlalchemy import URL, Engine, TextClause, create_engine, make_url, text
 from testfixtures import LogCapture
 
+from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.api.service import Service
@@ -178,7 +179,6 @@ async def async_session() -> AsyncGenerator["AsyncSession", None]:
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_redis() -> Generator:
-
     yield
 
     # At end of all tests, delete the tasks from the queue
@@ -299,7 +299,6 @@ def account_holder(
 def create_account_holder(
     db_session: "Session", retailer: Retailer, test_account_holder_activation_data: dict
 ) -> Callable[..., AccountHolder]:
-
     data = {
         "email": test_account_holder_activation_data["email"],
         "retailer_id": retailer.id,
@@ -886,3 +885,31 @@ def purchase_prompt_email_template(setup: SetupType, purchase_prompt_email_type:
     db_session.add(template)
     db_session.commit()
     return template
+
+
+@pytest.fixture(scope="function")
+def account_holder_activation_task_type(db_session: "Session") -> TaskType:
+    task_type = TaskType(
+        name=account_settings.ACCOUNT_HOLDER_ACTIVATION_TASK_NAME,
+        path="path.to.func",
+        error_handler_path="path.to.error_handler",
+        queue_name="queue-name",
+    )
+    db_session.add(task_type)
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            TaskTypeKey(task_type_id=task_type.task_type_id, name=key_name, type=key_type)
+            for key_name, key_type in (
+                ("account_holder_id", "INTEGER"),
+                ("callback_retry_task_id", "INTEGER"),
+                ("welcome_email_retry_task_id", "INTEGER"),
+                ("channel", "STRING"),
+                ("third_party_identifier", "STRING"),
+            )
+        ]
+    )
+
+    db_session.commit()
+    return task_type
