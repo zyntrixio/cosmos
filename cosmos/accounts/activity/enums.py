@@ -8,9 +8,11 @@ from cosmos.accounts.activity.schemas import (
     BalanceChangeDataSchema,
     BalanceResetDataSchema,
     MarketingPreferenceChangeSchema,
+    SendEmailDataSchema,
 )
 from cosmos.accounts.config import account_settings
 from cosmos.core.activity.enums import ActivityTypeMixin
+from cosmos.retailers.enums import EmailTypeSlugs
 
 
 class ActivityType(ActivityTypeMixin, Enum):
@@ -20,6 +22,7 @@ class ActivityType(ActivityTypeMixin, Enum):
     ACCOUNT_ENROLMENT = f"activity.{account_settings.core.PROJECT_NAME}.account.enrolment"
     ACCOUNT_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.account.change"
     BALANCE_CHANGE = f"activity.{account_settings.core.PROJECT_NAME}.balance.change"
+    NOTIFICATION = f"activity.{account_settings.core.PROJECT_NAME}.notification"
 
     @classmethod
     def get_account_request_activity_data(
@@ -151,7 +154,6 @@ class ActivityType(ActivityTypeMixin, Enum):
         activity_datetime: datetime,
         original_balance: int,
     ) -> dict:
-
         return cls._assemble_payload(
             ActivityType.BALANCE_CHANGE.name,
             user_id=account_holder_uuid,
@@ -195,4 +197,75 @@ class ActivityType(ActivityTypeMixin, Enum):
                 new_balance=0,
                 original_balance=old_balance,
             ).dict(),
+        )
+
+    @classmethod
+    def get_send_email_request_activity_data(
+        cls,
+        *,
+        underlying_datetime: datetime,
+        retailer_slug: str,
+        retailer_name: str,
+        account_holder_uuid: UUID | str,
+        account_holder_joined_date: datetime | None = None,
+        mailjet_message_uuid: UUID | None,
+        email_params: dict,
+        email_type: str,
+        template_id: str,
+        reward_slug: str | None = None,
+        reward_issued_date: datetime | None = None,
+    ) -> dict:
+        activity_data: dict = {
+            "email_type": email_type,
+            "notification_type": "Email",
+            "template_id": template_id,
+        }
+        extra_params = email_params.get("extra_params", {})
+        match email_type:
+            case EmailTypeSlugs.WELCOME_EMAIL.name:
+                summary = "Welcome email request sent for"
+                reason = "Welcome email"
+                activity_data["account_holder_joined_date"] = account_holder_joined_date
+            case EmailTypeSlugs.BALANCE_RESET.name:
+                summary = "Balance reset nudge email request sent for"
+                reason = "Balance reset warning email"
+                activity_data |= {
+                    "reset_date": extra_params.get("balance_reset_date"),
+                    "campaign_slug": extra_params.get("campaign_slug"),
+                }
+            case EmailTypeSlugs.REWARD_ISSUANCE.name:
+                summary = "Reward email request sent for"
+                reason = "Reward email"
+                activity_data |= {
+                    "reward_slug": reward_slug,
+                    "reward_issued_date": reward_issued_date,
+                    "campaign_slug": extra_params.get("campaign_slug"),
+                }
+            case _:
+                raise ValueError(f"Unexpected value {email_type} for email template type.")
+
+        campaigns: list[str] = []
+        campaign_slug = activity_data.get("campaign_slug")
+        if campaign_slug and email_type == EmailTypeSlugs.REWARD_ISSUANCE.name:
+            campaigns = [campaign_slug]
+
+        return cls._assemble_payload(
+            ActivityType.NOTIFICATION.name,
+            user_id=account_holder_uuid,
+            underlying_datetime=underlying_datetime,
+            activity_identifier="N/A",
+            summary=f"{summary} {retailer_name}",
+            reasons=[reason],
+            associated_value=str(mailjet_message_uuid) if mailjet_message_uuid else "",
+            retailer_slug=retailer_slug,
+            campaigns=campaigns,
+            data=SendEmailDataSchema(
+                notification_type=activity_data["notification_type"],
+                retailer_slug=retailer_slug,
+                reward_slug=activity_data.get("reward_slug"),
+                template_id=activity_data["template_id"],
+                balance_reset_date=activity_data.get("reset_date"),
+                account_holder_joined_date=activity_data.get("account_holder_joined_date"),
+                reward_issued_date=activity_data.get("reward_issued_date"),
+            ).dict(exclude_unset=True, exclude_none=True),
         )

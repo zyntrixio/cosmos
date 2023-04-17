@@ -27,7 +27,15 @@ from cosmos.core.tasks import send_request_with_metrics
 from cosmos.core.tasks.auth import get_callback_oauth_header
 from cosmos.core.tasks.mailjet import SendEmailFalseError, send_email_to_mailjet
 from cosmos.core.utils import generate_account_number
-from cosmos.db.models import AccountHolder, AccountHolderEmail, Campaign, CampaignBalance, EmailTemplate, EmailType
+from cosmos.db.models import (
+    AccountHolder,
+    AccountHolderEmail,
+    Campaign,
+    CampaignBalance,
+    EmailTemplate,
+    EmailType,
+    Reward,
+)
 from cosmos.db.session import SyncSessionMaker
 from cosmos.retailers.enums import EmailTemplateKeys, RetailerStatuses
 
@@ -182,7 +190,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
 
 def extract_message_uuid_from_mailjet_response(payload: dict) -> UUID:
     """
-        Extract and returns MessageID from a mailject successful response
+        Extract and returns MessageUUID from a mailject successful response
 
         example response body:
         ```python
@@ -212,10 +220,10 @@ def extract_message_uuid_from_mailjet_response(payload: dict) -> UUID:
 
 def update_account_holder_email(
     db_session: "Session", account_holder_email: AccountHolderEmail, resp_json: dict
-) -> None:
+) -> UUID | None:
     """
-    Extracts MessageID from provided resp_json and adds it to the AccountHolderEmail instance
-    linked to the provided retry task id.
+    Extracts MessageUUID from provided resp_json and adds it to the AccountHolderEmail instance
+    linked to the provided retry task id. Returns the MessageUUID.
     """
     try:
         account_holder_email.message_uuid = extract_message_uuid_from_mailjet_response(resp_json)
@@ -225,9 +233,10 @@ def update_account_holder_email(
         logger.exception(
             "Email was sent but failed to update AccountHolderEmail.message_uuid for send-email task %d"
             "DO NOT re-enqueue. "
-            "Please extract MessageID manually from response_audit and update AccountHolderEmail",
+            "Please extract MessageUUID manually from response_audit and update AccountHolderEmail",
             account_holder_email.retry_task_id,
         )
+    return account_holder_email.message_uuid
 
 
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
@@ -310,6 +319,109 @@ def _get_or_create_account_holder_email(
     return ahe
 
 
+def _fetch_required_data_for_params(
+    db_session: "Session", email_params: dict
+) -> tuple[AccountHolder, EmailTemplate, dict]:
+    account_holder: AccountHolder = db_session.execute(
+        select(AccountHolder)
+        .options(joinedload(AccountHolder.profile))
+        .where(
+            AccountHolder.id == email_params["account_holder_id"],
+        )
+    ).scalar_one()
+    email_template: EmailTemplate = db_session.execute(
+        select(EmailTemplate)
+        .join(EmailType)
+        .where(
+            EmailTemplate.retailer_id == email_params["retailer_id"],
+            EmailType.slug == email_params["template_type"],
+        )
+    ).scalar_one()
+
+    reward_activity_data: dict[str, str | datetime | None] = {}
+    if reward_id := email_params.get("extra_params", {}).get("reward_id"):
+        reward: Reward = db_session.execute(select(Reward).where(Reward.id == reward_id)).scalar_one()
+        email_params["extra_params"]["reward_url"] = reward.associated_url
+        reward_activity_data["reward_config_slug"] = reward.reward_config.slug
+        reward_activity_data["reward_issued_date"] = reward.issued_date
+
+    return (account_holder, email_template, reward_activity_data)
+
+
+def _send_email_request(  # noqa: PLR0913
+    db_session: "Session",
+    account_holder: AccountHolder,
+    account_holder_email: AccountHolderEmail,
+    email_template: EmailTemplate,
+    email_variables: dict,
+    retry_task: RetryTask,
+    email_params: dict,
+    reward_activity_data: dict,
+) -> dict[str, dict | str | int | None] | str:
+    response_audit: dict[str, dict | str | int | None] | str = {}
+
+    try:
+        resp = send_email_to_mailjet(
+            account_holder=account_holder, template_id=email_template.template_id, email_variables=email_variables
+        )
+        underlying_datetime = datetime.now(tz=UTC)
+    except SendEmailFalseError as ex:
+        msg = "No mail sent due to SEND_MAIL=False"
+        logger.warning(msg, exc_info=ex)
+        response_audit = msg
+    else:
+        response_audit = {
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+            "request": {"url": account_settings.core.MAILJET_API_URL},
+            "response": {"status": resp.status_code, "body": resp.text},
+        }
+        try:
+            resp.raise_for_status()
+        except HTTPError as exc:
+            if 400 <= exc.response.status_code < 500:  # noqa: PLR2004
+                with sentry_sdk.push_scope() as scope:
+                    scope.fingerprint = ["{{ default }}", "{{ message }}"]
+                    msg = (
+                        f"Email error: MailJet HTTP code: {exc.response.status_code}, "
+                        f"retailer slug: {account_holder.retailer.slug}, "
+                        f"email type: {email_template.email_type.slug}, "
+                        f"template id: {email_template.template_id}"
+                    )
+                    event_id = sentry_sdk.capture_message(msg)
+                    logger.warning(f"{msg} (sentry event id: {event_id})")
+
+            retry_task.update_task(
+                db_session,
+                status=RetryTaskStatuses.FAILED,
+                response_audit=response_audit,
+                clear_next_attempt_time=True,
+            )
+            raise
+
+        message_uuid = update_account_holder_email(db_session, account_holder_email, resp.json())
+
+        sync_send_activity(
+            (
+                AccountsActivityType.get_send_email_request_activity_data(
+                    underlying_datetime=underlying_datetime,
+                    retailer_slug=account_holder.retailer.slug,
+                    retailer_name=account_holder.retailer.name,
+                    account_holder_uuid=account_holder.account_holder_uuid,
+                    account_holder_joined_date=account_holder.created_at,
+                    mailjet_message_uuid=message_uuid,
+                    email_params=email_params,
+                    email_type=email_template.email_type.slug,
+                    template_id=email_template.template_id,
+                    reward_slug=reward_activity_data.get("reward_config_slug"),
+                    reward_issued_date=reward_activity_data.get("reward_issued_date"),
+                )
+            ),
+            routing_key=AccountsActivityType.NOTIFICATION.value,
+        )
+
+    return response_audit
+
+
 # NOTE: Inter-dependency: If this function's name or module changes, ensure that
 # it is relevantly reflected in the TaskType table
 @retryable_task(
@@ -319,82 +431,41 @@ def _get_or_create_account_holder_email(
 )
 def send_email(retry_task: RetryTask, db_session: "Session") -> None:
     """Generic email sending task"""
-    response_audit: dict[str, dict | str | int | None] | str = {}
     if account_settings.core.ACTIVATE_TASKS_METRICS:
         tasks_run_total.labels(
             app=account_settings.core.PROJECT_NAME, task_name=account_settings.core.SEND_EMAIL_TASK_NAME
         ).inc()
 
-    task_params = retry_task.get_params()
-    account_holder: AccountHolder = db_session.execute(
-        select(AccountHolder)
-        .options(joinedload(AccountHolder.profile))
-        .where(
-            AccountHolder.id == task_params["account_holder_id"],
-        )
-    ).scalar_one()
-    email_template: EmailTemplate = db_session.execute(
-        select(EmailTemplate)
-        .join(EmailType)
-        .where(
-            EmailTemplate.retailer_id == task_params["retailer_id"],
-            EmailType.slug == task_params["template_type"],
-        )
-    ).scalar_one()
+    email_params = retry_task.get_params()
+
+    account_holder, email_template, reward_activity_data = _fetch_required_data_for_params(db_session, email_params)
+
     account_holder_email = _get_or_create_account_holder_email(
         db_session,
         account_holder_id=account_holder.id,
         email_type_id=email_template.email_type_id,
         retry_task_id=retry_task.retry_task_id,
-        campaign_slug=task_params.get("extra_params", {}).get("campaign_slug"),
+        campaign_slug=email_params.get("extra_params", {}).get("campaign_slug"),
     )
 
     try:
         email_variables = _validate_email_variables(
-            account_holder=account_holder, task_params=task_params, email_template=email_template
+            account_holder=account_holder, task_params=email_params, email_template=email_template
         )
     except EmailTemplateKeysError as exc:
         logger.exception("Unexpected System Error", exc_info=exc)
         retry_task.update_task(db_session, status=RetryTaskStatuses.FAILED, clear_next_attempt_time=True)
     else:
-        try:
-            resp = send_email_to_mailjet(
-                account_holder=account_holder, template_id=email_template.template_id, email_variables=email_variables
-            )
-        except SendEmailFalseError as ex:
-            msg = "No mail sent due to SEND_MAIL=False"
-            logger.warning(msg, exc_info=ex)
-            response_audit = msg
-        else:
-            response_audit = {
-                "timestamp": datetime.now(tz=UTC).isoformat(),
-                "request": {"url": account_settings.core.MAILJET_API_URL},
-                "response": {"status": resp.status_code, "body": resp.text},
-            }
-            try:
-                resp.raise_for_status()
-            except HTTPError as exc:
-                if 400 <= exc.response.status_code < 500:  # noqa: PLR2004
-                    with sentry_sdk.push_scope() as scope:
-                        scope.fingerprint = ["{{ default }}", "{{ message }}"]
-                        msg = (
-                            f"Email error: MailJet HTTP code: {exc.response.status_code}, "
-                            f"retailer slug: {account_holder.retailer.slug}, "
-                            f"email type: {email_template.email_type.slug}, "
-                            f"template id: {email_template.template_id}"
-                        )
-                        event_id = sentry_sdk.capture_message(msg)
-                        logger.warning(f"{msg} (sentry event id: {event_id})")
-
-                retry_task.update_task(
-                    db_session,
-                    status=RetryTaskStatuses.FAILED,
-                    response_audit=response_audit,
-                    clear_next_attempt_time=True,
-                )
-                raise
-
-            update_account_holder_email(db_session, account_holder_email, resp.json())
+        response_audit = _send_email_request(
+            db_session=db_session,
+            account_holder=account_holder,
+            account_holder_email=account_holder_email,
+            email_template=email_template,
+            email_variables=email_variables,
+            retry_task=retry_task,
+            email_params=email_params,
+            reward_activity_data=reward_activity_data,
+        )
 
         retry_task.update_task(
             db_session,

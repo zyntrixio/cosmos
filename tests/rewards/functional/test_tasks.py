@@ -69,10 +69,8 @@ def test_reward_issuance_ok(
             "template_type": "REWARD_ISSUANCE",
             "account_holder_id": account_holder.id,
             "extra_params": {
-                "reward_url": reward.associated_url,
+                "reward_id": reward.id,
                 "campaign_slug": campaign_with_rules.slug,
-                "retailer_slug": account_holder.retailer.slug,
-                "retailer_name": account_holder.retailer.name,
                 "account_holder_uuid": str(account_holder.account_holder_uuid),
             },
         },
@@ -191,10 +189,8 @@ def test_reward_issuance_no_reward_and_allocation_is_requeued(
             "template_type": "REWARD_ISSUANCE",
             "account_holder_id": account_holder.id,
             "extra_params": {
-                "reward_url": reward.associated_url,
+                "reward_id": reward.id,
                 "campaign_slug": campaign_with_rules.slug,
-                "retailer_slug": account_holder.retailer.slug,
-                "retailer_name": account_holder.retailer.name,
                 "account_holder_uuid": str(account_holder.account_holder_uuid),
             },
         },

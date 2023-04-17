@@ -2,6 +2,8 @@ import uuid
 
 from datetime import UTC, datetime
 
+import pytest
+
 from pytest_mock import MockerFixture
 
 from cosmos.accounts.activity.enums import ActivityType
@@ -177,4 +179,116 @@ def test_get_marketing_preference_change_activity_data(mocker: MockerFixture) ->
             "original_value": "test",
             "new_value": "testing",
         },
+    }
+
+
+@pytest.mark.parametrize(
+    ("email_type", "summary", "reason", "email_params", "expected_activity_data"),
+    (
+        pytest.param(
+            "BALANCE_RESET",
+            "Balance reset nudge email request sent for",
+            "Balance reset warning email",
+            {
+                "template_type": "BALANCE_RESET",
+                "account_holder_id": 1,
+                "retailer_id": 1,
+                "extra_params": {
+                    "current_balance": "7.00",
+                    "balance_reset_date": datetime(2023, 1, 1, 00, 00, 00, tzinfo=UTC).strftime("%d/%m/%Y"),
+                    "datetime": datetime.now(tz=UTC).strftime("%H:%M %d/%m/%Y"),
+                    "campaign_slug": "10percentoff",
+                },
+            },
+            {
+                "notification_type": "Email",
+                "retailer_slug": "test-retailer",
+                "template_id": 1,
+                "balance_reset_date": datetime(2023, 1, 1, 00, 00, 00, tzinfo=UTC).strftime("%d/%m/%Y"),
+            },
+        ),
+        pytest.param(
+            "WELCOME_EMAIL",
+            "Welcome email request sent for",
+            "Welcome email",
+            {
+                "template_type": "REWARD_ISSUANCE",
+                "account_holder_id": 1,
+                "retailer_id": 1,
+            },
+            {
+                "notification_type": "Email",
+                "retailer_slug": "test-retailer",
+                "template_id": 1,
+                "account_holder_joined_date": datetime.now(tz=UTC),
+            },
+        ),
+        pytest.param(
+            "REWARD_ISSUANCE",
+            "Reward email request sent for",
+            "Reward email",
+            {
+                "template_type": "REWARD_ISSUANCE",
+                "account_holder_id": 1,
+                "retailer_id": 1,
+                "extra_params": {
+                    "reward_id": 1,
+                    "campaign_slug": "10percentoff",
+                    "account_holder_uuid": str(uuid.uuid4()),
+                },
+            },
+            {
+                "notification_type": "Email",
+                "retailer_slug": "test-retailer",
+                "reward_slug": "test-slug",
+                "template_id": 1,
+                "reward_issued_date": datetime(2023, 1, 1, 00, 00, 00, tzinfo=UTC),
+            },
+        ),
+    ),
+)
+def test_get_send_email_activity_data(
+    email_type: str,
+    summary: str,
+    reason: str,
+    email_params: dict,
+    expected_activity_data: dict,
+    mocker: MockerFixture,
+) -> None:
+    mock_datetime = mocker.patch("cosmos.core.activity.enums.datetime")
+    fake_now = datetime.now(tz=UTC)
+    mock_datetime.now.return_value = fake_now
+    account_holder_uuid = uuid.uuid4()
+    mailjet_message_uuid = uuid.uuid4()
+    retailer_slug = "test-retailer"
+    retailer_name = "Test Retaier"
+
+    payload = ActivityType.get_send_email_request_activity_data(
+        underlying_datetime=fake_now,
+        retailer_slug=retailer_slug,
+        retailer_name=retailer_name,
+        account_holder_uuid=account_holder_uuid,
+        account_holder_joined_date=expected_activity_data["account_holder_joined_date"]
+        if email_type == "WELCOME_EMAIL"
+        else None,
+        mailjet_message_uuid=mailjet_message_uuid,
+        email_params=email_params,
+        email_type=email_type,
+        template_id="1",
+        reward_slug="test-slug" if email_type == "REWARD_ISSUANCE" else None,
+        reward_issued_date=datetime(2023, 1, 1, 00, 00, 00, tzinfo=UTC) if email_type == "REWARD_ISSUANCE" else None,
+    )
+
+    assert payload == {
+        "type": ActivityType.NOTIFICATION.name,
+        "datetime": fake_now,
+        "underlying_datetime": fake_now,
+        "summary": f"{summary} {retailer_name}",
+        "reasons": [reason],
+        "activity_identifier": "N/A",
+        "user_id": str(account_holder_uuid),
+        "associated_value": str(mailjet_message_uuid),
+        "retailer": retailer_slug,
+        "campaigns": [email_params["extra_params"]["campaign_slug"]] if email_type == "REWARD_ISSUANCE" else [],
+        "data": expected_activity_data,
     }
