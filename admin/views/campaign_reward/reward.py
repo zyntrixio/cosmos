@@ -191,6 +191,7 @@ class AllocatedRewardAdmin(RewardAdminBase):
 
     column_searchable_list = RewardAdminBase.column_searchable_list.copy()
     column_searchable_list.remove("code")
+    column_default_sort = ("issued_date", True)
 
     def get_query(self) -> Query:  # pragma: no cover
         return super().get_query().filter(self.model.account_holder_id.is_not(None))

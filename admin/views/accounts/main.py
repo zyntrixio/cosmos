@@ -207,6 +207,7 @@ class PendingRewardAdmin(BaseModelView):
         "count",
     ]
     form_excluded_columns = ("account_holder", "campaign", "created_at", "updated_at")
+    column_default_sort = ("created_date", True)
 
 
 class CampaignBalanceAdmin(BaseModelView):
