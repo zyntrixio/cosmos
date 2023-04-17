@@ -193,7 +193,6 @@ class PendingRewardAdmin(BaseModelView):
     column_labels = {"account_holder": "Account Holder", "id": "Pending Reward id"}
     column_filters = ("account_holder.retailer.slug", "campaign.slug", "created_date", "conversion_date")
     column_formatters = {"account_holder": account_holder_repr, "campaign": campaign_slug_repr}
-    form_widget_args = {"account_holder": {"disabled": True}}
     column_export_list = [
         "account_holder.account_holder_uuid",
         "created_at",
@@ -207,6 +206,7 @@ class PendingRewardAdmin(BaseModelView):
         "total_cost_to_user",
         "count",
     ]
+    form_excluded_columns = ("account_holder", "campaign", "created_at", "updated_at")
 
 
 class CampaignBalanceAdmin(BaseModelView):
