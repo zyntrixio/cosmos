@@ -241,7 +241,6 @@ class Jigsaw(BaseAgent):
         execute_special_action = self._requires_special_action(try_again_call, jigsaw_status, msg_id)
 
         if not execute_special_action and jigsaw_status in self.STATUS_CODE_MAP:
-
             if resp.status_code == status.HTTP_200_OK:
                 resp.status_code = self.STATUS_CODE_MAP[jigsaw_status]
 
@@ -419,14 +418,14 @@ class Jigsaw(BaseAgent):
             headers={"Token": self._get_auth_token()},
         )
 
-    def issue_reward(self) -> str | None:
+    def issue_reward(self) -> int | None:
         """
         Issues jigsaw reward
 
         issued_date is set at the time of generating a new customer card ref
         expiry date is provided by jigsaw in a successful request to register reward
 
-        returns a Reward's associated_url on success
+        returns a Reward.id on successful else None
         """
         issued = self._generate_customer_card_ref()
         if not self.customer_card_ref:  # pragma: no cover
@@ -448,13 +447,12 @@ class Jigsaw(BaseAgent):
             associated_url=response_payload["data"]["voucher_url"],
         )
         self._send_issued_reward_activity(reward_uuid=reward.reward_uuid, issued_date=issued)
-        return reward.associated_url
+        return reward.id
 
     def fetch_balance(self) -> int:  # pragma: no cover
         raise NotImplementedError
 
     def __exit__(self, exc_type: type, exc_value: Exception, exc_traceback: "Traceback") -> None:
-
         if exc_value is not None:
             self.logger.exception(
                 "Exception occurred while fetching a new Jigsaw reward or cleaning up an existing task, "

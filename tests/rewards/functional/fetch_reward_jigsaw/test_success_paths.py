@@ -108,7 +108,7 @@ def test_jigsaw_agent_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        assert agent.issue_reward() == sample_url
+        assert agent.issue_reward() == 1
 
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
@@ -188,7 +188,7 @@ def test_jigsaw_agent_ok_token_already_set(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        assert agent.issue_reward() == sample_url
+        assert agent.issue_reward() == 1
 
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
@@ -281,7 +281,7 @@ def test_jigsaw_agent_ok_card_ref_in_task_params(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        assert agent.issue_reward() == sample_url
+        assert agent.issue_reward() == 1
 
     reward: Reward = db_session.execute(select(Reward).where(Reward.reward_uuid == card_ref)).scalar_one()
 
@@ -395,7 +395,7 @@ def test_jigsaw_agent_register_reversal_paths_no_previous_error_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        assert agent.issue_reward() == sample_url
+        assert agent.issue_reward() == 1
 
     assert answer_bot.calls["register"] == 2
     assert "reversal" not in answer_bot.calls
@@ -532,7 +532,7 @@ def test_jigsaw_agent_register_reversal_paths_previous_error_ok(
         retry_task=jigsaw_reward_issuance_task,
         task_params=IssuanceTaskParams(**jigsaw_reward_issuance_task.get_params()),
     ) as agent:
-        assert agent.issue_reward() == sample_url
+        assert agent.issue_reward() == 1
 
     assert answer_bot.calls["register"] == 2
     assert answer_bot.calls["reversal"] == 1

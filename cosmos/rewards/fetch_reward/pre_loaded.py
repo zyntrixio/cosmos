@@ -10,13 +10,13 @@ from .base import BaseAgent
 
 
 class PreLoaded(BaseAgent):
-    def issue_reward(self) -> str | None:
+    def issue_reward(self) -> int | None:
         """
         Issue pre-loaded reward
 
         issued_date and expiry_date are set at the time of allocation
 
-        returns Reward.associated_url | None
+        returns a Reward.id on successful else None
         """
 
         validity_days: int = self.reward_config.load_required_fields_values()["validity_days"]
@@ -53,7 +53,7 @@ class PreLoaded(BaseAgent):
                 associated_url=func.format(associated_url_template, Reward.reward_uuid),
             )
             .where(Reward.id == available_reward.c.id)
-            .returning(Reward.reward_uuid, Reward.issued_date, Reward.expiry_date, Reward.associated_url)
+            .returning(Reward.reward_uuid, Reward.issued_date, Reward.expiry_date, Reward.id)
         ).all()
 
         if len(res) > 1:  # pragma: no cover
@@ -64,7 +64,6 @@ class PreLoaded(BaseAgent):
         reward_data = res[0] if res else None
 
         if reward_data:
-
             if not reward_data.expiry_date:  # pragma: no cover
                 # this should not be possbile but it's here as safeguard in case we modify db contraints
                 self.db_session.rollback()
@@ -75,7 +74,7 @@ class PreLoaded(BaseAgent):
         else:
             self.db_session.rollback()
 
-        return reward_data.associated_url if reward_data else None
+        return reward_data.id if reward_data else None
 
     def fetch_balance(self) -> int:  # pragma: no cover
         raise NotImplementedError

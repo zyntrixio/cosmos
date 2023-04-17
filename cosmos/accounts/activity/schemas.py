@@ -61,7 +61,6 @@ class BalanceResetDataSchema(BalanceChangeDataSchema):
 
 
 class EmailEventActivityDataSchema(BaseModel):
-
     time: int = Field(..., alias="event_datetime")
     Message_GUID: str = Field(..., alias="message_uuid")
 
@@ -77,3 +76,13 @@ class EmailEventActivityDataSchema(BaseModel):
 
     class Config:
         extra = Extra.allow
+
+
+class SendEmailDataSchema(BaseModel):
+    notification_type: str
+    retailer_slug: str
+    reward_slug: str | None
+    template_id: int
+    balance_reset_date: str | None
+    account_holder_joined_date: datetime | None
+    reward_issued_date: datetime | None

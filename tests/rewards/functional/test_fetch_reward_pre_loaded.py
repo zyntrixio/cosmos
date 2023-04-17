@@ -12,7 +12,6 @@ from cosmos.rewards.fetch_reward.base import BaseAgent
 from cosmos.rewards.schemas import IssuanceTaskParams
 
 if TYPE_CHECKING:  # pragma: no cover
-
     from pytest_mock import MockerFixture
 
     from cosmos.db.models import AccountHolder, Campaign
@@ -91,7 +90,7 @@ def test_get_allocable_reward_ok(
     mock_datetime = mocker.patch("cosmos.rewards.fetch_reward.pre_loaded.datetime")
     mock_datetime.now.return_value = now
 
-    def issue_reward() -> str | None:
+    def issue_reward() -> int | None:
         return issue_agent_specific_reward(
             db_session,
             campaign=campaign_with_rules,

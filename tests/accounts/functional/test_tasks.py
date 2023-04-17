@@ -367,7 +367,15 @@ def test_send_email_task(
     welcome_email_type: EmailType,
     campaign_with_rules: Campaign,
 ) -> None:
+    mock_now = datetime.now(tz=UTC)
+    mock_datetime = mocker.patch("cosmos.accounts.tasks.account_holder.datetime")
+    mock_datetime.now.return_value = mock_now
     mock_settings = mocker.patch("cosmos.core.tasks.mailjet.core_settings")
+    mock_get_send_email_request_activity_data = mocker.patch(
+        "cosmos.accounts.activity.enums.ActivityType.get_send_email_request_activity_data",
+        return_value={"mock": "payload"},
+    )
+    mock_sync_send_activity = mocker.patch("cosmos.accounts.tasks.account_holder.sync_send_activity")
     mock_settings.SEND_EMAIL = True
     mock_settings.MAILJET_API_URL = "http://fake-mailjet.com"
     mock_settings.MAILJET_API_PUBLIC_KEY = "potato"
@@ -456,6 +464,24 @@ def test_send_email_task(
     )
     assert account_holder_email.message_uuid == mock_uuid
     assert account_holder_email.campaign_id == campaign_id
+
+    mock_get_send_email_request_activity_data.assert_called_once_with(
+        underlying_datetime=mock_now,
+        retailer_slug=account_holder.retailer.slug,
+        retailer_name=account_holder.retailer.name,
+        account_holder_uuid=account_holder.account_holder_uuid,
+        account_holder_joined_date=account_holder.created_at,
+        mailjet_message_uuid=mock_uuid,
+        email_params=send_welcome_email_task.get_params(),
+        email_type=email_template.email_type.slug,
+        template_id=email_template.template_id,
+        reward_slug=None,
+        reward_issued_date=None,
+    )
+
+    mock_sync_send_activity.assert_called_once_with(
+        {"mock": "payload"}, routing_key=AccountsActivityType.NOTIFICATION.value
+    )
 
 
 @httpretty.activate
@@ -640,4 +666,5 @@ def test_send_email_task_400(
         f"email type: {EmailTypeSlugs.WELCOME_EMAIL.name}, template id: 1234"
     )
     assert any(msg in record.message for record in capture.records)
+    assert msg in mock_sentry.capture_message.call_args.args[0]
     assert msg in mock_sentry.capture_message.call_args.args[0]

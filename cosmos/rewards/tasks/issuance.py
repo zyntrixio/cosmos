@@ -27,7 +27,6 @@ from cosmos.rewards.schemas import IssuanceTaskParams
 from . import logger
 
 if TYPE_CHECKING:  # pragma: no cover
-
     from sqlalchemy.orm import Session
 
 
@@ -62,7 +61,7 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
     ).scalar_one()
     retailer = account_holder.retailer
 
-    if associated_url := issue_agent_specific_reward(
+    if reward_id := issue_agent_specific_reward(
         db_session,
         campaign=campaign,
         reward_config=reward_config,
@@ -78,10 +77,8 @@ def issue_reward(retry_task: RetryTask, db_session: "Session") -> None:
                 "template_type": EmailTypeSlugs.REWARD_ISSUANCE.name,
                 "retailer_id": retailer.id,
                 "extra_params": {
-                    "reward_url": associated_url,
+                    "reward_id": reward_id,
                     "campaign_slug": campaign.slug,
-                    "retailer_slug": retailer.slug,
-                    "retailer_name": retailer.name,
                     "account_holder_uuid": str(account_holder.account_holder_uuid),
                 },
             },
