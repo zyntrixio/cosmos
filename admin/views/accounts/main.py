@@ -59,7 +59,6 @@ class AccountHolderAdmin(BaseModelView):
         deleted_accounts_data: list[AccountDeletedData],
         sso_username: str,
     ) -> Generator[dict, None, None]:  # pragma: no cover
-
         return (
             ActivityType.get_account_holder_deleted_activity_data(
                 activity_datetime=datetime.now(tz=UTC),
@@ -221,6 +220,7 @@ class CampaignBalanceAdmin(BaseModelView):
 
 
 class MarketingPreferenceAdmin(BaseModelView):
+    can_export = True
     column_list = (
         "account_holder",
         "account_holder.retailer",
@@ -235,6 +235,7 @@ class MarketingPreferenceAdmin(BaseModelView):
     column_labels = {"account_holder": "Account Holder", "account_holder.retailer": "Retailer"}
     column_formatters = {"account_holder": account_holder_repr}
     column_default_sort = ("account_holder.created_at", True)
+    column_export_list = ("account_holder.email", "key_name", "value", "account_holder.account_number", "updated_at")
 
 
 class AccountHolderEmailAdmin(BaseModelView):
