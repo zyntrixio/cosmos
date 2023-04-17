@@ -498,6 +498,16 @@ class CampaignAdmin(CanDeleteModelView):
         else:
             self._campaigns_status_change(int(ids[0]), CampaignStatuses.CANCELLED)
 
+    def delete_model(self, model: Campaign) -> bool:
+        if self.can_delete:
+            if model.status == CampaignStatuses.DRAFT:
+                return super().delete_model(model)
+            flash("Cannot delete campaigns that are not DRAFT")
+        else:
+            flash("Only verified users can do this.", "error")
+
+        return False
+
 
 class EarnRuleAdmin(CanDeleteModelView):
     column_auto_select_related = True

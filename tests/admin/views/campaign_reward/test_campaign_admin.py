@@ -382,3 +382,33 @@ def test_campaign_clone_action_resulting_slug_too_long(
         category="error",
     )
     mock_send_activity.assert_not_called()
+
+
+@pytest.mark.parametrize("status", (CampaignStatuses.ACTIVE, CampaignStatuses.CANCELLED, CampaignStatuses.ENDED))
+def test_delete_campaign_not_ok(
+    status: CampaignStatuses, db_session: "Session", test_client: "FlaskClient", campaign_with_rules: Campaign
+) -> None:
+    campaign_with_rules.status = status
+    db_session.commit()
+
+    resp = test_client.post(
+        f"{url_for('campaigns.delete_view')}?id={campaign_with_rules.id}",
+        follow_redirects=True,
+    )
+    db_session.refresh(campaign_with_rules)
+    assert campaign_with_rules.status == status
+    assert "Cannot delete campaigns that are not DRAFT" in resp.text
+
+
+def test_delete_campaign_ok(db_session: "Session", test_client: "FlaskClient", campaign_with_rules: Campaign) -> None:
+    campaign_id = campaign_with_rules.id
+    campaign_with_rules.status = CampaignStatuses.DRAFT
+    db_session.commit()
+
+    resp = test_client.post(
+        f"{url_for('campaigns.delete_view')}?id={campaign_with_rules.id}",
+        follow_redirects=True,
+    )
+    assert "Record was successfully deleted" in resp.text
+    db_session.expunge(campaign_with_rules)
+    assert not db_session.get(Campaign, campaign_id)
