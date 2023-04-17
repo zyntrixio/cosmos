@@ -21,6 +21,7 @@ class TransactionAdmin(BaseModelView):
         "retailer.slug": "Retailer",
         "account_holder.account_holder_uuid": "Account Holder UUID",
     }
+    column_formatters = {"store": lambda _v, _c, m, _p: m.store.store_name}
 
 
 class TransactionEarnAdmin(BaseModelView):
