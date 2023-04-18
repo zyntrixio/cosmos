@@ -85,4 +85,5 @@ class SendEmailDataSchema(BaseModel):
     template_id: int
     balance_reset_date: str | None
     account_holder_joined_date: datetime | None
+    days_in_loyalty_scheme: int | None
     reward_issued_date: datetime | None

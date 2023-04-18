@@ -245,6 +245,23 @@ def test_get_marketing_preference_change_activity_data(mocker: MockerFixture) ->
                 "reward_issued_date": datetime(2023, 1, 1, 00, 00, 00, tzinfo=UTC),
             },
         ),
+        pytest.param(
+            "PURCHASE_PROMPT",
+            "Transaction prompt email sent for",
+            "First transaction prompt",
+            {
+                "template_type": "PURCHASE_PROMPT",
+                "account_holder_id": 1,
+                "retailer_id": 1,
+            },
+            {
+                "notification_type": "Email",
+                "retailer_slug": "test-retailer",
+                "template_id": 1,
+                "account_holder_joined_date": datetime.now(tz=UTC),
+                "days_in_loyalty_scheme": 0,
+            },
+        ),
     ),
 )
 def test_get_send_email_activity_data(
@@ -269,7 +286,7 @@ def test_get_send_email_activity_data(
         retailer_name=retailer_name,
         account_holder_uuid=account_holder_uuid,
         account_holder_joined_date=expected_activity_data["account_holder_joined_date"]
-        if email_type == "WELCOME_EMAIL"
+        if email_type in {"WELCOME_EMAIL", "PURCHASE_PROMPT"}
         else None,
         mailjet_message_uuid=mailjet_message_uuid,
         email_params=email_params,

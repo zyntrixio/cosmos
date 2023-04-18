@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from uuid import UUID
 
@@ -207,7 +207,7 @@ class ActivityType(ActivityTypeMixin, Enum):
         retailer_slug: str,
         retailer_name: str,
         account_holder_uuid: UUID | str,
-        account_holder_joined_date: datetime | None = None,
+        account_holder_joined_date: datetime,
         mailjet_message_uuid: UUID | None,
         email_params: dict,
         email_type: str,
@@ -241,6 +241,13 @@ class ActivityType(ActivityTypeMixin, Enum):
                     "reward_issued_date": reward_issued_date,
                     "campaign_slug": extra_params.get("campaign_slug"),
                 }
+            case EmailTypeSlugs.PURCHASE_PROMPT.name:
+                summary = "Transaction prompt email sent for"
+                reason = "First transaction prompt"
+                activity_data |= {
+                    "account_holder_joined_date": account_holder_joined_date,
+                    "days_in_loyalty_scheme": (datetime.now(tz=UTC) - account_holder_joined_date).days,
+                }
             case _:
                 raise ValueError(f"Unexpected value {email_type} for email template type.")
 
@@ -266,6 +273,7 @@ class ActivityType(ActivityTypeMixin, Enum):
                 template_id=activity_data["template_id"],
                 balance_reset_date=activity_data.get("reset_date"),
                 account_holder_joined_date=activity_data.get("account_holder_joined_date"),
+                days_in_loyalty_scheme=activity_data.get("days_in_loyalty_scheme"),
                 reward_issued_date=activity_data.get("reward_issued_date"),
             ).dict(exclude_unset=True, exclude_none=True),
         )
