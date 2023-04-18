@@ -10,6 +10,7 @@ from flask_admin import expose
 from flask_admin.actions import action
 from flask_admin.contrib.sqla.fields import QuerySelectField
 from flask_admin.form import BaseForm
+from flask_admin.model import typefmt
 from sqlalchemy import or_, update
 from sqlalchemy.future import select
 from wtforms.validators import DataRequired, Optional
@@ -305,9 +306,10 @@ class EmailTypeAdmin(BaseModelView):
 class EmailTemplateAdmin(CanDeleteModelView):
     column_list = (
         "template_id",
+        "retailer",
         "email_type",
         "required_keys",
-        "retailer",
+        "required_fields_values",
         "created_at",
         "updated_at",
     )
@@ -332,6 +334,15 @@ class EmailTemplateAdmin(CanDeleteModelView):
             ],
             "description": "Configuration in YAML format",
         },
+    }
+
+    column_type_formatters = typefmt.BASE_FORMATTERS | {type(None): lambda _view, _value: "-"}
+    column_formatters = {
+        "required_fields_values": lambda _v, _c, model, _p: Markup("<pre>")
+        + Markup.escape(model.required_fields_values)
+        + Markup("</pre>")
+        if model.required_fields_values
+        else None
     }
 
 
