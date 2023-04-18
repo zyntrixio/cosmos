@@ -43,7 +43,7 @@ def test_get_campaign_created_activity_data(mocker: MockFixture) -> None:
         "datetime": fake_now,
         "underlying_datetime": activity_datetime,
         "summary": f"{campaign_name} created",
-        "reasons": [],
+        "reasons": ["Created"],
         "activity_identifier": campaign_slug,
         "user_id": user_name,
         "associated_value": "N/A",

@@ -62,7 +62,7 @@ class EasterEgg:
 
 class CampaignAdmin(CanDeleteModelView):
     column_auto_select_related = True
-    action_disallowed_list = ["delete"]
+    action_disallowed_list = ("delete",)
     column_filters = ("retailer.slug", "status")
     column_searchable_list = ("slug", "name")
     form_args = {
@@ -107,17 +107,32 @@ class CampaignAdmin(CanDeleteModelView):
             "<p>Please do try not to destroy everything.</p>",
         )
 
-    def after_model_delete(self, model: "Campaign") -> None:
+    def delete_model(self, model: Campaign) -> bool:
+        if self.can_delete:
+            if model.status == CampaignStatuses.DRAFT:
+                # since the related objects can no longer be lazy loaded after
+                # model has been deleted, we assign the required data for
+                # use in the activity (def after_model_delete)
+                model._retailer_slug = model.retailer.slug  # type: ignore[attr-defined]
+                model._loyalty_type_name = model.loyalty_type.name  # type: ignore[attr-defined]
+                return super().delete_model(model)
+            flash("Cannot delete campaigns that are not DRAFT")
+        else:
+            flash("Only verified users can do this.", "error")
+
+        return False
+
+    def after_model_delete(self, model: Campaign) -> None:
         # Synchronously send activity for a campaign deletion after successful deletion
         activity_data = {}
         try:
             activity_data = ActivityType.get_campaign_deleted_activity_data(
-                retailer_slug=model.retailer.slug,
+                retailer_slug=model._retailer_slug,  # type: ignore[attr-defined]
                 campaign_name=model.name,
                 sso_username=self.sso_username,
                 activity_datetime=datetime.now(tz=UTC),
                 campaign_slug=model.slug,
-                loyalty_type=model.loyalty_type.name,
+                loyalty_type=model._loyalty_type_name,  # type: ignore[attr-defined]
                 start_date=model.start_date,
                 end_date=model.end_date,
             )
@@ -497,16 +512,6 @@ class CampaignAdmin(CanDeleteModelView):
             flash("Cannot cancel more than one campaign at once", category="error")
         else:
             self._campaigns_status_change(int(ids[0]), CampaignStatuses.CANCELLED)
-
-    def delete_model(self, model: Campaign) -> bool:
-        if self.can_delete:
-            if model.status == CampaignStatuses.DRAFT:
-                return super().delete_model(model)
-            flash("Cannot delete campaigns that are not DRAFT")
-        else:
-            flash("Only verified users can do this.", "error")
-
-        return False
 
 
 class EarnRuleAdmin(CanDeleteModelView):

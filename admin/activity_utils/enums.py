@@ -56,7 +56,7 @@ class ActivityType(ActivityTypeMixin, Enum):
             associated_value="N/A",
             retailer_slug=retailer_slug,
             activity_identifier=campaign_slug,
-            reasons=[],
+            reasons=["Created"],
             campaigns=[campaign_slug],
             user_id=sso_username,
             data=CampaignCreatedActivitySchema(
