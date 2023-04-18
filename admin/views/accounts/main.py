@@ -232,10 +232,26 @@ class MarketingPreferenceAdmin(BaseModelView):
     )
     column_searchable_list = ("account_holder.id", "account_holder.email", "account_holder.account_holder_uuid")
     column_filters = ("key_name", "value_type", "account_holder.retailer.slug", "value")
-    column_labels = {"account_holder": "Account Holder", "account_holder.retailer": "Retailer"}
+    column_labels = {
+        "account_holder": "Account Holder",
+        "account_holder.retailer": "Retailer",
+        "account_holder.account_number": "Account Number",
+        "account_holder.profile.first_name": "First Name",
+        "account_holder.profile.last_name": "Last Name",
+        "account_holder.profile.date_of_birth": "Date of Birth",
+    }
     column_formatters = {"account_holder": account_holder_repr}
     column_default_sort = ("account_holder.created_at", True)
-    column_export_list = ("account_holder.email", "key_name", "value", "account_holder.account_number", "updated_at")
+    column_export_list = (
+        "account_holder.email",
+        "account_holder.profile.first_name",
+        "account_holder.profile.last_name",
+        "account_holder.profile.date_of_birth",
+        "key_name",
+        "value",
+        "account_holder.account_number",
+        "updated_at",
+    )
 
 
 class AccountHolderEmailAdmin(BaseModelView):
