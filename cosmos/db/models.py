@@ -1,7 +1,9 @@
 import enum
+import re
 import uuid
 
 from datetime import UTC, date, datetime, timedelta
+from urllib.parse import urlencode, urlsplit
 from uuid import UUID, uuid4
 
 import yaml
@@ -26,9 +28,9 @@ from sqlalchemy.schema import Index
 
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.campaigns.enums import CampaignStatuses, LoyaltyTypes
-from cosmos.core.config import core_settings
 from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.base_class import Base, IdPkMixin, TimestampMixin
+from cosmos.public.config import public_settings
 from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 
@@ -63,10 +65,17 @@ class AccountHolder(IdPkMixin, Base, TimestampMixin):
 
     @property
     def marketing_opt_out_link(self) -> str:
-        return (
-            f"{core_settings.PUBLIC_URL}{core_settings.API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe"
-            f"?u={self.opt_out_token}"
+        base_url = urlsplit(public_settings.core.PUBLIC_URL)
+        relative_path = re.sub(
+            "/{2,}",
+            "/",
+            f"/{base_url.path}/{public_settings.PUBLIC_API_PREFIX}/{self.retailer.slug}/marketing/unsubscribe",
         )
+
+        return base_url._replace(
+            path=relative_path,
+            query=urlencode({"u": self.opt_out_token}),
+        ).geturl()
 
 
 class AccountHolderProfile(IdPkMixin, Base, TimestampMixin):
