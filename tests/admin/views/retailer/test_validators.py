@@ -1,21 +1,25 @@
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
 
-from wtforms import Field, Form
 from wtforms.validators import StopValidation
 
-from admin.views.retailer.validators import validate_required_fields_values_yaml
+from admin.views.retailer.validators import validate_balance_reset_email_template, validate_required_fields_values_yaml
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from pytest_mock import MockerFixture
+    from sqlalchemy.orm import Session
+
+    from cosmos.db.models import EmailTemplate, Retailer
 
 
-@pytest.fixture()
-def mock_form() -> mock.MagicMock:
-    return mock.MagicMock(spec=Form)
-
-
-@pytest.fixture()
-def mock_field() -> mock.MagicMock:
-    return mock.MagicMock(spec=Field)
+@pytest.fixture(scope="function", autouse=True)
+def override_scoped_session(db_session: "Session", mocker: "MockerFixture") -> "Generator[None, None, None]":
+    with mocker.patch("admin.views.retailer.validators.scoped_db_session", db_session):
+        yield
 
 
 def test_validate_required_fields_values_ok(mock_form: mock.MagicMock, mock_field: mock.MagicMock) -> None:
@@ -91,3 +95,45 @@ def test_validate_required_fields_values_mismatched_one_empty(
         validate_required_fields_values_yaml(mock_form, mock_field)
 
     assert ex_info.value.args[0] == "'required_fields_values' must be empty for this email type."
+
+
+def test_validate_balance_reset_email_template_ok_template_exists(
+    mock_form: mock.MagicMock, mock_field: mock.MagicMock, balance_reset_email_template: "EmailTemplate"
+) -> None:
+    mock_form._obj = balance_reset_email_template.retailer
+    mock_field.data = 30
+
+    validate_balance_reset_email_template(mock_form, mock_field)
+
+
+def test_validate_balance_reset_email_template_ok_field_not_set(
+    mock_form: mock.MagicMock, mock_field: mock.MagicMock
+) -> None:
+    mock_form._obj = None
+    mock_field.data = None
+
+    validate_balance_reset_email_template(mock_form, mock_field)
+
+
+def test_validate_balance_reset_email_template_missing_template(
+    mock_form: mock.MagicMock, mock_field: mock.MagicMock, retailer: "Retailer"
+) -> None:
+    mock_form._obj = retailer
+    mock_field.data = 30
+
+    with pytest.raises(StopValidation) as ex_info:
+        validate_balance_reset_email_template(mock_form, mock_field)
+
+    assert ex_info.value.args[0] == "Balance nudge email must be configured before these values can be set"
+
+
+def test_validate_balance_reset_email_template_new_retailer(
+    mock_form: mock.MagicMock, mock_field: mock.MagicMock, balance_reset_email_template: "EmailTemplate"
+) -> None:
+    mock_form._obj = None
+    mock_field.data = 30
+
+    with pytest.raises(StopValidation) as ex_info:
+        validate_balance_reset_email_template(mock_form, mock_field)
+
+    assert ex_info.value.args[0] == "Balance nudge email must be configured before these values can be set"

@@ -21,6 +21,7 @@ from admin.views.retailer.custom_actions import DeleteRetailerAction
 from admin.views.retailer.validators import (
     validate_account_number_prefix,
     validate_balance_lifespan_and_warning_days,
+    validate_balance_reset_email_template,
     validate_marketing_config,
     validate_optional_yaml,
     validate_required_fields_values_yaml,
@@ -33,7 +34,6 @@ from cosmos.db.models import AccountHolder, Campaign, CampaignBalance, Retailer,
 from cosmos.retailers.enums import RetailerStatuses
 
 if TYPE_CHECKING:
-
     from werkzeug.wrappers import Response
 
 
@@ -112,12 +112,12 @@ marketing_pref:
         "balance_lifespan": {
             "description": "Provide a value >0 (in days) if balances are to be periodically reset based on "
             "this value. Balances will not be reset if left empty.",
-            "validators": [wtforms.validators.NumberRange(min=1)],
+            "validators": [wtforms.validators.NumberRange(min=1), validate_balance_reset_email_template],
         },
         "balance_reset_advanced_warning_days": {
             "description": "Number of days ahead of account holder balance reset "
             "date that a balance reset nudge should be sent.",
-            "validators": [wtforms.validators.NumberRange(min=1)],
+            "validators": [wtforms.validators.NumberRange(min=1), validate_balance_reset_email_template],
         },
     }
     column_formatters = {
