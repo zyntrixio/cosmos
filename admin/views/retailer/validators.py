@@ -8,10 +8,13 @@ import wtforms
 import yaml
 
 from pydantic import BaseConfig, BaseModel, ConstrainedStr, validator
+from sqlalchemy import select
 from wtforms.validators import StopValidation
 
 from cosmos.db.base_class import Base
-from cosmos.retailers.enums import RetailerStatuses
+from cosmos.db.models import EmailTemplate, EmailType
+from cosmos.db.session import scoped_db_session
+from cosmos.retailers.enums import EmailTypeSlugs, RetailerStatuses
 
 if TYPE_CHECKING:
     from cosmos.db.models import Retailer
@@ -79,7 +82,6 @@ def validate_retailer_config(_: wtforms.Form, field: wtforms.Field) -> None:
 
 
 def validate_marketing_config(_: wtforms.Form, field: wtforms.Field) -> None:
-
     if field.data == "":
         return
 
@@ -119,7 +121,7 @@ def validate_marketing_config(_: wtforms.Form, field: wtforms.Field) -> None:
 
             formatted_errors.append(f"{' -> '.join(loc)}: {err.get('msg')}")
 
-        raise wtforms.ValidationError(", ".join(formatted_errors))  # noqa: B904
+        raise wtforms.ValidationError(", ".join(formatted_errors)) from None
     else:
         field.data = yaml.dump(validated_data.dict(exclude_unset=True)["__root__"], sort_keys=True)
 
@@ -186,7 +188,6 @@ def validate_retailer_config_new_values(form: wtforms.Form, model: "Retailer") -
 
 def validate_optional_yaml(_: wtforms.Form, field: wtforms.Field) -> None:
     try:
-
         if field.data in (None, ""):
             field.data = ""
             return
@@ -245,3 +246,17 @@ def validate_required_fields_values_yaml(form: wtforms.Form, field: wtforms.Fiel
         raise INVALID_YAML_ERROR
 
     field.data = yaml.dump(_validate_required_fields_values(required_fields, field_data).dict(), indent=2)
+
+
+def validate_balance_reset_email_template(form: wtforms.Form, field: wtforms.Field) -> None:
+    if field.data and not (
+        form._obj
+        and scoped_db_session.scalar(
+            select(EmailTemplate.id).where(
+                EmailTemplate.retailer_id == form._obj.id,
+                EmailTemplate.email_type_id == EmailType.id,
+                EmailType.slug == EmailTypeSlugs.BALANCE_RESET.name,
+            )
+        )
+    ):
+        raise StopValidation("Balance nudge email must be configured before these values can be set")
