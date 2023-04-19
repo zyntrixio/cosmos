@@ -10,6 +10,7 @@ from cosmos.core.config import core_settings, redis_raw
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
 from cosmos.db.models import EmailTemplate, EmailType
 from cosmos.db.session import SyncSessionMaker
+from cosmos.retailers.enums import EmailTypeSlugs
 
 from . import logger
 
@@ -18,7 +19,16 @@ if TYPE_CHECKING:
 
 
 @acquire_lock(runner=cron_scheduler)
-def scheduled_email_by_type(*, email_type_slug: str) -> None:
+def scheduled_balance_reset_email() -> None:
+    return _scheduled_email_by_type(email_type_slug=EmailTypeSlugs.BALANCE_RESET.name)
+
+
+@acquire_lock(runner=cron_scheduler)
+def scheduled_purchase_prompt_email() -> None:
+    return _scheduled_email_by_type(email_type_slug=EmailTypeSlugs.PURCHASE_PROMPT.name)
+
+
+def _scheduled_email_by_type(*, email_type_slug: str) -> None:
     with SyncSessionMaker() as db_session:
 
         email_type: EmailType = (

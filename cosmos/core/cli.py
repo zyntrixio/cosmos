@@ -17,11 +17,10 @@ from cosmos.accounts.config import account_settings
 from cosmos.core.config import redis_raw
 from cosmos.core.prometheus import job_queue_summary, task_statuses, tasks_summary
 from cosmos.core.scheduled_tasks.balances import reset_balances
-from cosmos.core.scheduled_tasks.scheduled_email import scheduled_email_by_type
+from cosmos.core.scheduled_tasks.scheduled_email import scheduled_balance_reset_email, scheduled_purchase_prompt_email
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler as scheduler
 from cosmos.core.scheduled_tasks.task_cleanup import cleanup_old_tasks
 from cosmos.db.session import SyncSessionMaker
-from cosmos.retailers.enums import EmailTypeSlugs
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.imports.file_agent import RewardImportAgent, RewardUpdatesAgent
 from cosmos.rewards.scheduled_tasks.pending_rewards import process_pending_rewards
@@ -101,10 +100,7 @@ def cron_scheduler(  # noqa: PLR0913
             coalesce_jobs=True,
         )
         scheduler.add_job(
-            scheduled_email_by_type,
-            kwargs={
-                "email_type_slug": EmailTypeSlugs.BALANCE_RESET.name,
-            },
+            scheduled_balance_reset_email,
             schedule_fn=lambda: account_settings.RESET_BALANCE_NUDGES_SCHEDULE,
             coalesce_jobs=True,
         )
@@ -165,10 +161,7 @@ def cron_scheduler(  # noqa: PLR0913
 
     if purchase_prompt:
         scheduler.add_job(
-            scheduled_email_by_type,
-            kwargs={
-                "email_type_slug": EmailTypeSlugs.PURCHASE_PROMPT.name,
-            },
+            scheduled_purchase_prompt_email,
             schedule_fn=lambda: account_settings.PURCHASE_PROMPT_SCHEDULE,
             coalesce_jobs=True,
         )

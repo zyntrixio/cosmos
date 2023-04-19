@@ -6,7 +6,7 @@ from retry_tasks_lib.db.models import RetryTask
 from sqlalchemy.future import select
 
 from cosmos.core.config import core_settings, redis_raw
-from cosmos.core.scheduled_tasks.scheduled_email import scheduled_email_by_type
+from cosmos.core.scheduled_tasks.scheduled_email import scheduled_balance_reset_email, scheduled_purchase_prompt_email
 from cosmos.core.scheduled_tasks.scheduler import cron_scheduler
 from cosmos.db.models import AccountHolderEmail
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from tests.conftest import SetupType
 
 
-def test_scheduled_email_by_type__balance_reset(
+def test_scheduled_balance_reset_email(
     setup: "SetupType",
     mocker: "MockerFixture",
     create_account_holder: "Callable[..., AccountHolder]",
@@ -28,7 +28,9 @@ def test_scheduled_email_by_type__balance_reset(
     send_email_task_type: "TaskType",
     balance_reset_email_template: "EmailTemplate",
 ) -> None:
-    redis_raw.delete(f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_email_by_type.__qualname__}")
+    redis_raw.delete(
+        f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_balance_reset_email.__qualname__}"
+    )
 
     db_session, retailer, eligible_account_holder_1 = setup
     eligible_account_holder_2 = create_account_holder(email="test@account.2")
@@ -67,7 +69,7 @@ def test_scheduled_email_by_type__balance_reset(
     mock_datetime = mocker.patch("cosmos.accounts.send_email_params_gen.datetime")
     mock_datetime.now.return_value = mock_now
 
-    scheduled_email_by_type(email_type_slug="BALANCE_RESET")
+    scheduled_balance_reset_email()
 
     retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
     assert len(retry_tasks) == 2
@@ -122,7 +124,7 @@ def test_scheduled_email_by_type__balance_reset(
     )
 
 
-def test_scheduled_email_by_type_mail_already_sent__balance_reset(
+def test_scheduled_balance_reset_email_already_sent(
     setup: "SetupType",
     mocker: "MockerFixture",
     create_account_holder: "Callable[..., AccountHolder]",
@@ -131,7 +133,9 @@ def test_scheduled_email_by_type_mail_already_sent__balance_reset(
     balance_reset_email_template: "EmailTemplate",
     create_campaign: "Callable[..., Campaign]",
 ) -> None:
-    redis_raw.delete(f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_email_by_type.__qualname__}")
+    redis_raw.delete(
+        f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_balance_reset_email.__qualname__}"
+    )
 
     db_session, retailer, eligible_account_holder = setup
     non_eligible_account_holder = create_account_holder(email="test@account.2")
@@ -181,7 +185,7 @@ def test_scheduled_email_by_type_mail_already_sent__balance_reset(
     mock_datetime = mocker.patch("cosmos.accounts.send_email_params_gen.datetime")
     mock_datetime.now.return_value = mock_now
 
-    scheduled_email_by_type(email_type_slug="BALANCE_RESET")
+    scheduled_balance_reset_email()
 
     retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
     assert len(retry_tasks) == 1
@@ -213,7 +217,7 @@ def test_scheduled_email_by_type_mail_already_sent__balance_reset(
     )
 
 
-def test_scheduled_email_by_type__purchase_prompt(
+def test_scheduled_purchase_prompt_email(
     setup: "SetupType",
     mocker: "MockerFixture",
     create_account_holder: "Callable[..., AccountHolder]",
@@ -223,7 +227,9 @@ def test_scheduled_email_by_type__purchase_prompt(
     purchase_prompt_email_template: "EmailTemplate",
     campaign: "Campaign",
 ) -> None:
-    redis_raw.delete(f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_email_by_type.__qualname__}")
+    redis_raw.delete(
+        f"{core_settings.REDIS_KEY_PREFIX}{cron_scheduler.name}:{scheduled_purchase_prompt_email.__qualname__}"
+    )
 
     db_session, _, account_holder_1 = setup
 
@@ -268,7 +274,7 @@ def test_scheduled_email_by_type__purchase_prompt(
     mock_datetime = mocker.patch("cosmos.accounts.send_email_params_gen.datetime")
     mock_datetime.now.return_value = mock_now
 
-    scheduled_email_by_type(email_type_slug="PURCHASE_PROMPT")
+    scheduled_purchase_prompt_email()
 
     retry_tasks = db_session.scalars(select(RetryTask)).unique().all()
     assert len(retry_tasks) == 2
@@ -307,7 +313,7 @@ def test_scheduled_email_by_type__purchase_prompt(
 
     db_session.commit()
 
-    scheduled_email_by_type(email_type_slug="PURCHASE_PROMPT")
+    scheduled_purchase_prompt_email()
 
     retry_tasks = (
         db_session.scalars(
