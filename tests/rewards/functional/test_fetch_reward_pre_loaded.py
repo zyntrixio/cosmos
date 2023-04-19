@@ -121,7 +121,7 @@ def test_get_allocable_reward_ok(
         assert reward.issued_date == now.replace(tzinfo=None)
         assert (
             reward.associated_url
-            == f"{reward_settings.PRE_LOADED_REWARD_BASE_URL}/reward?retailer={reward_config.retailer.slug}&"
+            == f"{reward_settings.PRE_LOADED_REWARD_BASE_URL}/r?retailer={reward_config.retailer.slug}&"
             f"reward={reward.reward_uuid}"
         )
 
