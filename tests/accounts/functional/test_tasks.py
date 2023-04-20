@@ -470,7 +470,7 @@ def test_send_email_task(
         retailer_slug=account_holder.retailer.slug,
         retailer_name=account_holder.retailer.name,
         account_holder_uuid=account_holder.account_holder_uuid,
-        account_holder_joined_date=account_holder.created_at,
+        account_holder_joined_date=account_holder.created_at.replace(tzinfo=UTC),
         mailjet_message_uuid=mock_uuid,
         email_params=send_welcome_email_task.get_params(),
         email_type=email_template.email_type.slug,
