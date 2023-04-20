@@ -7,8 +7,10 @@ from uuid import UUID
 
 from flask import flash
 from flask_admin.actions import action
+from retry_tasks_lib.db.models import RetryTask, TaskType
 from retry_tasks_lib.utils.synchronous import enqueue_retry_task, sync_create_task
-from sqlalchemy import Row, Table
+from sqlalchemy import Row, Table, Text
+from sqlalchemy import cast as sqla_cast
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import joinedload
 
@@ -149,6 +151,16 @@ class AccountHolderAdmin(BaseModelView):
 
         if account_holder.profile:
             self.session.delete(account_holder.profile)
+
+        self.session.execute(
+            cast(Table, RetryTask.__table__)
+            .delete()
+            .where(
+                RetryTask.task_type_id == TaskType.task_type_id,
+                TaskType.name == admin_settings.core.SEND_EMAIL_TASK_NAME,
+                sqla_cast(RetryTask.audit_data, Text).contains(email, autoescape=True),
+            )
+        )
 
         try:
             self.session.flush()
