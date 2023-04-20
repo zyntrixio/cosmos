@@ -407,7 +407,7 @@ def _send_email_request(  # noqa: PLR0913
                     retailer_slug=account_holder.retailer.slug,
                     retailer_name=account_holder.retailer.name,
                     account_holder_uuid=account_holder.account_holder_uuid,
-                    account_holder_joined_date=account_holder.created_at,
+                    account_holder_joined_date=account_holder.created_at.replace(tzinfo=UTC),
                     mailjet_message_uuid=message_uuid,
                     email_params=email_params,
                     email_type=email_template.email_type.slug,
