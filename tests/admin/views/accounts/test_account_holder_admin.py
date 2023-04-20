@@ -2,13 +2,18 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+import pytest
+
 from pytest_mock import MockerFixture
+from retry_tasks_lib.utils.synchronous import sync_create_many_tasks
 from sqlalchemy.exc import DataError
 from sqlalchemy.future import select
+from sqlalchemy.orm.exc import ObjectDeletedError
 from werkzeug.datastructures import MultiDict
 
 from admin.views.accounts import AccountHolderAdmin
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
+from cosmos.core.config import core_settings
 from cosmos.db.models import (
     AccountHolder,
     AccountHolderProfile,
@@ -19,12 +24,12 @@ from cosmos.db.models import (
     Reward,
     Transaction,
 )
-from cosmos.retailers.enums import RetailerStatuses
+from cosmos.retailers.enums import EmailTypeSlugs, RetailerStatuses
 from tests.conftest import SetupType
 
 if TYPE_CHECKING:
-
     from flask.testing import FlaskClient
+    from retry_tasks_lib.db.models import TaskType
     from sqlalchemy.orm import Session
     from werkzeug import Response
 
@@ -194,14 +199,61 @@ def test_delete_account_holder_action_multiple_with_one_invalid(
     mock_send_activity.assert_called_once()
 
 
-def test_anonymise_user_action_ok(setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture) -> None:
-    db_session, _, account_holder = setup
+def test_anonymise_user_action_ok(
+    setup: SetupType, test_client: "FlaskClient", mocker: MockerFixture, send_email_task_type: "TaskType"
+) -> None:
+    db_session, retailer, account_holder = setup
+
     mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
     mocker.patch("admin.views.accounts.main.activity_scoped_session")
     mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
     mock_flash = mocker.patch("admin.views.accounts.main.flash")
 
+    send_email_task_with_email, send_email_task_without_email = sync_create_many_tasks(
+        db_session,
+        task_type_name=core_settings.SEND_EMAIL_TASK_NAME,
+        params_list=[
+            {
+                "account_holder_id": account_holder.id,
+                "template_type": EmailTypeSlugs.WELCOME_EMAIL.name,
+                "retailer_id": retailer.id,
+            },
+            {
+                "account_holder_id": account_holder.id,
+                "template_type": EmailTypeSlugs.WELCOME_EMAIL.name,
+                "retailer_id": retailer.id,
+            },
+        ],
+    )
+
     email = account_holder.email
+    send_email_task_with_email.audit_data = [
+        {
+            "request": {"url": "https://api.mailjet.com/v3.1/send"},
+            "response": {
+                "body": {
+                    "Messages": [
+                        {
+                            "Status": "success",
+                            "CustomID": "",
+                            "To": [
+                                {
+                                    "Email": email,
+                                    "MessageUUID": "4fb97592-e2aa-4bfd-bbc1-5682b748b0d8",
+                                    "MessageID": 1152921521845838572,
+                                    "MessageHref": "https://api.mailjet.com/v3/REST/message/1152921521845838572",
+                                }
+                            ],
+                            "Cc": [],
+                            "Bcc": [],
+                        }
+                    ]
+                },
+                "status": 200,
+            },
+            "timestamp": "2023-04-20T09:12:42.127878+00:00",
+        }
+    ]
     account_number = "TEST1234"
     assert account_holder.profile
 
@@ -229,6 +281,13 @@ def test_anonymise_user_action_ok(setup: SetupType, test_client: "FlaskClient", 
 
     mock_enqueue.assert_called_once()
     mock_flash.assert_called_once_with(f"Account Holder (id: {account_holder.id}) successfully anonymised.")
+
+    with pytest.raises(ObjectDeletedError):
+        db_session.expire(send_email_task_with_email)
+        send_email_task_with_email.retry_task_id
+
+    db_session.refresh(send_email_task_without_email)
+    assert send_email_task_without_email
 
 
 def test_anonymise_user_action_too_many_selected(
@@ -313,7 +372,6 @@ def test_anonymise_user_action_account_holder_inactive(
 
 
 def test_anonymise_user_action_account_holder_not_found(test_client: "FlaskClient", mocker: MockerFixture) -> None:
-
     mocker.patch.object(AccountHolderAdmin, "sso_username", "test-user")
     mocker.patch("admin.views.accounts.main.activity_scoped_session")
     mock_enqueue = mocker.patch("admin.views.accounts.main.enqueue_retry_task")
