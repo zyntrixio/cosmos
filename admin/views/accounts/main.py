@@ -20,7 +20,6 @@ from admin.activity_utils.enums import ActivityType
 from admin.config import admin_settings
 from admin.helpers.custom_formatters import account_holder_repr, campaign_slug_repr
 from admin.hubble.db.session import activity_scoped_session
-from admin.views.accounts.validators import validate_retailer_status
 from admin.views.model_views import BaseModelView
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.core.activity.tasks import sync_send_activity
@@ -52,7 +51,18 @@ class AccountHolderAdmin(BaseModelView):
         "profile",
         "rewards",
         "marketing_preferences",
+        "retailer",
     )
+    column_list = [
+        "email",
+        "status",
+        "retailer",
+        "account_number",
+        "account_holder_uuid",
+        "opt_out_token",
+        "created_at",
+        "updated_at",
+    ]
     column_labels = {"retailer": "Retailer"}
     column_searchable_list = ("id", "email", "account_holder_uuid", "account_number")
     form_widget_args = {
@@ -60,7 +70,8 @@ class AccountHolderAdmin(BaseModelView):
     }
 
     def on_model_change(self, form: wtforms.Form, model: "AccountHolder", is_created: bool) -> None:
-        validate_retailer_status(model)
+        if model.retailer.status == RetailerStatuses.INACTIVE:
+            raise wtforms.ValidationError("You cannot amend any account holder information for an inactive retailer")
 
         return super().on_model_change(form, model, is_created)
 

@@ -20,7 +20,7 @@ from cosmos.core.api.exceptions import RequestPayloadValidationError
 from cosmos.core.api.service import Service, ServiceError, ServiceResult
 from cosmos.core.api.tasks import enqueue_task
 from cosmos.core.error_codes import ErrorCode
-from cosmos.retailers.enums import EmailTypeSlugs, RetailerStatuses
+from cosmos.retailers.enums import EmailTypeSlugs
 from cosmos.retailers.schemas import (
     retailer_marketing_info_validation_factory,
     retailer_profile_info_validation_factory,
@@ -63,8 +63,6 @@ class AccountService(Service):
     ) -> ServiceResult[dict, Exception]:
         """Main handler for account holder enrolments"""
         result = "Error"  # default - assume unhandled Error until we reach Accepted after successful commit
-        if self.retailer.status == RetailerStatuses.INACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.INACTIVE_RETAILER))
         try:
             retailer_profile_config = yaml.safe_load(self.retailer.profile_config)
             profile_data = self._validate_profile_data(request_payload.credentials, retailer_profile_config)
@@ -142,8 +140,6 @@ class AccountService(Service):
         self, request_payload: GetAccountHolderByCredentials, *, tx_qty: int, channel: str
     ) -> ServiceResult["AccountHolder", ServiceError]:
         """Main handler for account auth"""
-        if self.retailer.status == RetailerStatuses.INACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.INACTIVE_RETAILER))
         account_holder = await crud.get_account_holder(
             self.db_session,
             retailer_id=self.retailer.id,
@@ -178,9 +174,6 @@ class AccountService(Service):
         tx_qty: int,
     ) -> ServiceResult["AccountHolder", ServiceError]:
         """Main handler for account data"""
-
-        if self.retailer.status == RetailerStatuses.INACTIVE:
-            return ServiceResult(error=ServiceError(error_code=ErrorCode.INACTIVE_RETAILER))
 
         account_holder = await crud.get_account_holder(
             self.db_session,

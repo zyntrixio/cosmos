@@ -6,9 +6,12 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from cosmos.core.api.service import ServiceError
+from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 from cosmos.db.session import AsyncSessionMaker
 from cosmos.retailers.crud import get_retailer_by_slug
+from cosmos.retailers.enums import RetailerStatuses
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -24,9 +27,7 @@ class RetailerDependency:
         self,
         lock_retailer: bool = False,
         join_active_campaign_data: bool = False,
-        no_retailer_found_exc: Exception | None = None,
     ) -> None:
-        self.no_retailer_found_exc = no_retailer_found_exc
         self.join_campaign_data = join_active_campaign_data
         self.lock_retailer = lock_retailer
 
@@ -39,8 +40,10 @@ class RetailerDependency:
             with_campaign_data=self.join_campaign_data,
             lock_row=self.lock_retailer,
         )
-        if retailer is None and self.no_retailer_found_exc:
-            raise self.no_retailer_found_exc
+        if retailer is None:
+            raise ServiceError(error_code=ErrorCode.INVALID_RETAILER)
+        if retailer.status == RetailerStatuses.INACTIVE:
+            raise ServiceError(error_code=ErrorCode.INACTIVE_RETAILER)
         return retailer
 
 

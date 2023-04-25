@@ -234,6 +234,42 @@ marketing_pref:
             flash("Retailer has no active campaign", category="error")
 
     @action(
+        "inactivate retailer",
+        "Inactivate",
+        "Selected retailer must be active. Are you sure you want to proceed?",
+    )
+    def inactivate_retailer(self, ids: list[str]) -> None:
+        if len(ids) > 1:
+            flash("Cannot make more than one retailer inactive at once", category="error")
+            return
+
+        retailer = self._get_retailer_by_id(int(ids[0]))
+        if (original_status := retailer.status) != RetailerStatuses.ACTIVE:
+            flash("Retailer in incorrect state to be made inactive", category="error")
+            return
+
+        try:
+            retailer.status = RetailerStatuses.INACTIVE
+            self.session.commit()
+            flash("Update retailer status successfully")
+        except Exception:  # noqa: BLE001
+            self.session.rollback()
+            flash("Failed to update retailer", category="error")
+        else:
+            self.session.refresh(retailer)
+            sync_send_activity(
+                ActivityType.get_retailer_status_update_activity_data(
+                    sso_username=self.sso_username,
+                    activity_datetime=retailer.updated_at,
+                    new_status=retailer.status.name,
+                    original_status=original_status.name,
+                    retailer_name=retailer.name,
+                    retailer_slug=retailer.slug,
+                ),
+                routing_key=ActivityType.RETAILER_STATUS.value,
+            )
+
+    @action(
         "change deactivated retailer status to test",
         "Change status to TEST",
         "Selected retailer must be deactivated. Are you sure you want to proceed?",

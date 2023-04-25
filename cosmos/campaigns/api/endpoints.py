@@ -7,13 +7,11 @@ from cosmos.campaigns.api.schemas import CampaignsMigrationSchema, CampaignsStat
 from cosmos.campaigns.api.service import CampaignService
 from cosmos.campaigns.config import campaign_settings
 from cosmos.core.api.deps import RetailerDependency, UserIsAuthorised, get_session
-from cosmos.core.api.service import ServiceError
-from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import Retailer
 
 api_router = APIRouter()
 user_is_authorised = UserIsAuthorised(expected_token=campaign_settings.CAMPAIGN_API_AUTH_TOKEN)
-get_retailer = RetailerDependency(no_retailer_found_exc=ServiceError(ErrorCode.INVALID_RETAILER))
+get_retailer = RetailerDependency()
 
 
 @api_router.post(
