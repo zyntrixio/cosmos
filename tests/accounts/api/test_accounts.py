@@ -306,6 +306,21 @@ def test_account_holder_get_by_id_inactive_account(setup: SetupType, mock_activi
     mock_activity.assert_not_called()
 
 
+def test_account_holder_get_by_id_inactive_retailer(setup: SetupType, mock_activity: "MagicMock") -> None:
+    db_session, retailer, account_holder = setup
+
+    retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+
+    resp = client.get(
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/{account_holder.account_holder_uuid}",
+        headers=accounts_auth_headers,
+    )
+
+    validate_error_response(resp, errors.INACTIVE_RETAILER)
+    mock_activity.assert_not_called()
+
+
 def test_account_holder_get_by_id_malformed_uuid(setup: SetupType, mock_activity: "MagicMock") -> None:
     retailer = setup.retailer
 

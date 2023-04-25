@@ -105,6 +105,13 @@ class ErrorCode(enum.Enum):
             code="INVALID_RETAILER",
         ),
     )
+    INACTIVE_RETAILER = HttpError(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=HttpErrorDetail(
+            display_message="Retailer is in an inactive state.",
+            code="INACTIVE_RETAILER",
+        ),
+    )
     NO_REWARD_FOUND = HttpError(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=HttpErrorDetail(

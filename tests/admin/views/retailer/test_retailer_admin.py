@@ -493,3 +493,53 @@ last_name:
     assert resp.status_code == 200
     assert "Number must be at least 1" in resp.text
     assert not db_session.scalars(select(Retailer).where(Retailer.slug == "test-retailer")).all()
+
+
+def test_change_retailer_status_from_inactive_to_test(
+    setup: "SetupType", test_client: "FlaskClient", mocker: MockerFixture
+) -> None:
+    db_session, retailer, _ = setup
+    retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+
+    mocker.patch.object(RetailerAdmin, "sso_username", "test-user")
+    mock_send_activity = mocker.patch("admin.views.retailer.main.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.retailer.main.flash")
+
+    resp = test_client.post(
+        "/admin/retailers/action",
+        data={"url": "/admin/retailers/", "action": "change deactivated retailer status to test", "rowid": retailer.id},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db_session.refresh(retailer)
+    assert retailer.status == RetailerStatuses.TEST
+
+    mock_send_activity.assert_called_once()
+    mock_flash.assert_called_once_with("Update retailer status successfully")
+
+
+def test_change_bad_retailer_status_to_test(
+    setup: "SetupType", test_client: "FlaskClient", mocker: MockerFixture
+) -> None:
+    db_session, retailer, _ = setup
+    retailer.status = RetailerStatuses.ACTIVE
+    db_session.commit()
+
+    mocker.patch.object(RetailerAdmin, "sso_username", "test-user")
+    mock_send_activity = mocker.patch("admin.views.retailer.main.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.retailer.main.flash")
+
+    resp = test_client.post(
+        "/admin/retailers/action",
+        data={"url": "/admin/retailers/", "action": "change deactivated retailer status to test", "rowid": retailer.id},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db_session.refresh(retailer)
+    assert retailer.status == RetailerStatuses.ACTIVE
+
+    mock_send_activity.assert_not_called()
+    mock_flash.assert_called_once_with("Must be an inactive retailer", category="error")

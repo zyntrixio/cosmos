@@ -17,6 +17,7 @@ from cosmos.core.api.tasks import enqueue_many_tasks
 from cosmos.core.error_codes import ErrorCode
 from cosmos.core.utils import pence_integer_to_currency_string, raw_stamp_value_to_string
 from cosmos.db.models import Campaign, CampaignBalance, EarnRule, LoyaltyTypes, PendingReward, Transaction
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.activity.enums import ActivityType as RewardsActivityType
 from cosmos.rewards.activity.enums import IssuedRewardReasons
 from cosmos.rewards.config import reward_settings
@@ -550,7 +551,7 @@ class TransactionService(Service):
     async def get_transaction_store_name(self, transaction_mid: str) -> str:
         return await crud.get_store_name_by_mid(self.db_session, mid=transaction_mid) or "N/A"
 
-    async def _handle_incoming_transaction(
+    async def _handle_incoming_transaction(  # noqa: PLR0911
         self, request_payload: CreateTransactionSchema, tx_import_activity_data: dict
     ) -> tuple[ServiceResult[str, ServiceError], list["RetryTask"] | None]:
 
@@ -560,6 +561,8 @@ class TransactionService(Service):
         account_holder = await accounts_crud.get_account_holder(
             self.db_session, retailer_id=self.retailer.id, account_holder_uuid=request_payload.account_holder_uuid
         )
+        if self.retailer.status == RetailerStatuses.INACTIVE:
+            return ServiceResult(error=ServiceError(error_code=ErrorCode.INACTIVE_RETAILER)), None
         if not account_holder:
             return ServiceResult(error=ServiceError(error_code=ErrorCode.USER_NOT_FOUND)), None
         if account_holder.status != AccountHolderStatuses.ACTIVE:

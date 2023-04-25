@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from typing import NamedTuple, cast
 from uuid import UUID
 
+import wtforms
+
 from flask import flash
 from flask_admin.actions import action
 from retry_tasks_lib.db.models import RetryTask, TaskType
@@ -18,6 +20,7 @@ from admin.activity_utils.enums import ActivityType
 from admin.config import admin_settings
 from admin.helpers.custom_formatters import account_holder_repr, campaign_slug_repr
 from admin.hubble.db.session import activity_scoped_session
+from admin.views.accounts.validators import validate_retailer_status
 from admin.views.model_views import BaseModelView
 from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.core.activity.tasks import sync_send_activity
@@ -55,6 +58,11 @@ class AccountHolderAdmin(BaseModelView):
     form_widget_args = {
         "opt_out_token": {"readonly": True},
     }
+
+    def on_model_change(self, form: wtforms.Form, model: "AccountHolder", is_created: bool) -> None:
+        validate_retailer_status(model)
+
+        return super().on_model_change(form, model, is_created)
 
     def _generate_payloads_for_delete_account_holder_activity(
         self,

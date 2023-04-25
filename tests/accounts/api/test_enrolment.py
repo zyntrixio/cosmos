@@ -18,6 +18,7 @@ from cosmos.accounts.activity.enums import ActivityType as AccountsActivityType
 from cosmos.accounts.config import account_settings
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.db.models import AccountHolder
+from cosmos.retailers.enums import RetailerStatuses
 from tests.accounts.fixtures import errors
 from tests.conftest import SetupType
 
@@ -461,6 +462,52 @@ def test_account_holder_enrol_invalid_retailer(
     )
 
     validate_error_response(resp, errors.INVALID_RETAILER)
+    mock_signal.assert_has_calls(expected_calls)
+    mock_enqueue_retry_task.assert_not_called()
+    mock_activity.assert_not_called()
+
+
+def test_account_holder_enrol_inactive_retailer(
+    mocker: MockerFixture,
+    setup: SetupType,
+    test_account_holder_enrol: dict,
+    mock_activity: MagicMock,
+) -> None:
+    db_session, retailer, _ = setup
+    retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+
+    mock_signal = mocker.patch("fastapi_prometheus_metrics.middleware.signal", autospec=True)
+    mock_enqueue_retry_task = mocker.patch("retry_tasks_lib.utils.asynchronous.enqueue_retry_task")
+
+    endpoint = f"{account_settings.ACCOUNT_API_PREFIX}/%s/accounts/enrolment"
+    expected_calls = [  # The expected call stack for signal, in order
+        call(EventSignals.RECORD_HTTP_REQ),
+        call().send(
+            "fastapi_prometheus_metrics.middleware",
+            endpoint=endpoint % "[retailer_slug]",
+            retailer=retailer.slug,
+            latency=ANY,
+            response_code=status.HTTP_404_NOT_FOUND,
+            method="POST",
+        ),
+        call(EventSignals.INBOUND_HTTP_REQ),
+        call().send(
+            "fastapi_prometheus_metrics.middleware",
+            endpoint=endpoint % "[retailer_slug]",
+            retailer=retailer.slug,
+            response_code=status.HTTP_404_NOT_FOUND,
+            method="POST",
+        ),
+    ]
+
+    resp = client.post(
+        endpoint % retailer.slug,
+        json=test_account_holder_enrol,
+        headers=accounts_auth_headers,
+    )
+
+    validate_error_response(resp, errors.INACTIVE_RETAILER)
     mock_signal.assert_has_calls(expected_calls)
     mock_enqueue_retry_task.assert_not_called()
     mock_activity.assert_not_called()

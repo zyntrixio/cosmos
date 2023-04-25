@@ -86,4 +86,12 @@ INVALID_ACCOUNT_HOLDER_STATUS = {
     },
 }
 
+INACTIVE_RETAILER = {
+    "status_code": status.HTTP_404_NOT_FOUND,
+    "detail": {
+        "display_message": "Retailer is in an inactive state.",
+        "code": "INACTIVE_RETAILER",
+    },
+}
+
 INVALID_REQUEST = {"status_code": status.HTTP_404_NOT_FOUND}
