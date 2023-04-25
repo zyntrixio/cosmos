@@ -15,6 +15,7 @@ from cosmos.accounts.enums import AccountHolderStatuses
 from cosmos.campaigns.enums import LoyaltyTypes
 from cosmos.core.error_codes import ErrorCode
 from cosmos.db.models import PendingReward, Transaction
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.config import reward_settings
 from cosmos.transactions.activity.enums import ActivityType
 from cosmos.transactions.api.endpoints import TransactionService
@@ -154,6 +155,33 @@ def test_transaction_invalid_retailer(test_client: "TestClient", mock_activity: 
 
     validate_error_response(resp, ErrorCode.INVALID_RETAILER)
     mock_activity.assert_not_called()
+
+
+def test_transaction_inactive_retailer(
+    test_client: "TestClient", setup: "SetupType", sample_payload: dict, mock_activity: "MagicMock"
+) -> None:
+    db_session, retailer, _ = setup
+    retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+
+    resp = test_client.post(
+        f"{tx_settings.TX_API_PREFIX}/{retailer.slug}",
+        json=sample_payload,
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+    assert resp.json() == {
+        "display_message": "Retailer is in an inactive state.",
+        "code": "INACTIVE_RETAILER",
+    }
+    validate_tx_import_store_activity_call(
+        retailer=retailer,
+        mock_activity=mock_activity,
+        tx_payload=sample_payload,
+        error="INACTIVE_RETAILER",
+        campaign_slugs=[],
+    )
 
 
 def test_transaction_account_holder_not_found(

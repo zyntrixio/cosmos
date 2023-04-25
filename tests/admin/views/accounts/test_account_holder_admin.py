@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+import wtforms
 
 from pytest_mock import MockerFixture
 from retry_tasks_lib.utils.synchronous import sync_create_many_tasks
@@ -12,6 +13,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from werkzeug.datastructures import MultiDict
 
 from admin.views.accounts import AccountHolderAdmin
+from admin.views.accounts.validators import validate_retailer_status
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.core.config import core_settings
 from cosmos.db.models import (
@@ -433,3 +435,14 @@ def test_anonymise_user_action_db_error(setup: SetupType, test_client: "FlaskCli
     mock_flash.assert_called_once_with(
         f"Failed to anonymise Account Holder (id: {account_holder.id}), rolling back.", category="error"
     )
+
+
+def test_validate_retailer_status(
+    setup: SetupType,
+) -> None:
+    db_session, _, account_holder = setup
+    account_holder.retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+    with pytest.raises(wtforms.ValidationError) as exc_info:
+        validate_retailer_status(account_holder)
+    assert exc_info.value.args[0] == "You cannot amend any account holder information for an inactive retailer"

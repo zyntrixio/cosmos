@@ -20,6 +20,7 @@ from sqlalchemy.sql import and_, not_, or_
 from cosmos.core.scheduled_tasks.scheduler import acquire_lock, cron_scheduler
 from cosmos.db.models import Retailer, Reward, RewardConfig, RewardFileLog, RewardUpdate
 from cosmos.db.session import SyncSessionMaker
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.config import reward_settings
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 from cosmos.rewards.schemas import RewardUpdateSchema
@@ -312,6 +313,8 @@ class RewardImportAgent(BlobFileAgent):
         self, retailer: Retailer, reward_file_log: RewardFileLog, blob_content: str, db_session: "Session"
     ) -> None:
         blob_name = reward_file_log.file_name
+        if retailer.status == RetailerStatuses.INACTIVE:
+            raise BlobProcessingError("Inactive Retailer")
         try:
             _, sub_blob_name = blob_name.split(self.blob_path_template.substitute(retailer_slug=retailer.slug))
         except ValueError as ex:

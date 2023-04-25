@@ -187,6 +187,26 @@ def test_account_holder_get_by_credentials_no_balances(setup: SetupType, mock_ac
         mock_activity.assert_called()
 
 
+def test_account_holder_get_by_credentials_inactive_retailer(setup: SetupType, mock_activity: "MagicMock") -> None:
+    db_session, retailer, account_holder = setup
+
+    if account_holder.account_number is None:
+        account_holder.account_number = generate_account_number(retailer.account_number_prefix)
+        db_session.commit()
+
+    retailer.status = RetailerStatuses.INACTIVE
+    db_session.commit()
+
+    resp = client.post(
+        f"{account_settings.ACCOUNT_API_PREFIX}/{retailer.slug}/accounts/getbycredentials",
+        json={"email": account_holder.email, "account_number": account_holder.account_number},
+        headers=accounts_auth_headers,
+    )
+
+    validate_error_response(resp, errors.INACTIVE_RETAILER)
+    mock_activity.assert_not_called()
+
+
 def test_account_holder_get_by_credentials_inactive_account(setup: SetupType, mock_activity: "MagicMock") -> None:
     db_session, retailer, account_holder = setup
 

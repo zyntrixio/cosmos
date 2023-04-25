@@ -233,6 +233,41 @@ marketing_pref:
         else:
             flash("Retailer has no active campaign", category="error")
 
+    @action(
+        "change deactivated retailer status to test",
+        "Change status to TEST",
+        "Selected retailer must be deactivated. Are you sure you want to proceed?",
+    )
+    def change_retailer_status_to_test(self, ids: list[str]) -> None:
+        if len(ids) > 1:
+            flash("Cannot change the status of more than one retailer at once", category="error")
+            return
+        retailer = self._get_retailer_by_id(int(ids[0]))
+        if (original_status := retailer.status) != RetailerStatuses.INACTIVE:
+            flash("Must be an inactive retailer", category="error")
+            return
+
+        try:
+            retailer.status = RetailerStatuses.TEST
+            self.session.commit()
+            flash("Update retailer status successfully")
+        except Exception:  # noqa: BLE001
+            self.session.rollback()
+            flash("Failed to update retailer", category="error")
+        else:
+            self.session.refresh(retailer)
+            sync_send_activity(
+                ActivityType.get_retailer_status_update_activity_data(
+                    sso_username=self.sso_username,
+                    activity_datetime=retailer.updated_at,
+                    new_status=retailer.status.name,
+                    original_status=original_status.name,
+                    retailer_name=retailer.name,
+                    retailer_slug=retailer.slug,
+                ),
+                routing_key=ActivityType.RETAILER_STATUS.value,
+            )
+
     @expose("/custom-actions/delete-retailer", methods=["GET", "POST"])
     def delete_retailer(self) -> "Response":
         if not self.user_info or self.user_session_expired:

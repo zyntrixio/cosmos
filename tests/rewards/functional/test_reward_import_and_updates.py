@@ -14,6 +14,7 @@ from sqlalchemy.future import select
 from testfixtures import LogCapture
 
 from cosmos.db.models import AccountHolder, Retailer, Reward, RewardConfig, RewardUpdate
+from cosmos.retailers.enums import RetailerStatuses
 from cosmos.rewards.enums import FileAgentType, RewardUpdateStatuses
 from cosmos.rewards.imports.file_agent import (
     BlobProcessingError,
@@ -145,6 +146,33 @@ def test_import_agent__process_csv_with_bad_expiry_date(setup_rewards: RewardsSe
         "Invalid filename, expiry date is invalid: re-test/rewards"
         + ".import.test-reward-slug.expires.BAD-DATE.new-reward.csv",
     )
+
+
+def test_import_agent__process_csv_with_inactive_retailer(
+    setup_rewards: RewardsSetupType, mocker: MockerFixture
+) -> None:
+    db_session, reward_config, _ = setup_rewards
+    reward_config.retailer.status = RetailerStatuses.INACTIVE
+    mocker.patch("cosmos.rewards.imports.file_agent.BlobServiceClient")
+    reward_agent = RewardImportAgent()
+
+    file_name = "re-test/rewards.import.test-reward-slug.expires.2023-01-16.new-reward.csv"
+    reward_file_log = RewardFileLog(
+        file_name=file_name,
+        file_agent_type=FileAgentType.IMPORT,
+    )
+    db_session.add(reward_file_log)
+    db_session.commit()
+
+    with pytest.raises(BlobProcessingError) as exc_info:
+        reward_agent.process_csv(
+            retailer=reward_config.retailer,
+            reward_file_log=reward_file_log,
+            blob_content="reward1\nreward2\nreward3",
+            db_session=db_session,
+        )
+
+    assert exc_info.value.args == ("Inactive Retailer",)
 
 
 def test_import_agent__process_csv_soft_deleted(
