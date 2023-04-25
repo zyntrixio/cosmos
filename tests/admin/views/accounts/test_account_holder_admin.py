@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
-import wtforms
 
 from pytest_mock import MockerFixture
 from retry_tasks_lib.utils.synchronous import sync_create_many_tasks
@@ -13,7 +12,6 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from werkzeug.datastructures import MultiDict
 
 from admin.views.accounts import AccountHolderAdmin
-from admin.views.accounts.validators import validate_retailer_status
 from cosmos.accounts.enums import AccountHolderStatuses, MarketingPreferenceValueTypes
 from cosmos.core.config import core_settings
 from cosmos.db.models import (
@@ -437,12 +435,21 @@ def test_anonymise_user_action_db_error(setup: SetupType, test_client: "FlaskCli
     )
 
 
-def test_validate_retailer_status(
+def test_updating_account_holder_details_for_inactive_retailer(
     setup: SetupType,
+    test_client: "FlaskClient",
 ) -> None:
     db_session, _, account_holder = setup
     account_holder.retailer.status = RetailerStatuses.INACTIVE
     db_session.commit()
-    with pytest.raises(wtforms.ValidationError) as exc_info:
-        validate_retailer_status(account_holder)
-    assert exc_info.value.args[0] == "You cannot amend any account holder information for an inactive retailer"
+    new_email = "new-email@test.com"
+    resp = test_client.post(
+        f"/admin/account-holders/edit/?id={account_holder.id}&url=%2Fadmin%2Faccount-holders%2F",
+        data={
+            "email": new_email,
+            "status": account_holder.status.name,
+            "account_number": account_holder.account_number,
+        },
+        follow_redirects=True,
+    )
+    assert "You cannot amend any account holder information for an inactive retailer" in resp.text

@@ -543,3 +543,39 @@ def test_change_bad_retailer_status_to_test(
 
     mock_send_activity.assert_not_called()
     mock_flash.assert_called_once_with("Must be an inactive retailer", category="error")
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        [RetailerStatuses.ACTIVE, RetailerStatuses.INACTIVE, "Update retailer status successfully"],
+        [RetailerStatuses.TEST, RetailerStatuses.TEST, "Retailer in incorrect state to be made inactive"],
+    ],
+)
+def test_inactivate_retailer(
+    setup: "SetupType", test_client: "FlaskClient", mocker: MockerFixture, params: list
+) -> None:
+    original_status, expected_status, response = params
+    db_session, retailer, _ = setup
+    retailer.status = original_status
+    db_session.commit()
+
+    mocker.patch.object(RetailerAdmin, "sso_username", "test-user")
+    mock_send_activity = mocker.patch("admin.views.retailer.main.sync_send_activity")
+    mock_flash = mocker.patch("admin.views.retailer.main.flash")
+
+    resp = test_client.post(
+        "/admin/retailers/action",
+        data={"url": "/admin/retailers/", "action": "inactivate retailer", "rowid": retailer.id},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db_session.refresh(retailer)
+    assert retailer.status == expected_status
+    if original_status == RetailerStatuses.ACTIVE:
+        mock_send_activity.assert_called_once()
+        mock_flash.assert_called_once_with(response)
+    else:
+        mock_send_activity.assert_not_called()
+        mock_flash.assert_called_once_with(response, category="error")

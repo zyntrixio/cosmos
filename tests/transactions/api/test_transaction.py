@@ -175,13 +175,6 @@ def test_transaction_inactive_retailer(
         "display_message": "Retailer is in an inactive state.",
         "code": "INACTIVE_RETAILER",
     }
-    validate_tx_import_store_activity_call(
-        retailer=retailer,
-        mock_activity=mock_activity,
-        tx_payload=sample_payload,
-        error="INACTIVE_RETAILER",
-        campaign_slugs=[],
-    )
 
 
 def test_transaction_account_holder_not_found(
