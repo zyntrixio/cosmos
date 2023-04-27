@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from pydantic import UUID4, EmailStr
-from sqlalchemy import Table, and_, select
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased, contains_eager, joinedload, raiseload
 
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.ext.asyncio.session import AsyncSessionTransaction
 
 
 class CrudError(Exception):
@@ -157,19 +156,14 @@ async def get_account_holder(
     return account_holder
 
 
-async def activate_pending_account_holders(db_session: "AsyncSession", retailer: Retailer) -> "Sequence[int]":
-    async def _query(savepoint: "AsyncSessionTransaction") -> "Sequence[int]":
+async def get_pending_account_holders(db_session: "AsyncSession", retailer: Retailer) -> "Sequence[int]":
+    async def _query() -> "Sequence[int]":
         res = await db_session.scalars(
-            cast(Table, AccountHolder.__table__)
-            .update()
-            .values(status=AccountHolderStatuses.ACTIVE)
-            .where(
+            select(AccountHolder.id).where(
                 AccountHolder.retailer_id == retailer.id,
                 AccountHolder.status == AccountHolderStatuses.PENDING,
             )
-            .returning(AccountHolder.id)
         )
-        await savepoint.commit()
         return res.all()
 
-    return await async_run_query(_query, db_session)
+    return await async_run_query(_query, db_session, rollback_on_exc=False)
