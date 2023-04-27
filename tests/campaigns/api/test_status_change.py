@@ -286,7 +286,6 @@ def test_status_change_no_active_campaign_left_ok_for_test_retailer(
     mock_activity.assert_called()
 
 
-# TODO: add non active account holder and make sure it's activated
 def test_status_change_activating_a_campaign_ok(
     test_client: "TestClient",
     setup: SetupType,
@@ -370,10 +369,8 @@ def test_status_change_activating_a_campaign_ok(
     assert new_balance.balance == 0
     assert new_balance.reset_date is None
 
-    db_session.refresh(inactive_account_holder)
-    assert inactive_account_holder.status == AccountHolderStatuses.ACTIVE
-
     mock_activity.assert_called_once()
+    db_session.refresh(ah_activation_task)
     mock_enqueue.assert_called_once_with([ah_activation_task.retry_task_id])
 
 

@@ -45,7 +45,7 @@ cosmos-message-lib = {version = "^1.3.0", source = "bink-pypi"}
 fastapi-prometheus-metrics = {version = "^0.2.3", source = "bink-pypi"}
 cryptography = "^39.0.1"
 psycopg = {extras = ["binary", "pool"], version = "^3.1.8"}
-retry-tasks-lib = "^3.1.0"
+retry-tasks-lib = "^3.1.2"
 
 # ADMIN DEPENDENCIES
 Flask = { version = "^2.2.2", optional = true }

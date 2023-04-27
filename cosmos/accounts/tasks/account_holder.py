@@ -153,6 +153,7 @@ def account_holder_activation(retry_task: RetryTask, db_session: "Session") -> N
 
     # If there are no active campaigns for the retailer, the new account holder
     # will stay in PENDING unless the retailer is in TEST status
+    activated = False
     if account_holder.status == AccountHolderStatuses.PENDING:
         activated = _activate_account_holder(db_session, account_holder, campaigns)
 

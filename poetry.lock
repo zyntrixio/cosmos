@@ -3014,14 +3014,14 @@ reference = "bink-pypi"
 
 [[package]]
 name = "retry-tasks-lib"
-version = "3.1.1"
+version = "3.1.2"
 description = "helpers functions and models for setting up tasks with rq"
 category = "main"
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "retry_tasks_lib-3.1.1-py3-none-any.whl", hash = "sha256:76f44ac1d8270891c823c02dce0ff1c0d58b6597d9ad21bca1681bcadc180794"},
-    {file = "retry_tasks_lib-3.1.1.tar.gz", hash = "sha256:3e64a73b77f0e9ae701563c125ed8708653bd993f4b098c3ee68d3857a7940bb"},
+    {file = "retry_tasks_lib-3.1.2-py3-none-any.whl", hash = "sha256:a05d5af94ab0ba9bd29d9a76fa4ae15144a0ab8d2a53f50ff4cfb8ab6039e41d"},
+    {file = "retry_tasks_lib-3.1.2.tar.gz", hash = "sha256:aafcd2d374c19f695ca2afba460ba9f1deb17579f61e8f33cb3e03b1edc396a3"},
 ]
 
 [package.dependencies]
@@ -4153,4 +4153,4 @@ admin = ["Authlib", "Flask", "Flask-Admin", "Flask-WTF", "cron-descriptor"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f26d46f898fd04ab3aa2d04cbefa79d48964b4506f106e7643fe4d1788fe2233"
+content-hash = "76436a7071ce8a8fd8bb94efc7b4a9be7a86455a034413e9c4c148d3472fa791"
