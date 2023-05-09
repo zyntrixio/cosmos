@@ -8,7 +8,7 @@ packages = [{include = "cosmos"}, {include = "admin"}]
 
 [[tool.poetry.source]]
 name = "bink-pypi"
-url = "https://pypi.tools.uksouth.bink.sh/simple"
+url = "https://pypi.gb.bink.com/simple"
 default = false
 secondary = false
 

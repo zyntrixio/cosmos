@@ -65,7 +65,16 @@ async def delete_pending_rewards_for_campaign(
 
     del_data = await async_run_query(_delete_pending_rewards, db_session)
     logger.info(f"Deleted {len(del_data)} pending rewards")
-    return [PendingRewardsRes(**res) for res in del_data]
+    return [
+        PendingRewardsRes(
+            pending_reward_id=res["pending_reward_id"],
+            pending_reward_uuid=res["pending_reward_uuid"],
+            pending_reward_count=res["pending_reward_count"],
+            account_holder_id=res["account_holder_id"],
+            account_holder_uuid=res["account_holder_uuid"],
+        )
+        for res in del_data
+    ]
 
 
 async def cancel_issued_rewards_for_campaign(
@@ -98,7 +107,14 @@ async def cancel_issued_rewards_for_campaign(
 
     updates = await async_run_query(_query, db_session)
     logger.info(f"Cancelled {len(updates)} rewards")
-    return [CancelIssuedRewardsRes(**u) for u in updates]
+    return [
+        CancelIssuedRewardsRes(
+            cancelled_date=u["cancelled_date"],
+            reward_uuid=u["reward_uuid"],
+            account_holder_uuid=u["account_holder_uuid"],
+        )
+        for u in updates
+    ]
 
 
 async def transfer_pending_rewards(
@@ -129,4 +145,13 @@ async def transfer_pending_rewards(
 
     updates = await async_run_query(_query, db_session)
     logger.info(f"Transferred {len(updates)} rewards")
-    return [PendingRewardsRes(**u) for u in updates]
+    return [
+        PendingRewardsRes(
+            pending_reward_id=res["pending_reward_id"],
+            pending_reward_uuid=res["pending_reward_uuid"],
+            pending_reward_count=res["pending_reward_count"],
+            account_holder_id=res["account_holder_id"],
+            account_holder_uuid=res["account_holder_uuid"],
+        )
+        for res in updates
+    ]
