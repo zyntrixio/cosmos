@@ -147,7 +147,7 @@ def test__process_callback_http_errors(
             _process_callback(enrolment_callback_task.get_params(), account_holder)
 
         assert isinstance(excinfo.value, requests.exceptions.RequestException)
-        assert excinfo.value.response.status_code == status
+        assert excinfo.value.response.status_code == status  # type: ignore [union-attr]
 
         last_request = httpretty.last_request()
         assert last_request.method == "POST"

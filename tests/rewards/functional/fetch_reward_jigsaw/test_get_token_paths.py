@@ -34,7 +34,6 @@ def test_jigsaw_agent_expired_token(
     account_holder: "AccountHolder",
     jigsaw_campaign: "Campaign",
 ) -> None:
-
     agent_config = jigsaw_retailer_fetch_type.load_agent_config()
 
     # deepcode ignore HardcodedNonCryptoSecret/test: this is a test value
@@ -68,7 +67,6 @@ def test_jigsaw_agent_expired_token(
     spy_logger = mocker.spy(Jigsaw, "logger")
 
     with pytest.raises(AgentError):
-
         with Jigsaw(
             db_session,
             campaign=jigsaw_campaign,
@@ -108,7 +106,6 @@ def test_jigsaw_agent_get_token_retry_paths(
         (5000, "Internal Server Error", status.HTTP_500_INTERNAL_SERVER_ERROR),
         (5003, "Service Unavailable", status.HTTP_503_SERVICE_UNAVAILABLE),
     ):
-
         httpretty.register_uri(
             "POST",
             f"{agent_config['base_url']}/order/V4/getToken",
@@ -129,7 +126,6 @@ def test_jigsaw_agent_get_token_retry_paths(
         )
 
         with pytest.raises(requests.RequestException) as exc_info:
-
             with Jigsaw(
                 db_session,
                 campaign=jigsaw_campaign,
@@ -141,7 +137,7 @@ def test_jigsaw_agent_get_token_retry_paths(
             ) as agent:
                 agent.issue_reward()
 
-        assert exc_info.value.response.status_code == expected_status
+        assert exc_info.value.response.status_code == expected_status  # type: ignore [union-attr]
         spy_redis_set.assert_not_called()
 
         db_session.refresh(jigsaw_reward_issuance_task)
@@ -168,7 +164,6 @@ def test_jigsaw_agent_get_token_failure_paths(
         (4003, "Forbidden", status.HTTP_403_FORBIDDEN),
         (4001, "Unauthorised", status.HTTP_401_UNAUTHORIZED),
     ):
-
         httpretty.register_uri(
             "POST",
             f"{agent_config['base_url']}/order/V4/getToken",
@@ -189,7 +184,6 @@ def test_jigsaw_agent_get_token_failure_paths(
         )
 
         with pytest.raises(requests.RequestException) as exc_info:
-
             with Jigsaw(
                 db_session,
                 campaign=jigsaw_campaign,
@@ -201,7 +195,7 @@ def test_jigsaw_agent_get_token_failure_paths(
             ) as agent:
                 agent.issue_reward()
 
-        assert exc_info.value.response.status_code == expected_status
+        assert exc_info.value.response.status_code == expected_status  # type: ignore [union-attr]
         spy_redis_set.assert_not_called()
 
         db_session.refresh(jigsaw_reward_issuance_task)

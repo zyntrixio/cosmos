@@ -12,7 +12,7 @@ from . import logger, oauth_token_cache  # noqa: F401
 def retry_session() -> requests.Session:  # pragma: no cover
     # deepcode ignore MissingClose: snyk wrongly assume this as a database Session and requires .close()
     session = requests.Session()
-    retry = Retry(total=3, allowed_methods=False, status_forcelist=[501, 502, 503, 504], backoff_factor=1.0)
+    retry = Retry(total=3, allowed_methods=None, status_forcelist=[501, 502, 503, 504], backoff_factor=1.0)
     adapter = requests.adapters.HTTPAdapter(max_retries=retry)
     session.mount("http://", adapter)
     session.mount("https://", adapter)
@@ -40,7 +40,6 @@ def _get_new_token() -> dict[str, str]:
 
 def _stored_token_is_valid(stored_token: dict[str, str]) -> bool:
     try:
-
         if (
             float(stored_token["not_before"])
             <= datetime.now(tz=UTC).timestamp()

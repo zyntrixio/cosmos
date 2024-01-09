@@ -58,7 +58,6 @@ def test_jigsaw_agent_register_retry_paths(
         (5000, "Internal Server Error", status.HTTP_500_INTERNAL_SERVER_ERROR),
         (5003, "Service Unavailable", status.HTTP_503_SERVICE_UNAVAILABLE),
     ):
-
         httpretty.register_uri(
             "POST",
             f"{agent_config['base_url']}/order/V4/register",
@@ -90,7 +89,7 @@ def test_jigsaw_agent_register_retry_paths(
             ) as agent:
                 agent.issue_reward()
 
-        assert exc_info.value.response.status_code == expected_status
+        assert exc_info.value.response.status_code == expected_status  # type: ignore [union-attr]
         mock_uuid.assert_called()
         spy_redis_set.assert_not_called()
         db_session.refresh(jigsaw_reward_issuance_task)
@@ -158,7 +157,7 @@ def test_jigsaw_agent_register_failure_paths(
         ) as agent:
             agent.issue_reward()
 
-    assert exc_info.value.response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert exc_info.value.response.status_code == status.HTTP_401_UNAUTHORIZED  # type: ignore [union-attr]
     mock_uuid.assert_called()
     spy_redis_set.assert_not_called()
     db_session.refresh(jigsaw_reward_issuance_task)
@@ -290,7 +289,6 @@ def test_jigsaw_agent_register_retry_get_token_success(
     jigsaw_campaign: "Campaign",
     mock_issued_reward_activity: "MagicMock",
 ) -> None:
-
     retry_error_ids = ["10003", "10006", "10007"]
     tx_value = 15
     agent_config = jigsaw_retailer_fetch_type.load_agent_config()
@@ -331,9 +329,7 @@ def test_jigsaw_agent_register_retry_get_token_success(
     def register_response_generator(
         request: requests.Request, uri: str, response_headers: dict
     ) -> tuple[int, dict, str]:
-
         for msg_id in retry_error_ids:
-
             if request.headers.get("Token") == f"invalid-token-{msg_id}":
                 return (
                     200,
@@ -392,7 +388,6 @@ def test_jigsaw_agent_register_retry_get_token_success(
         None,
     ]
     for _ in retry_error_ids:
-
         with Jigsaw(
             db_session,
             campaign=jigsaw_campaign,
@@ -446,7 +441,6 @@ def test_jigsaw_agent_register_retry_get_token_max_retries_exceeded(
     jigsaw_campaign: "Campaign",
     # mock_issued_reward_activity: "MagicMock",
 ) -> None:
-
     agent_config = jigsaw_retailer_fetch_type.load_agent_config()
     card_ref = uuid4()
     mock_uuid = mocker.patch("cosmos.rewards.fetch_reward.jigsaw.uuid4")

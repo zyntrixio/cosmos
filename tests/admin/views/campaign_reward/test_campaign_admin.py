@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 def test_campaign_end_action_migration_ok(
     test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
 ) -> None:
-
     active_campaign = create_campaign(slug="from-campaign")
     draft_campaign = create_campaign(slug="to-campaign", status="DRAFT")
 
@@ -98,7 +97,6 @@ def test_campaign_end_action_migration_ok(
 def test_campaign_end_action_status_change_ok(
     test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
 ) -> None:
-
     active_campaign = create_campaign(slug="from-campaign")
 
     mock_migration_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_migration_request")
@@ -152,7 +150,6 @@ def test_campaign_end_action_status_change_ok(
 def test_campaign_end_action_too_many_ids(
     test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
 ) -> None:
-
     mock_status_chang_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_status_change_request")
     mock_migration_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_migration_request")
 
@@ -194,7 +191,6 @@ def test_campaign_end_action_wrong_status(
     create_campaign: "Callable[..., Campaign]",
     mocker: "MockerFixture",
 ) -> None:
-
     mock_status_chang_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_status_change_request")
     mock_migration_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_migration_request")
 
@@ -224,7 +220,6 @@ def test_campaign_end_action_different_retailer(
     create_retailer: "Callable[..., Retailer]",
     mocker: "MockerFixture",
 ) -> None:
-
     mock_status_chang_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_status_change_request")
     mock_migration_fn = mocker.patch.object(CampaignAdmin, "_send_campaign_migration_request")
     retailer_2 = create_retailer(slug="retailer-2")
@@ -255,7 +250,6 @@ def test_campaign_clone_action_ok(
     create_campaign: "Callable[..., Campaign]",
     mocker: "MockerFixture",
 ) -> None:
-
     test_campaign = create_campaign(slug="test-campaign")
     mock_send_activity = mocker.patch("admin.views.campaign_reward.campaign.sync_send_activity")
 
@@ -296,7 +290,6 @@ def test_campaign_clone_action_missing_rule(
     create_campaign: "Callable[..., Campaign]",
     mocker: "MockerFixture",
 ) -> None:
-
     test_campaign = create_campaign(slug="test-campaign")
 
     db_session.delete(getattr(test_campaign, missing_rule))
@@ -326,7 +319,6 @@ def test_campaign_clone_action_missing_rule(
 def test_campaign_clone_action_resulting_slug_exists_already(
     test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
 ) -> None:
-
     test_campaign = create_campaign(slug="test-campaign")
     cloned_campaign = create_campaign(slug="CLONE_test-campaign")
 
@@ -355,7 +347,6 @@ def test_campaign_clone_action_resulting_slug_exists_already(
 def test_campaign_clone_action_resulting_slug_too_long(
     test_client: "FlaskClient", create_campaign: "Callable[..., Campaign]", mocker: "MockerFixture"
 ) -> None:
-
     # setup a slug which is 99 char long
     test_campaign = create_campaign(slug="test-campaign" + ("-" * 82))
 

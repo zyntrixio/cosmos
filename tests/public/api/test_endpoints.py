@@ -174,9 +174,9 @@ def test_get_reward_for_microsite(setup: "SetupType", user_reward: Reward, test_
 
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == {
-        "code": f"{user_reward.code}",
-        "expiry_date": f"{user_reward.expiry_date.date()}",
-        "template_slug": f"{user_reward.reward_config.slug}",
+        "code": str(user_reward.code),
+        "expiry_date": str(user_reward.expiry_date.date()),
+        "template_slug": str(user_reward.reward_config.slug),
         "status": "issued",
     }
 
@@ -228,9 +228,9 @@ def test_get_reward_for_microsite_past_expiry_date(
 
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == {
-        "code": f"{user_reward.code}",
-        "expiry_date": f"{user_reward.expiry_date.date()}",
-        "template_slug": f"{user_reward.reward_config.slug}",
+        "code": str(user_reward.code),
+        "expiry_date": str(user_reward.expiry_date.date()),
+        "template_slug": str(user_reward.reward_config.slug),
         "status": "expired",
     }
 
@@ -251,11 +251,11 @@ def test_get_reward_for_microsite_redeemed_reward(
 
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == {
-        "code": f"{user_reward.code}",
-        "expiry_date": f"{user_reward.expiry_date.date()}",
-        "template_slug": f"{user_reward.reward_config.slug}",
+        "code": str(user_reward.code),
+        "expiry_date": str(user_reward.expiry_date.date()),
+        "template_slug": str(user_reward.reward_config.slug),
         "status": "redeemed",
-        "redeemed_date": f"{user_reward.redeemed_date.date()}",
+        "redeemed_date": str(user_reward.redeemed_date.date()),
     }
 
 

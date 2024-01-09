@@ -39,7 +39,6 @@ class DatabaseSettings(BaseSettings):
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     @classmethod
     def assemble_db_connection(cls, v: str, values: dict) -> str:
-
         parsed_uri = urlparse(
             v.format(values["POSTGRES_DB"])
             if v

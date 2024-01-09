@@ -431,7 +431,7 @@ test_data = [
 @pytest.mark.parametrize(
     "_description,setup_data,expectation_data",
     test_data,
-    ids=[f"{i[0]}" for i in test_data],
+    ids=[str(i[0]) for i in test_data],
 )
 def test_validate_balance_reset_advanced_warning_days(
     _description: str,

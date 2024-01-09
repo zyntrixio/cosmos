@@ -61,7 +61,6 @@ def test_reward_config_deactivate_action(
     test_client: "FlaskClient",
     campaign_with_rules: "Campaign",
 ) -> None:
-
     campaign_with_rules.status = campaign_status
     db_session.commit()
 
@@ -71,7 +70,7 @@ def test_reward_config_deactivate_action(
         data={
             "url": "/admin/reward-configs/",
             "action": "deactivate-reward-type",
-            "rowid": f"{reward_config.id}",
+            "rowid": str(reward_config.id),
         },
         follow_redirects=True,
     )

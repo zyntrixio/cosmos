@@ -31,16 +31,16 @@ def test_get_campaign_status_change_activity_data(mocker: MockerFixture) -> None
         "reasons": [],
         "activity_identifier": "test-campaign",
         "user_id": "testuser",
-        "associated_value": f"{CampaignStatuses.ACTIVE.value}",
+        "associated_value": str(CampaignStatuses.ACTIVE.value),
         "retailer": "test-retailer",
         "campaigns": ["test-campaign"],
         "data": {
             "campaign": {
                 "new_values": {
-                    "status": f"{CampaignStatuses.ACTIVE.value}",
+                    "status": str(CampaignStatuses.ACTIVE.value),
                 },
                 "original_values": {
-                    "status": f"{CampaignStatuses.DRAFT.value}",
+                    "status": str(CampaignStatuses.DRAFT.value),
                 },
             }
         },
