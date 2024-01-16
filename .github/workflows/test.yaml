@@ -1,0 +1,46 @@
+name: tests
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    env:
+      LOG_FORMATTER: brief
+      SQLALCHEMY_DATABASE_URI: "postgresql+psycopg://postgres@127.0.0.1:5432/cosmos"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      TESTING: "True"
+      PUBLIC_URL: http://fake-cosmos-public-url
+      PRE_LOADED_REWARD_BASE_URL: http://test.url
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: cosmos_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install poetry
+      - run: poetry config virtualenvs.create false
+      - run: poetry config http-basic.azure jeff ${{ secrets.AZURE_DEVOPS_PAT }}
+      - run: poetry install --all-extras
+      - run: alembic upgrade head
+      - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
+      - run: black --check .
+      - run: isort --check .
+      - run: ruff cosmos admin tests
+      - run: refurb cosmos admin tests
+      - run: mypy .
+      - run: pytest --verbose --cov cosmos --cov admin --cov-report term-missing
