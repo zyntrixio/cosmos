@@ -50,6 +50,7 @@ Flask-Admin = "^1.6.0"
 Authlib = "^1.1.0"
 Flask-WTF = "^1.0.1"
 cron-descriptor = "^1.2.35"
+tzlocal = "^5.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.1.0"
