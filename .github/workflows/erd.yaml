@@ -1,4 +1,4 @@
-name: build
+name: erd
 
 on:
   push:
@@ -23,24 +23,6 @@ jobs:
       - run: sudo apt-get install graphviz graphviz-dev
       - run: pip install poetry
       - run: poetry config virtualenvs.create false
-      - run: poetry config http-basic.azure jeff ${{secrets.AZURE_DEVOPS_PAT}}
+      - run: poetry config http-basic.bink-pypi 269fdc63-af3d-4eca-8101-8bddc22d6f14 b694b5b1-f97e-49e4-959e-f3c202e3ab91
       - run: poetry install --with erd
       - run: python scripts/erd/generate_upload_erd.py --update --schema-env=Staging  --version=${{ github.ref_name }} --message="Auto-update by Cosmos CI run number - ${{ github.run_number }}"
-  build:
-    uses: binkhq/actions/.github/workflows/python_build.yaml@master
-    with:
-      python_version: "3.11"
-      application_name: ${{ github.event.repository.name }}
-      application_version: ${{ github.ref_name }}
-    secrets: inherit
-  release:
-    needs: ["build"]
-    uses: binkhq/actions/.github/workflows/python_release.yaml@master
-    with:
-      source: ${{ github.event.repository.name }}:${{ github.ref_name }}
-      tags: ${{ matrix.environment }}-${{ github.ref_name }},${{ matrix.environment }}
-      environment:  ${{ matrix.environment }}
-    secrets: inherit
-    strategy:
-      matrix:
-        environment: [staging, production]
