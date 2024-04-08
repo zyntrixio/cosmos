@@ -16,7 +16,7 @@ class DatabaseSettings(BaseSettings):
 
         return True if "pytest" in command or any("test" in arg for arg in args) else v
 
-    REDIS_URL: str
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     @validator("REDIS_URL")
     @classmethod

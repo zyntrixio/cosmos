@@ -17,7 +17,7 @@ class RewardSettings(BaseSettings):
     BLOB_IMPORT_LOGGING_LEVEL = logging.WARNING
     BLOB_IMPORT_SCHEDULE = "*/5 * * * *"
 
-    PRE_LOADED_REWARD_BASE_URL: AnyHttpUrl
+    PRE_LOADED_REWARD_BASE_URL: AnyHttpUrl = "https://bpl.bink.com"
     MESSAGE_IF_NO_PRE_LOADED_REWARDS: bool = False
 
     JIGSAW_AGENT_USERNAME: str = "Bink_dev"

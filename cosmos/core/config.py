@@ -44,7 +44,7 @@ class CoreSettings(BaseSettings):
     API_PREFIX: str = "/api"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    PUBLIC_URL: AnyHttpUrl
+    PUBLIC_URL: AnyHttpUrl = "https://bpl.bink.com"
 
     PROJECT_NAME: str = "cosmos"
     ROOT_LOG_LEVEL: LogLevel | None = None

@@ -16,7 +16,7 @@ cosmos = "cosmos.core.cli:app"
 bestla = "data_gen.cli:app"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 sqlalchemy = {version = "^2.0.8", extras = ["asyncio"]}
 pydantic = {version = "^1.10.2", extras = ["email"]}
 PyYAML = "^6.0"
